@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, type Domain, type Routine, type Task, type Tick } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Domain, type Routine, type Task, type Tick } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -48,7 +48,19 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         check(await sb.from('domains').upsert(DEFAULT_DOMAINS, { onConflict: 'user_id,name', ignoreDuplicates: true }));
         domains = check<Domain[]>(await sb.from('domains').select('*').order('sort'));
       }
-      // Keep the five built-in domains on the current colour palette.
+      // Retire removed domains: move their items, then delete the domain. Nothing is lost.
+      const retired = domains.filter((d) => REMOVED_DOMAINS.includes(d.name));
+      const inbox = domains.find((d) => d.is_inbox);
+      const home = domains.find((d) => d.name === 'Personal & home') ?? inbox;
+      if (retired.length && inbox && home) {
+        for (const d of retired) {
+          check(await sb.from('tasks').update({ domain_id: inbox.id }).eq('domain_id', d.id));
+          check(await sb.from('routines').update({ domain_id: home.id }).eq('domain_id', d.id));
+          check(await sb.from('domains').delete().eq('id', d.id));
+        }
+        domains = domains.filter((d) => !REMOVED_DOMAINS.includes(d.name));
+      }
+      // Keep the built-in domains on the current colour palette.
       const stale = domains.filter((d) => {
         const def = DEFAULT_DOMAINS.find((x) => x.name === d.name);
         return def && def.color.toLowerCase() !== d.color.toLowerCase();
@@ -106,10 +118,8 @@ export function demoBackend(): Backend {
     task('Chase Bulletproof about the PM role', 'Job search', addDays(now, -1)),
     task('Send the wedding gallery to the client', 'Made in Heaven', now),
     task('Return the boots', 'Home', addDays(now, 2)),
-    task('Update the parcel log', 'Concierge', now),
     task('Schedule this week’s clinic posts', 'Made in Heaven', now),
     task('HMICFRS: check for an interview invite', 'Job search', addDays(now, 1)),
-    task('Handover notes for the new building', 'Concierge', addDays(now, 5)),
     task('Book the theory test', 'Home', null),
     task('Add new shoots to the portfolio site', 'Made in Heaven', null),
     task('Photo booth: price a starter kit', 'Side ideas', null, { kind: 'idea' }),

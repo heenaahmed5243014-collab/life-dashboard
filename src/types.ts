@@ -46,9 +46,11 @@ export interface Tick {
   day: Day;
 }
 
-/** The five fixed domains from the scope, plus Inbox. Created on first sign-in. */
+/** The fixed domains, plus Inbox. Created on first sign-in. */
+/** Domains that have been retired. Their items move to Inbox (routines to Home) on next load. */
+export const REMOVED_DOMAINS = ['Concierge job'];
+
 export const DEFAULT_DOMAINS: Omit<Domain, 'id'>[] = [
-  { name: 'Concierge job', short_name: 'Concierge', color: '#3987E5', is_inbox: false, sort: 1 },
   { name: 'Job search', short_name: 'Job search', color: '#D95926', is_inbox: false, sort: 2 },
   { name: 'Made in Heaven Visuals', short_name: 'Made in Heaven', color: '#D55181', is_inbox: false, sort: 3 },
   { name: 'Side ideas', short_name: 'Side ideas', color: '#C98500', is_inbox: false, sort: 4 },
