@@ -48,6 +48,15 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         check(await sb.from('domains').upsert(DEFAULT_DOMAINS, { onConflict: 'user_id,name', ignoreDuplicates: true }));
         domains = check<Domain[]>(await sb.from('domains').select('*').order('sort'));
       }
+      // Keep the five built-in domains on the current colour palette.
+      const stale = domains.filter((d) => {
+        const def = DEFAULT_DOMAINS.find((x) => x.name === d.name);
+        return def && def.color.toLowerCase() !== d.color.toLowerCase();
+      });
+      if (stale.length) {
+        await Promise.all(stale.map((d) => sb.from('domains').update({ color: DEFAULT_DOMAINS.find((x) => x.name === d.name)!.color }).eq('id', d.id)));
+        domains = domains.map((d) => ({ ...d, color: DEFAULT_DOMAINS.find((x) => x.name === d.name)?.color ?? d.color }));
+      }
       const since = new Date(addDays(now, -RECENT_DAYS)).toISOString();
       const [open, closed, routines, ticks] = await Promise.all([
         sb.from('tasks').select('*').eq('status', 'open'),

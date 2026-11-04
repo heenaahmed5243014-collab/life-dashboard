@@ -31,7 +31,7 @@ export function useStore(): Store {
   return s;
 }
 
-const FALLBACK: Domain = { id: '', name: 'Unknown', short_name: 'Unknown', color: '#9A9A92', is_inbox: false, sort: 0 };
+const FALLBACK: Domain = { id: '', name: 'Unknown', short_name: 'Unknown', color: '#898781', is_inbox: false, sort: 0 };
 
 export function StoreProvider({ backend, children }: { backend: Backend; children: ReactNode }) {
   const toast = useToast();

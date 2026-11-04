@@ -48,10 +48,10 @@ export interface Tick {
 
 /** The five fixed domains from the scope, plus Inbox. Created on first sign-in. */
 export const DEFAULT_DOMAINS: Omit<Domain, 'id'>[] = [
-  { name: 'Concierge job', short_name: 'Concierge', color: '#5E73A0', is_inbox: false, sort: 1 },
-  { name: 'Job search', short_name: 'Job search', color: '#C0763A', is_inbox: false, sort: 2 },
-  { name: 'Made in Heaven Visuals', short_name: 'Made in Heaven', color: '#B5577A', is_inbox: false, sort: 3 },
-  { name: 'Side ideas', short_name: 'Side ideas', color: '#8A74B8', is_inbox: false, sort: 4 },
-  { name: 'Personal & home', short_name: 'Home', color: '#4F8A6E', is_inbox: false, sort: 5 },
-  { name: 'Inbox', short_name: 'Inbox', color: '#9A9A92', is_inbox: true, sort: 99 },
+  { name: 'Concierge job', short_name: 'Concierge', color: '#3987E5', is_inbox: false, sort: 1 },
+  { name: 'Job search', short_name: 'Job search', color: '#D95926', is_inbox: false, sort: 2 },
+  { name: 'Made in Heaven Visuals', short_name: 'Made in Heaven', color: '#D55181', is_inbox: false, sort: 3 },
+  { name: 'Side ideas', short_name: 'Side ideas', color: '#C98500', is_inbox: false, sort: 4 },
+  { name: 'Personal & home', short_name: 'Home', color: '#199E70', is_inbox: false, sort: 5 },
+  { name: 'Inbox', short_name: 'Inbox', color: '#898781', is_inbox: true, sort: 99 },
 ];
