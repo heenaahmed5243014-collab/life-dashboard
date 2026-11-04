@@ -10,7 +10,7 @@ export interface Domain {
   sort: number;
 }
 
-export type TaskKind = 'task' | 'project' | 'idea';
+export type TaskKind = 'task' | 'project' | 'idea' | 'note';
 export type TaskStatus = 'open' | 'done' | 'not_doing';
 export type TimeOfDay = 'commute' | 'day' | 'evening';
 
@@ -21,6 +21,8 @@ export interface Task {
   kind: TaskKind;
   project_id: string | null;
   due: Day | null;
+  due_time: string | null; // "10:00" (Supabase may add ":00" seconds)
+  remind_at: string | null; // ISO timestamp
   status: TaskStatus;
   stage: string | null;
   notes: string;

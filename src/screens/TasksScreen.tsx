@@ -2,14 +2,16 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { byDue } from '../today';
-import { addDays, daysBetween, dueLabel, shortDate, today } from '../dates';
-import { go } from '../router';
+import { addDays, daysBetween, dueLabel, hhmm, shortDate, today } from '../dates';
 import type { Task } from '../types';
 import ItemRow from '../components/ItemRow';
 import Nav from '../components/Nav';
+import { openQuickAdd } from '../components/QuickAdd';
 import { Plus } from '../icons';
 
 const FILTER_KEY = 'ld:tasksFilter';
+
+const isTodo = (t: Task) => t.kind === 'task' || t.kind === 'project';
 
 function readFilter(): string {
   try {
@@ -21,9 +23,11 @@ function readFilter(): string {
 
 function tagFor(t: Task, now: string): string {
   if (t.kind === 'idea') return 'Idea';
+  if (t.kind === 'note' && !t.due) return 'Note';
   if (!t.due) return t.kind === 'project' ? 'Project' : 'No date';
-  if (t.due <= now) return 'Today';
-  return daysBetween(now, t.due) < 7 ? dueLabel(t.due, now) : shortDate(t.due);
+  const time = hhmm(t.due_time);
+  const day = t.due <= now ? 'Today' : daysBetween(now, t.due) < 7 ? dueLabel(t.due, now) : shortDate(t.due);
+  return time ? `${day} ${time}` : day;
 }
 
 export default function TasksScreen() {
@@ -41,17 +45,18 @@ export default function TasksScreen() {
   const open = store.tasks.filter((t) => t.status === 'open' && inFilter(t)).sort(byDue);
   const weekEnd = addDays(now, 6);
   const groups = [
-    { title: 'This week', items: open.filter((t) => t.kind !== 'idea' && t.due && t.due <= weekEnd) },
-    { title: 'Later', items: open.filter((t) => t.kind !== 'idea' && t.due && t.due > weekEnd) },
-    { title: 'No date yet', items: open.filter((t) => t.kind !== 'idea' && !t.due) },
+    { title: 'This week', items: open.filter((t) => isTodo(t) && t.due && t.due <= weekEnd) },
+    { title: 'Later', items: open.filter((t) => isTodo(t) && t.due && t.due > weekEnd) },
+    { title: 'No date yet', items: open.filter((t) => isTodo(t) && !t.due) },
     { title: 'Ideas', items: open.filter((t) => t.kind === 'idea') },
+    { title: 'Notes', items: open.filter((t) => t.kind === 'note') },
   ].filter((g) => g.items.length > 0);
 
   const done = store.tasks
     .filter((t) => t.status !== 'open' && inFilter(t))
     .sort((a, b) => (b.closed_at ?? '').localeCompare(a.closed_at ?? ''));
 
-  const taskCount = open.filter((t) => t.kind !== 'idea').length;
+  const taskCount = open.filter(isTodo).length;
   const chips = [{ id: 'all', short_name: 'All', color: '' }, ...store.domains];
 
   return (
@@ -113,7 +118,7 @@ export default function TasksScreen() {
         type="button"
         className="fab"
         aria-label="Add a task"
-        onClick={() => go(filter === 'all' ? '/add' : `/add/${filter}`)}
+        onClick={() => openQuickAdd(filter === 'all' ? null : filter)}
       >
         <Plus />
       </button>

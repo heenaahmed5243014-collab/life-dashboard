@@ -4,6 +4,7 @@ A phone-first app that shows what's due soon across five areas of life. See the 
 
 - **Today**: Top 3, the rest of today, the next 3 days, the Inbox and today's routines.
 - **Tasks**: every task, project and idea, filterable by domain. Add, edit, complete.
+- **Quick add** on every screen (+ button, or N / Ctrl+K on a computer). Tap an area to save it yourself, or let **Claude** tidy it up and file it (optional).
 - Data is stored in **Supabase**, so it's the same on your phone and the desk PC. Sign-in uses email and password.
 
 Try it without Supabase: add `?demo` to the address. Nothing is saved in demo mode.
@@ -24,3 +25,5 @@ npm run dev
 - `src/backend.ts`: Supabase reads and writes, plus the in-memory demo
 - `src/store.tsx`: app state, with changes shown instantly and then saved
 - `src/screens/`: one file per screen
+- `api/capture.ts`: the private Vercel function that calls Claude (needs `ANTHROPIC_API_KEY` in Vercel)
+- `supabase/02-quick-capture.sql`: database update for times, reminders and notes

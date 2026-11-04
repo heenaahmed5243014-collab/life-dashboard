@@ -16,16 +16,18 @@ export interface TodayView {
 }
 
 export const byDue = (a: Task, b: Task) =>
-  (a.due ?? '9999').localeCompare(b.due ?? '9999') || a.created_at.localeCompare(b.created_at);
+  (a.due ?? '9999').localeCompare(b.due ?? '9999') ||
+  (a.due_time ?? '99').localeCompare(b.due_time ?? '99') ||
+  a.created_at.localeCompare(b.created_at);
 
 export function buildToday(tasks: Task[], routines: Routine[], ticks: Tick[], inboxId: string, now: Day): TodayView {
   const open = tasks.filter((t) => t.status === 'open');
   const soonEnd = addDays(now, 3);
 
-  const dated = open.filter((t) => t.due && t.kind !== 'idea' && t.domain_id !== inboxId).sort(byDue);
+  const dated = open.filter((t) => t.due && t.kind !== 'idea' && t.kind !== 'note' && t.domain_id !== inboxId).sort(byDue);
   const dueNow = dated.filter((t) => t.due! <= now);
   const soon = dated.filter((t) => t.due! > now && t.due! <= soonEnd);
-  const inbox = open.filter((t) => t.domain_id === inboxId).sort(byDue);
+  const inbox = open.filter((t) => t.domain_id === inboxId && t.kind !== 'note').sort(byDue);
 
   const dow = weekday(now);
   const ticked = new Set(ticks.filter((t) => t.day === now).map((t) => t.routine_id));

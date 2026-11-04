@@ -89,7 +89,7 @@ export function demoBackend(): Backend {
   const id = (name: string) => domains.find((d) => d.short_name === name)!.id;
   const stamp = new Date().toISOString();
   const task = (title: string, dom: string, due: Day | null, extra: Partial<Task> = {}): Task => ({
-    id: crypto.randomUUID(), title, domain_id: id(dom), kind: 'task', project_id: null, due, status: 'open',
+    id: crypto.randomUUID(), title, domain_id: id(dom), kind: 'task', project_id: null, due, due_time: null, remind_at: null, status: 'open',
     stage: null, notes: '', created_at: stamp, touched_at: stamp, closed_at: null, ...extra,
   });
   const tasks: Task[] = [

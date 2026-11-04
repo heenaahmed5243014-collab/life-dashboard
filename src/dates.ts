@@ -69,3 +69,18 @@ export function daysLabel(days: number[]): string {
   if (s.length === 0) return 'No days set';
   return s.map((i) => WEEKDAY_SHORT[i]).join(', ');
 }
+
+/** "10:00:00" or "10:00" -> "10:00" */
+export function hhmm(t: string | null | undefined): string | null {
+  return t ? t.slice(0, 5) : null;
+}
+
+/** Local date + optional time -> ISO timestamp for a reminder (9am if no time). */
+export function reminderAt(day: Day, time: string | null): string {
+  const [h, m] = (hhmm(time) ?? '09:00').split(':').map(Number);
+  const d = parseDay(day);
+  d.setHours(h, m, 0, 0);
+  return d.toISOString();
+}
+
+export const WEEKDAY_LONG_NAMES = WEEKDAY_LONG;

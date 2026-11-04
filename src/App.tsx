@@ -11,8 +11,18 @@ import RoutineScreen from './screens/RoutineScreen';
 import AddScreen from './screens/AddScreen';
 import AccountScreen from './screens/AccountScreen';
 import NotConnected from './screens/NotConnected';
+import QuickAddHost from './components/QuickAdd';
 
 function Screens() {
+  return (
+    <>
+      <Page />
+      <QuickAddHost />
+    </>
+  );
+}
+
+function Page() {
   const route = useRoute();
   switch (route.name) {
     case 'today': return <TodayScreen />;

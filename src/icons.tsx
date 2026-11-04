@@ -18,3 +18,9 @@ export const Chevron = () => (
 export const Save = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" strokeWidth={1.9} {...base}><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
 );
+export const Bell = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base} aria-hidden={false} role="img" aria-label="Reminder set"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2zM10 21h4" /></svg>
+);
+export const Sparkle = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" strokeWidth={1.9} {...base}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
+);

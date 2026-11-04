@@ -6,6 +6,7 @@ import { go } from '../router';
 import type { Task } from '../types';
 import ItemRow from '../components/ItemRow';
 import Nav from '../components/Nav';
+import { openQuickAdd } from '../components/QuickAdd';
 import { Check, Plus } from '../icons';
 
 const CAP = 7; // lines shown below the Top 3 before "Show more" (about 10 in total)
@@ -91,7 +92,7 @@ export default function TodayScreen() {
         )}
       </main>
 
-      <button type="button" className="fab" aria-label="Add something" onClick={() => go('/add')}><Plus /></button>
+      <button type="button" className="fab" aria-label="Add something" onClick={() => openQuickAdd()}><Plus /></button>
       <Nav current="today" />
     </>
   );

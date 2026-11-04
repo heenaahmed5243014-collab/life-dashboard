@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import type { Task, TaskKind } from '../types';
-import { addDays, dueLabel, today } from '../dates';
+import { addDays, dueLabel, hhmm, reminderAt, today } from '../dates';
+import { Bell } from '../icons';
 import { back, go } from '../router';
 import { useToast } from '../toast';
 import Header from '../components/Header';
@@ -34,7 +35,7 @@ function ItemDetail({ task }: { task: Task }) {
   const children = task.kind === 'project' ? store.tasks.filter((c) => c.project_id === task.id && c.status === 'open') : [];
 
   const save = (changes: Partial<Task>) => store.updateTask(task.id, changes);
-  const before = { status: task.status, closed_at: task.closed_at, due: task.due };
+  const before = { status: task.status, closed_at: task.closed_at, due: task.due, remind_at: task.remind_at };
   const isOpen = task.status === 'open';
 
   const close = (status: 'done' | 'not_doing') => {
@@ -47,7 +48,7 @@ function ItemDetail({ task }: { task: Task }) {
     const now = today();
     const base = task.due && task.due > now ? task.due : now;
     const due = addDays(base, n);
-    save({ due });
+    save({ due, remind_at: task.remind_at ? reminderAt(due, task.due_time) : null });
     const label = dueLabel(due, now);
     toast({ message: `Moved to ${label === 'Tomorrow' ? 'tomorrow' : label}`, undo: () => save(before) });
     back();
@@ -89,13 +90,41 @@ function ItemDetail({ task }: { task: Task }) {
               { value: 'task', label: 'Task' },
               { value: 'project', label: 'Project' },
               { value: 'idea', label: 'Idea' },
+              { value: 'note', label: 'Note' },
             ]}
           />
         </FieldBlock>
 
         {task.kind !== 'idea' && (
           <FieldBlock label="When">
-            <DatePicker value={task.due} onChange={(due) => save({ due })} />
+            <DatePicker
+              value={task.due}
+              onChange={(due) => save(due ? { due, remind_at: task.remind_at ? reminderAt(due, task.due_time) : null } : { due, due_time: null, remind_at: null })}
+            />
+            {task.due && (
+              <div className="time-row">
+                <label className="chip chip-input wide">
+                  {hhmm(task.due_time) ?? 'Add a time'}
+                  <input
+                    type="time"
+                    aria-label="Time"
+                    value={hhmm(task.due_time) ?? ''}
+                    onChange={(e) => {
+                      const t = e.target.value || null;
+                      save({ due_time: t, remind_at: task.remind_at ? reminderAt(task.due!, t) : null });
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={task.remind_at ? 'chip on' : 'chip'}
+                  aria-pressed={!!task.remind_at}
+                  onClick={() => save({ remind_at: task.remind_at ? null : reminderAt(task.due!, task.due_time) })}
+                >
+                  <Bell /> {task.remind_at ? `Reminder ${hhmm(task.due_time) ?? '09:00'}` : 'Remind me'}
+                </button>
+              </div>
+            )}
           </FieldBlock>
         )}
 

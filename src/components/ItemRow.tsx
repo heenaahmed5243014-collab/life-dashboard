@@ -1,13 +1,15 @@
 import type { Task } from '../types';
 import { useStore } from '../store';
-import { dueLabel } from '../dates';
+import { dueLabel, hhmm } from '../dates';
 import { go } from '../router';
 import { useToast } from '../toast';
-import { Check } from '../icons';
+import { Bell, Check } from '../icons';
 
 export function whenText(t: Task): string {
   if (t.kind === 'idea') return 'Idea';
-  if (t.due) return dueLabel(t.due);
+  const time = hhmm(t.due_time);
+  if (t.due) return dueLabel(t.due) + (time ? ` ${time}` : '');
+  if (t.kind === 'note') return 'Note';
   return t.kind === 'project' ? 'Project' : 'No date';
 }
 
@@ -37,9 +39,10 @@ export default function ItemRow({ task, big = false, tag }: { task: Task; big?: 
         <span className="row-meta">
           <span className="dot" style={{ background: d.color }} />
           {d.short_name}{tag ? '' : ` · ${whenText(task)}`}
+          {task.remind_at && task.status === 'open' && <Bell />}
         </span>
       </button>
-      {tag && <span className={tag === 'Today' ? 'tag tag-today' : 'tag'}>{tag}</span>}
+      {tag && <span className={tag.startsWith('Today') ? 'tag tag-today' : 'tag'}>{tag}</span>}
     </div>
   );
 }

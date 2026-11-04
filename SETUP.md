@@ -44,3 +44,31 @@ Once you've signed in, stop anyone else from making an account:
 - **iPhone (Safari):** Share button, then **Add to Home Screen**.
 - **Android (Chrome):** three-dot menu, then **Add to Home screen** (or **Install app**).
 - **Desk PC:** open the same link and sign in with the same email.
+
+---
+
+# Update 2: quick add and Claude sorting
+
+## A. Update the database (1 minute)
+1. In Supabase, open **SQL Editor**, then **New query**.
+2. Paste in everything from `supabase/02-quick-capture.sql` and click **Run**.
+   This adds a time and a reminder to tasks, and the new "note" type.
+
+## B. Connect Claude (optional, about 10 minutes)
+Quick add works without this: tap an area and it saves for free.
+Claude only does the "Sort with Claude" button. It is pay-as-you-go: you pay a few pence per item sorted, from credit you add.
+
+1. Go to https://console.anthropic.com and sign up.
+2. **Billing**: add a small amount of credit (the minimum is fine).
+3. **Limits**: set a monthly spend limit (for example $5) so it can never cost more.
+4. **API Keys > Create Key**. Name it `life-dashboard` and copy it. It starts with `sk-ant-`.
+   It's shown only once. Don't paste it anywhere else, including chats.
+5. In Vercel, open your project, then **Settings > Environment Variables**:
+   - Key: `ANTHROPIC_API_KEY`, Value: the key you just copied.
+   - Tick **Sensitive** if offered, then **Save**.
+   This key lives only on Vercel's servers. The app on your phone never sees it.
+6. Go to **Deployments**, open the ⋯ menu on the top one, and choose **Redeploy**.
+
+If a key is ever leaked: delete it in the Anthropic console, make a new one, and repeat step 5.
+
+Optional: add `CLAUDE_MODEL` = `claude-haiku-5-5` in Vercel to use a cheaper, faster model.
