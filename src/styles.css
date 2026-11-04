@@ -389,3 +389,43 @@ a { color: var(--accent); }
 .card, .list, .routine-card, .routine-tile, .empty, .filed-card, .capture-card { box-shadow: 0 0 0 1px rgba(11, 11, 11, 0.06); }
 .capture-card:focus-within { box-shadow: 0 0 0 2px var(--accent-edge); border-color: transparent; }
 .chip { border-color: var(--edge); }
+
+/* Day strip */
+.day-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: -8px; }
+.day-pill {
+  min-height: 72px; border-radius: 16px; border: 1px solid var(--edge); background: var(--card); padding: 8px 0 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink);
+}
+.day-pill-name { font-size: 12px; color: var(--muted); font-weight: 500; }
+.day-pill.is-today .day-pill-name { font-size: 11px; }
+.day-pill-num { font-size: 19px; font-weight: 600; line-height: 24px; }
+.day-pill-dot { width: 6px; height: 6px; border-radius: 3px; background: var(--accent); }
+.day-pill-dot.is-none { background: transparent; }
+.day-pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day-pill.on .day-pill-name { color: #fff; }
+.day-pill.on .day-pill-dot:not(.is-none) { background: #fff; }
+
+/* Hourly planner */
+.planner { background: var(--card); border-radius: var(--radius); box-shadow: 0 0 0 1px rgba(11, 11, 11, 0.06); overflow: hidden; }
+.hour { display: grid; grid-template-columns: 56px 1fr; min-height: 48px; }
+.hour + .hour .hour-slot { border-top: 1px solid var(--line); }
+.hour-label { font-size: 12px; color: var(--muted); padding: 6px 0 0 14px; font-variant-numeric: tabular-nums; }
+.hour.past .hour-label { color: var(--ring); }
+.hour-slot { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 6px 10px 6px 0; }
+.slot-add {
+  flex: 1; min-height: 34px; border: none; background: transparent; border-radius: 10px; color: var(--accent);
+  display: flex; align-items: center; justify-content: center; opacity: 0; padding: 0;
+}
+.slot-add svg { width: 20px; height: 20px; }
+.hour.has-items .slot-add { min-height: 10px; flex: none; height: 10px; }
+.slot-add:hover, .slot-add:focus-visible, .slot-add:active { opacity: 1; background: var(--accent-soft); }
+.slot-item {
+  display: flex; align-items: center; gap: 10px; background: var(--accent-soft); border-left: 4px solid var(--accent);
+  border-radius: 10px; padding: 6px 10px 6px 8px; position: relative; z-index: 1;
+}
+.tick-sm { width: 36px; height: 36px; border-radius: 18px; }
+.slot-body { flex: 1; min-width: 0; border: none; background: none; padding: 2px 0; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.slot-title { font-size: 15px; font-weight: 500; line-height: 20px; overflow-wrap: anywhere; }
+.now-line { position: absolute; left: -6px; right: 0; height: 2px; background: #D95926; z-index: 2; pointer-events: none; }
+.now-line::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 4px; background: #D95926; }
+.routine-tile.later { min-height: 72px; background: var(--card); }

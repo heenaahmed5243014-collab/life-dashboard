@@ -17,7 +17,7 @@ import { DaysPicker } from './Fields';
 import { Bell, Close, Mic, Sparkle } from '../icons';
 
 type Kind = Exclude<TaskKind, 'project'> | 'routine';
-interface OpenOptions { domainId?: string | null; kind?: Kind }
+interface OpenOptions { domainId?: string | null; kind?: Kind; date?: Day; time?: string }
 
 export function openQuickAdd(opts: OpenOptions = {}) {
   dispatchEvent(new CustomEvent('ld:quickadd', { detail: opts }));
@@ -75,8 +75,8 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
   const [domainId, setDomainId] = useState<string | null>(options.domainId ?? null);
   const [kind, setKind] = useState<Kind>(options.kind ?? 'task');
   const [kindPicked, setKindPicked] = useState(Boolean(options.kind));
-  const [due, setDue] = useState<Day | null>(null);
-  const [time, setTime] = useState('');
+  const [due, setDue] = useState<Day | null>(options.date ?? null);
+  const [time, setTime] = useState(options.time ?? '');
   const [remind, setRemind] = useState(false);
   const [days, setDays] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
@@ -112,8 +112,8 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
 
   const reset = (savedIds: string[]) => {
     setText('');
-    setDue(null);
-    setTime('');
+    setDue(options.date ?? null);
+    setTime(options.time ?? '');
     setRemind(false);
     setDays([]);
     setKind(options.kind ?? 'task');

@@ -25,7 +25,8 @@ export function buildToday(tasks: Task[], routines: Routine[], ticks: Tick[], in
   const soonEnd = addDays(now, 3);
 
   const dated = open.filter((t) => t.due && t.kind !== 'idea' && t.kind !== 'note' && t.domain_id !== inboxId).sort(byDue);
-  const dueNow = dated.filter((t) => t.due! <= now);
+  // Timed items for today live in the hourly planner; carried-over ones stay in the lists.
+  const dueNow = dated.filter((t) => t.due! < now || (t.due === now && !t.due_time));
   const soon = dated.filter((t) => t.due! > now && t.due! <= soonEnd);
   const inbox = open.filter((t) => t.domain_id === inboxId && t.kind !== 'note').sort(byDue);
 
@@ -38,4 +39,24 @@ export function buildToday(tasks: Task[], routines: Routine[], ticks: Tick[], in
     .map((routine) => ({ routine, done: ticked.has(routine.id) }));
 
   return { top: dueNow.slice(0, 3), also: dueNow.slice(3), soon, inbox, routines: todays };
+}
+
+export interface DayPlan {
+  anytime: Task[]; // due that day with no time
+  timed: Task[]; // due that day with a time, in time order
+  routines: TodayRoutine[];
+}
+
+/** What a single day looks like in the planner (any day, today included). */
+export function buildDay(tasks: Task[], routines: Routine[], ticks: Tick[], day: Day): DayPlan {
+  const open = tasks.filter((t) => t.status === 'open' && t.kind !== 'idea' && t.kind !== 'note' && t.due === day);
+  const dow = weekday(day);
+  const ticked = new Set(ticks.filter((t) => t.day === day).map((t) => t.routine_id));
+  return {
+    anytime: open.filter((t) => !t.due_time).sort(byDue),
+    timed: open.filter((t) => t.due_time).sort(byDue),
+    routines: routines
+      .filter((r) => r.active && r.days.includes(dow))
+      .map((routine) => ({ routine, done: ticked.has(routine.id) })),
+  };
 }
