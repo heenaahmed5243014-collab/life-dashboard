@@ -4,7 +4,7 @@ A phone-first app that shows what's due soon across five areas of life. See the 
 
 - **Today**: Top 3, the rest of today, the next 3 days, the Inbox and today's routines.
 - **Tasks**: every task, project and idea, filterable by domain. Add, edit, complete.
-- Data is stored in **Supabase**, so it's the same on your phone and the desk PC. Sign-in uses a 6-digit email code.
+- Data is stored in **Supabase**, so it's the same on your phone and the desk PC. Sign-in uses email and password.
 
 Try it without Supabase: add `?demo` to the address. Nothing is saved in demo mode.
 

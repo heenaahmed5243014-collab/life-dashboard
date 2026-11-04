@@ -1,6 +1,5 @@
-// Sign-in with a 6-digit code sent by email. No passwords to remember.
-// A code (rather than a link) is used because on iPhone a link would open in
-// Safari instead of the home-screen app.
+// Sign-in with email and password. No emails are sent, so it works with
+// Supabase's free email settings, and the phone's password manager can fill it in.
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './backend';
@@ -22,56 +21,63 @@ export function AuthGate({ children }: { children: (session: Session) => ReactNo
 
 function SignIn() {
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'signin' | 'create'>('signin');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sendCode = async (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error } = await supabase!.auth.signInWithOtp({ email: email.trim() });
+    const creds = { email: email.trim(), password };
+    const { data, error } =
+      mode === 'signin' ? await supabase!.auth.signInWithPassword(creds) : await supabase!.auth.signUp(creds);
     setBusy(false);
-    if (error) setError(error.message);
-    else setStep('code');
-  };
-
-  const verify = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const { error } = await supabase!.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
-    setBusy(false);
-    if (error) setError('That code didn’t work. Check it, or send a new one.');
+    if (error) {
+      setError(
+        error.message.includes('Invalid login')
+          ? 'That email and password don’t match.'
+          : error.message.includes('Signups not allowed')
+            ? 'New accounts are switched off. Sign in instead.'
+            : error.message,
+      );
+    } else if (mode === 'create' && !data.session) {
+      setError('Account made, but Supabase wants an email confirmation. Turn off “Confirm email” in Supabase, then sign in.');
+      setMode('signin');
+    }
   };
 
   return (
     <main className="page signin">
       <header className="page-head">
         <h1 className="h1">Life Dashboard</h1>
-        <p className="muted">
-          {step === 'email' ? 'Sign in with your email. We’ll send you a 6-digit code.' : `We sent a code to ${email}. It can take a minute.`}
-        </p>
+        <p className="muted">{mode === 'signin' ? 'Sign in to see your list.' : 'Create your account. You only do this once.'}</p>
       </header>
-      {step === 'email' ? (
-        <form className="stack" onSubmit={sendCode}>
-          <label className="card field">
-            <span className="field-label">Email</span>
-            <input className="big-input" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
-          <button type="submit" className="primary" disabled={busy || !email.includes('@')}>{busy ? 'Sending…' : 'Send code'}</button>
-        </form>
-      ) : (
-        <form className="stack" onSubmit={verify}>
-          <label className="card field">
-            <span className="field-label">Code from the email</span>
-            <input className="big-input code" inputMode="numeric" autoComplete="one-time-code" maxLength={10} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
-          </label>
-          <button type="submit" className="primary" disabled={busy || code.length < 6}>{busy ? 'Checking…' : 'Sign in'}</button>
-          <button type="button" className="link-btn" onClick={() => { setStep('email'); setCode(''); }}>Use a different email</button>
-        </form>
-      )}
+      <form className="stack" onSubmit={submit}>
+        <label className="card field">
+          <span className="field-label">Email</span>
+          <input className="big-input" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </label>
+        <label className="card field">
+          <span className="field-label">Password{mode === 'create' ? ' (at least 8 characters)' : ''}</span>
+          <input
+            className="big-input"
+            type="password"
+            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+            minLength={mode === 'create' ? 8 : undefined}
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+        <button type="submit" className="primary" disabled={busy || !email.includes('@') || password.length < (mode === 'create' ? 8 : 1)}>
+          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+        </button>
+        <button type="button" className="link-btn" onClick={() => { setMode(mode === 'signin' ? 'create' : 'signin'); setError(null); }}>
+          {mode === 'signin' ? 'First time? Create your account' : 'Already have an account? Sign in'}
+        </button>
+      </form>
       {error && <p className="error" role="alert">{error}</p>}
     </main>
   );

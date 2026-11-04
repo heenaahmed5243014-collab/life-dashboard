@@ -13,14 +13,10 @@ Takes about 20 minutes. You only do this once.
 3. Click **Run**. You should see "Success. No rows returned".
 4. Open **Table Editor** in the left menu. You should see `domains`, `tasks`, `routines` and `routine_ticks`.
 
-## 3. Turn on sign-in codes
-1. Go to **Authentication > Emails** (sometimes called Email Templates) and open the **Magic Link** template.
-2. Replace the body with:
-   ```html
-   <h2>Your Life Dashboard code</h2>
-   <p>Enter this code in the app: <strong>{{ .Token }}</strong></p>
-   ```
-3. Click **Save**.
+## 3. Turn off email confirmation
+The app signs in with email and password, so Supabase doesn't need to send any emails.
+1. Go to **Authentication > Sign In / Providers** and open **Email**.
+2. Turn off **Confirm email**, then click **Save**.
 
 ## 4. Copy your two keys
 1. Click **Connect** at the top of the project page (or go to **Project Settings > API**).
@@ -35,9 +31,10 @@ Takes about 20 minutes. You only do this once.
    - `VITE_SUPABASE_KEY` = your publishable key
 3. Click **Deploy**. You'll get a link like `life-dashboard-xyz.vercel.app`.
 
-## 6. First sign-in
-1. Open the link on your phone, enter your email and tap **Send code**.
-2. Type in the 6-digit code from the email. Your five domains and Inbox are created automatically.
+## 6. Create your account
+1. Open the link on your phone and tap **First time? Create your account**.
+2. Enter your email and a password (at least 8 characters). Let your phone save the password.
+3. Your five domains and Inbox are created automatically.
 
 ## 7. Lock the door
 Once you've signed in, stop anyone else from making an account:
