@@ -21,7 +21,8 @@ interface CaptureRequest {
 
 export interface CaptureResult {
   title: string;
-  kind: 'task' | 'routine' | 'note' | 'idea';
+  kind: 'task' | 'project' | 'routine' | 'note' | 'idea';
+  stage: string | null;
   domain: string;
   date: string | null;
   time: string | null;
@@ -48,10 +49,11 @@ function schema(domains: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['title', 'kind', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date'],
+    required: ['title', 'kind', 'stage', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date'],
     properties: {
       title: { type: 'string', description: 'Short, clear wording that starts with a verb where it makes sense. No date/time words.' },
-      kind: { type: 'string', enum: ['task', 'routine', 'note', 'idea'] },
+      kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea'] },
+      stage: { type: ['string', 'null'], enum: ['Applied', 'Test', 'Interview', 'Offer', 'Closed', 'Booked', 'Shot', 'Editing', 'Delivered', null] },
       domain: { type: 'string', enum: domains },
       date: { type: ['string', 'null'], description: 'YYYY-MM-DD, or null if no day was mentioned' },
       time: { type: ['string', 'null'], description: '24-hour HH:MM, or null if no time was mentioned' },
@@ -68,15 +70,16 @@ const SYSTEM = `You sort quick notes for a personal to-do app. The user types on
 
 Decide:
 - title: rewrite it as a short, clean item. Fix spelling and capitals. Remove filler like "remind me to", "I need to", and remove date and time words (they go in their own fields). Keep names and details.
-- kind: "task" for one-off things to do. "routine" for things that repeat (e.g. "gym mon wed fri", "every evening tidy up"). "note" for information to keep that isn't an action (e.g. "Sam's door code is 4512"). "idea" for side-business or someday thoughts (events, photo booth, head spa, "maybe I could...") unless the user clearly says it's a to-do.
+- kind: "project" for something with an end point that will hold several tasks: one job application, or one client shoot. "task" for one-off things to do. "routine" for things that repeat (e.g. "gym mon wed fri", "every evening tidy up"). "note" for information to keep that isn't an action (e.g. "Sam's door code is 4512"). "idea" for side-business or someday thoughts (events, photo booth, head spa, "maybe I could...") unless the user clearly says it's a to-do.
 - domain: the best match from the list. Hints: job applications, interviews, recruiters, CVs -> job search. Photo or video shoots, clients, galleries, editing, social posts for clients -> Made in Heaven Visuals. Business ideas like events, photo booth, head spa -> side ideas. Gym, home, shopping, returns, health, family, admin -> personal & home. If it is genuinely unclear, use "Inbox".
 - date: resolve words like "tomorrow", "Friday", "next week" (use Monday of next week), "in 3 days" against today's date. Null if none.
 - time: 24-hour HH:MM if a time is mentioned ("10am" -> "10:00", "half 2" -> "14:30" unless clearly morning). Null if none.
 - reminder: true only if the user asks to be reminded ("remind me", "ping me", "don't let me forget").
 - days and time_of_day: only matter for routines. time_of_day: morning travel -> "commute", evening -> "evening", otherwise "day".
-- follow_up_title and follow_up_date: usually both null. Only two cases add one extra task, in the same domain:
-  - The user says they applied for a job (e.g. "applied to Trifid"): follow_up_title "Follow up with <company>", follow_up_date 7 days after today. The main item is a note titled "Applied to <company>" with no date.
-  - The user mentions a photo or video shoot for a client on a date: follow_up_title "Deliver gallery to <client>", follow_up_date 14 days after the shoot.
+- stage: only for projects. Job applications: Applied, Test, Interview, Offer or Closed. Client shoots: Booked, Shot, Editing or Delivered. Otherwise null.
+- follow_up_title and follow_up_date: usually both null. Only two cases add one extra task, which goes inside the project:
+  - The user says they applied for a job (e.g. "applied to Trifid"): a project titled "<Company> application", stage "Applied", no date; follow_up_title "Follow up with <company>", follow_up_date 7 days after today.
+  - The user mentions a photo or video shoot for a client (e.g. "shoot for Amira on Sat"): a project titled "<Client> shoot", stage "Booked", date = the shoot day; follow_up_title "Deliver gallery to <client>", follow_up_date 14 days after the shoot.
   Never add anything else.`;
 
 export async function POST(req: Request): Promise<Response> {

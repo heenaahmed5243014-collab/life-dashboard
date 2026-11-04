@@ -4,10 +4,12 @@ import { supabase } from './backend';
 import { hhmm, longDate, reminderAt, today, type Day } from './dates';
 import type { Domain, Routine, Task, TimeOfDay } from './types';
 import type { NewRoutine, NewTask } from './store';
+import { areaConfig } from './areas';
 
 export interface CaptureResult {
   title: string;
-  kind: 'task' | 'routine' | 'note' | 'idea';
+  kind: 'task' | 'project' | 'routine' | 'note' | 'idea';
+  stage: string | null;
   domain: string;
   date: string | null;
   time: string | null;
@@ -110,17 +112,19 @@ export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain): R
   const isIdea = r.kind === 'idea';
   // A reminder or time with no day means today.
   const date: Day | null = isIdea ? null : r.date ?? (r.reminder || time ? today() : null);
+  const stages = areaConfig(domain).stages;
   const recs: Rec[] = [{
     task: {
       title: r.title,
       kind: r.kind,
+      stage: r.kind === 'project' && stages ? (r.stage && stages.includes(r.stage) ? r.stage : stages[0]) : null,
       domain_id: domain.id,
       due: date,
       due_time: date ? time : null,
       remind_at: r.reminder && date ? reminderAt(date, time) : null,
     },
   }];
-  if ((r.kind === 'task' || r.kind === 'note') && r.follow_up_title && r.follow_up_date && /^\d{4}-\d{2}-\d{2}$/.test(r.follow_up_date)) {
+  if (r.kind !== 'idea' && r.follow_up_title && r.follow_up_date && /^\d{4}-\d{2}-\d{2}$/.test(r.follow_up_date)) {
     recs.push({ task: { title: r.follow_up_title, kind: 'task', domain_id: domain.id, due: r.follow_up_date } });
   }
   return recs;

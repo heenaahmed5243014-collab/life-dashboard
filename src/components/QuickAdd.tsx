@@ -14,9 +14,10 @@ import { go } from '../router';
 import { useToast } from '../toast';
 import { whenText } from './ItemRow';
 import { DaysPicker } from './Fields';
+import { areaConfig } from '../areas';
 import { Bell, Close, Mic, Sparkle } from '../icons';
 
-type Kind = Exclude<TaskKind, 'project'> | 'routine';
+type Kind = TaskKind | 'routine';
 interface OpenOptions { domainId?: string | null; kind?: Kind; date?: Day; time?: string }
 
 export function openQuickAdd(opts: OpenOptions = {}) {
@@ -137,9 +138,11 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     }
     const t = hhmm(time || null);
     const date = kind === 'idea' ? null : due ?? (remind || t ? now : null);
+    const stages = areaConfig(store.domain(domain)).stages;
     const task = store.addTask({
       title,
       kind,
+      stage: kind === 'project' && stages ? stages[0] : null,
       domain_id: domain,
       due: date,
       due_time: date ? t : null,
@@ -170,7 +173,9 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
           ids.push(r.id);
           if (i === 0) first = `Routine added · ${daysLabel(r.days)}`;
         } else {
-          const task = store.addTask(rec.task);
+          // A follow-up sits inside the project it came from.
+          const parent = i > 0 && 'task' in recs[0] && recs[0].task.kind === 'project' ? ids[0] : null;
+          const task = store.addTask(parent ? { ...rec.task, project_id: parent } : rec.task);
           ids.push(task.id);
           if (i === 0) first = `Saved to ${store.domain(task.domain_id).short_name}`;
         }
@@ -283,7 +288,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
               </Row>
               <Row label="Type">
                 <div className="qa-row" role="radiogroup" aria-label="Type">
-                  {(['task', 'routine', 'note', 'idea'] as Kind[]).map((k) => (
+                  {(['task', 'project', 'routine', 'note', 'idea'] as Kind[]).map((k) => (
                     <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'chip on' : 'chip'} onClick={() => { setKind(k); setKindPicked(true); }}>
                       {k[0].toUpperCase() + k.slice(1)}
                     </button>

@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import type { Task, TaskKind } from '../types';
 import { addDays, dueLabel, hhmm, reminderAt, today } from '../dates';
 import { Bell } from '../icons';
+import { areaConfig } from '../areas';
 import { back, go } from '../router';
 import { useToast } from '../toast';
 import Header from '../components/Header';
@@ -31,12 +32,13 @@ function ItemDetail({ task }: { task: Task }) {
   useEffect(() => setTitle(task.title), [task.title]);
   useEffect(() => setNotes(task.notes), [task.notes]);
 
-  const projects = store.tasks.filter((p) => p.kind === 'project' && p.status === 'open' && p.id !== task.id);
+  const projects = store.tasks.filter((p) => p.kind === 'project' && p.status === 'open' && p.id !== task.id && p.domain_id === task.domain_id);
   const children = task.kind === 'project' ? store.tasks.filter((c) => c.project_id === task.id && c.status === 'open') : [];
 
   const save = (changes: Partial<Task>) => store.updateTask(task.id, changes);
   const before = { status: task.status, closed_at: task.closed_at, due: task.due, remind_at: task.remind_at };
   const isOpen = task.status === 'open';
+  const stages = areaConfig(store.domain(task.domain_id)).stages;
 
   const close = (status: 'done' | 'not_doing') => {
     save({ status, closed_at: new Date().toISOString() });
@@ -80,6 +82,21 @@ function ItemDetail({ task }: { task: Task }) {
         <FieldBlock label="Domain">
           <DomainPicker value={task.domain_id} onChange={(domain_id) => save({ domain_id })} />
         </FieldBlock>
+
+        {task.kind === 'project' && stages && (
+          <FieldBlock label="Stage">
+            <div className="chips" role="radiogroup" aria-label="Stage">
+              {stages.map((st) => {
+                const on = (task.stage ?? stages[0]) === st;
+                return (
+                  <button key={st} type="button" role="radio" aria-checked={on} className={on ? 'chip on' : 'chip'} onClick={() => save({ stage: st })}>
+                    {st}
+                  </button>
+                );
+              })}
+            </div>
+          </FieldBlock>
+        )}
 
         <FieldBlock label="Type">
           <Segmented<TaskKind>
