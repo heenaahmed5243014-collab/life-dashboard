@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { useStore } from '../store';
 import type { TaskKind } from '../types';
 import { addDays, daysLabel, hhmm, reminderAt, shortDate, today, weekday, type Day } from '../dates';
-import { aiKnownOff, askClaude, ERROR_TEXT, recentlyAdded, toRecords, type CaptureError } from '../capture';
+import { aiKnownOff, askClaude, checkClaude, ERROR_TEXT, recentlyAdded, toRecords, type CaptureError } from '../capture';
 import { speechSupported, useSpeech } from '../speech';
 import { go } from '../router';
 import { useToast } from '../toast';
@@ -84,7 +84,10 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
 
   const now = today();
   const realDomains = store.domains.filter((d) => !d.is_inbox);
-  const aiOff = aiKnownOff();
+  const [aiOff, setAiOff] = useState(aiKnownOff());
+  useEffect(() => {
+    if (!aiOff) void checkClaude().then((ok) => !ok && setAiOff(true));
+  }, [aiOff]);
   const recents = recentlyAdded(store.tasks, store.routines);
 
   const speech = useSpeech(
@@ -121,15 +124,15 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     input.current?.focus();
   };
 
-  /** Save exactly what was typed and picked. Free. */
-  const saveManual = () => {
+  /** Save exactly what was typed and picked. Free. `note` replaces the usual message. */
+  const saveManual = (note?: string) => {
     const title = text.trim();
     const domain = domainId ?? store.inbox.id;
     if (kind === 'routine') {
       const home = realDomains.find((d) => d.short_name === 'Home') ?? realDomains[0];
       const realDomain = store.domain(domain).is_inbox ? home?.id ?? domain : domain;
       const r = store.addRoutine({ title, domain_id: realDomain, days: days.length ? days : [0, 1, 2, 3, 4, 5, 6] });
-      toast({ message: `Routine added · ${daysLabel(r.days)}` });
+      toast({ message: note ?? `Routine added · ${daysLabel(r.days)}` });
       return reset([r.id]);
     }
     const t = hhmm(time || null);
@@ -142,7 +145,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
       due_time: date ? t : null,
       remind_at: remind && date ? reminderAt(date, t) : null,
     });
-    toast({ message: `Saved to ${store.domain(domain).short_name}` });
+    toast({ message: note ?? `Saved to ${store.domain(domain).short_name}` });
     reset([task.id]);
   };
 
@@ -175,10 +178,10 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
       toast({ message: recs.length > 1 ? `${first} · plus a follow-up` : first });
       reset(ids);
     } catch (e) {
-      // Never lose what was typed: keep it as-is in the Inbox.
-      const task = store.addTask({ title: raw, domain_id: store.inbox.id });
-      toast({ message: ERROR_TEXT[(typeof e === 'string' ? e : 'failed') as CaptureError] });
-      reset([task.id]);
+      // Never lose what was typed: save it with whatever you picked yourself.
+      const why = ERROR_TEXT[(typeof e === 'string' ? e : 'failed') as CaptureError];
+      if (e === 'not_configured') setAiOff(true);
+      saveManual(kind === 'routine' ? why.replace('so it went to the Inbox', 'so it was saved as you set it') : why);
     } finally {
       setBusy(false);
     }

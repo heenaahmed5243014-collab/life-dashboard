@@ -129,3 +129,8 @@ export async function POST(req: Request): Promise<Response> {
     return json(500, { error: 'server_error' });
   }
 }
+
+/** GET /api/capture: tells the app whether Claude is set up (no AI call, no cost). */
+export function GET(): Response {
+  return json(200, { configured: Boolean(process.env.ANTHROPIC_API_KEY) });
+}

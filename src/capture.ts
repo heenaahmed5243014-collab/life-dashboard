@@ -31,6 +31,22 @@ export function aiKnownOff(): boolean {
   }
 }
 
+/** Asks our helper (once per session) whether Claude is set up. Costs nothing. */
+export async function checkClaude(): Promise<boolean> {
+  if (aiKnownOff()) return false;
+  try {
+    const res = await fetch('/api/capture');
+    const body = (await res.json()) as { configured?: boolean };
+    if (!res.ok || !body.configured) {
+      try { sessionStorage.setItem(AI_OFF_KEY, '1'); } catch { /* ignore */ }
+      return false;
+    }
+    return true;
+  } catch {
+    return true; // offline or unknown: let the save try, it falls back safely
+  }
+}
+
 export async function askClaude(text: string, domains: Domain[]): Promise<CaptureResult> {
   const now = new Date();
   const token = supabase ? (await supabase.auth.getSession()).data.session?.access_token : undefined;
