@@ -1,0 +1,54 @@
+// Tiny page switcher using the part of the address after "#",
+// so the phone's back button works.
+import { useEffect, useState } from 'react';
+
+export type Route =
+  | { name: 'today' }
+  | { name: 'tasks' }
+  | { name: 'account' }
+  | { name: 'add'; domainId: string | null }
+  | { name: 'item'; id: string }
+  | { name: 'routine'; id: string };
+
+function parse(hash: string): Route {
+  const [page, arg] = hash.replace(/^#\/?/, '').split('/');
+  if (page === 'tasks') return { name: 'tasks' };
+  if (page === 'account') return { name: 'account' };
+  if (page === 'add') return { name: 'add', domainId: arg || null };
+  if (page === 'item' && arg) return { name: 'item', id: arg };
+  if (page === 'routine' && arg) return { name: 'routine', id: arg };
+  return { name: 'today' };
+}
+
+export function useRoute(): Route {
+  const [route, setRoute] = useState(() => parse(location.hash));
+  useEffect(() => {
+    const onChange = () => {
+      setRoute(parse(location.hash));
+      window.scrollTo(0, 0);
+    };
+    addEventListener('hashchange', onChange);
+    addEventListener('popstate', onChange);
+    addEventListener('ld:navigate', onChange);
+    return () => {
+      removeEventListener('hashchange', onChange);
+      removeEventListener('popstate', onChange);
+      removeEventListener('ld:navigate', onChange);
+    };
+  }, []);
+  return route;
+}
+
+/** Open a page inside the app. `replace` swaps the current page instead of stacking (used for tabs). */
+export function go(path: string, replace = false) {
+  const keep = location.search; // keeps ?demo
+  if (replace) history.replaceState(history.state, '', keep + '#' + path);
+  else history.pushState({ inApp: true }, '', keep + '#' + path);
+  dispatchEvent(new Event('ld:navigate'));
+}
+
+/** Go back if we came from inside the app, otherwise go to Today. */
+export function back() {
+  if (history.state?.inApp) history.back();
+  else go('/', true);
+}
