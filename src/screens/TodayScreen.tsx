@@ -7,7 +7,8 @@ import type { Task } from '../types';
 import ItemRow from '../components/ItemRow';
 import Nav from '../components/Nav';
 import { openQuickAdd } from '../components/QuickAdd';
-import { Check, Plus } from '../icons';
+import { Check, Person, Plus } from '../icons';
+import { routineStats } from '../routines';
 
 const CAP = 7; // lines shown below the Top 3 before "Show more" (about 10 in total)
 
@@ -36,9 +37,10 @@ export default function TodayScreen() {
         <header className="page-head">
           <div className="page-head-row">
             <p className="muted">{longDate(now)}</p>
-            <a className="link-btn" href="#/account" onClick={(e) => { e.preventDefault(); go('/account'); }}>Account</a>
+            <button type="button" className="icon-btn" aria-label="Account" onClick={() => go('/account')}><Person /></button>
           </div>
           <h1 className="h1">Today</h1>
+          <p className="muted lead">Three things that matter. Everything else can wait.</p>
         </header>
 
         {nothing && (
@@ -56,7 +58,7 @@ export default function TodayScreen() {
           </Section>
         )}
 
-        {also.length > 0 && <ListSection title="Also today" tasks={also} />}
+        {also.length > 0 && <ListSection title="Also due today" tasks={also} />}
         {soon.length > 0 && <ListSection title="Next 3 days" tasks={soon} />}
         {inbox.length > 0 && <ListSection title="Inbox · needs a domain" tasks={inbox} />}
 
@@ -65,30 +67,33 @@ export default function TodayScreen() {
         )}
 
         {data.routines.length > 0 && (
-          <Section title="Routines today">
+          <section className="section">
+            <div className="section-head">
+              <h2 className="label">Routines today</h2>
+              <a className="see-all" href="#/routines" onClick={(e) => { e.preventDefault(); go('/routines', true); }}>See all</a>
+            </div>
             <div className="routine-grid">
-              {data.routines.map(({ routine, done }) => (
-                <div key={routine.id} className={done ? 'routine-tile done' : 'routine-tile'}>
-                  <button type="button" className="routine-name" onClick={() => go(`/routine/${routine.id}`)}>
-                    <span>{routine.title}</span>
-                    <span className="routine-sub">
-                      <span className="dot" style={{ background: store.domain(routine.domain_id).color }} />
-                      {routine.time_of_day === 'commute' ? 'Commute' : routine.time_of_day === 'evening' ? 'Evening' : 'Day'}
-                    </span>
-                  </button>
+              {data.routines.map(({ routine, done }) => {
+                const s = routineStats(routine, store.ticks, now);
+                return (
                   <button
+                    key={routine.id}
                     type="button"
-                    className="routine-tick"
+                    className={done ? 'routine-tile done' : 'routine-tile'}
                     aria-pressed={done}
-                    aria-label={done ? `Untick ${routine.title}` : `Tick ${routine.title}`}
+                    aria-label={`${done ? 'Untick' : 'Tick'} ${routine.title}`}
                     onClick={() => store.toggleTick(routine.id, now)}
                   >
-                    {done && <Check size={18} />}
+                    <span className="routine-text">
+                      <span className="routine-name">{routine.title}</span>
+                      <span className="routine-sub">{s.current} in a row</span>
+                    </span>
+                    <span className="routine-tick">{done && <Check size={18} />}</span>
                   </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </Section>
+          </section>
         )}
       </main>
 

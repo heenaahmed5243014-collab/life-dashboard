@@ -118,7 +118,7 @@ export default function TasksScreen() {
         type="button"
         className="fab"
         aria-label="Add a task"
-        onClick={() => openQuickAdd(filter === 'all' ? null : filter)}
+        onClick={() => openQuickAdd({ domainId: filter === 'all' ? null : filter })}
       >
         <Plus />
       </button>

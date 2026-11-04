@@ -8,7 +8,7 @@ import TodayScreen from './screens/TodayScreen';
 import TasksScreen from './screens/TasksScreen';
 import ItemScreen from './screens/ItemScreen';
 import RoutineScreen from './screens/RoutineScreen';
-import AddScreen from './screens/AddScreen';
+import RoutinesScreen from './screens/RoutinesScreen';
 import AccountScreen from './screens/AccountScreen';
 import NotConnected from './screens/NotConnected';
 import QuickAddHost from './components/QuickAdd';
@@ -28,7 +28,7 @@ function Page() {
     case 'today': return <TodayScreen />;
     case 'tasks': return <TasksScreen />;
     case 'account': return <AccountScreen />;
-    case 'add': return <AddScreen key={route.domainId ?? ''} presetDomain={route.domainId} />;
+    case 'routines': return <RoutinesScreen />;
     case 'item': return <ItemScreen key={route.id} id={route.id} />;
     case 'routine': return <RoutineScreen key={route.id} id={route.id} />;
   }

@@ -7,13 +7,15 @@ import type { NewRoutine, NewTask } from './store';
 
 export interface CaptureResult {
   title: string;
-  kind: 'task' | 'routine' | 'note';
+  kind: 'task' | 'routine' | 'note' | 'idea';
   domain: string;
   date: string | null;
   time: string | null;
   reminder: boolean;
   days: number[];
   time_of_day: TimeOfDay;
+  follow_up_title: string | null;
+  follow_up_date: string | null;
 }
 
 export type CaptureError = 'not_configured' | 'bad_key' | 'no_credit' | 'offline' | 'failed';
@@ -72,28 +74,27 @@ export function matchDomain(name: string, domains: Domain[], inbox: Domain): Dom
   return domains.find((d) => d.name.toLowerCase() === n || d.short_name.toLowerCase() === n) ?? inbox;
 }
 
-/** Converts Claude's answer into what the store saves. */
-export function toRecord(
-  r: CaptureResult,
-  domains: Domain[],
-  inbox: Domain,
-): { task: NewTask } | { routine: NewRoutine } {
+type Rec = { task: NewTask } | { routine: NewRoutine };
+
+/** Converts Claude's answer into what the store saves: the item, plus at most one follow-up. */
+export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain): Rec[] {
   const domain = matchDomain(r.domain, domains, inbox);
   if (r.kind === 'routine') {
     const realDomain = domain.is_inbox ? domains.find((d) => !d.is_inbox) ?? domain : domain;
-    return {
+    return [{
       routine: {
         title: r.title,
         domain_id: realDomain.id,
         days: r.days.length ? [...new Set(r.days)].sort() : [0, 1, 2, 3, 4, 5, 6],
         time_of_day: r.time_of_day,
       },
-    };
+    }];
   }
   const time = hhmm(r.time);
+  const isIdea = r.kind === 'idea';
   // A reminder or time with no day means today.
-  const date: Day | null = r.date ?? (r.reminder || time ? today() : null);
-  return {
+  const date: Day | null = isIdea ? null : r.date ?? (r.reminder || time ? today() : null);
+  const recs: Rec[] = [{
     task: {
       title: r.title,
       kind: r.kind,
@@ -102,7 +103,11 @@ export function toRecord(
       due_time: date ? time : null,
       remind_at: r.reminder && date ? reminderAt(date, time) : null,
     },
-  };
+  }];
+  if ((r.kind === 'task' || r.kind === 'note') && r.follow_up_title && r.follow_up_date && /^\d{4}-\d{2}-\d{2}$/.test(r.follow_up_date)) {
+    recs.push({ task: { title: r.follow_up_title, kind: 'task', domain_id: domain.id, due: r.follow_up_date } });
+  }
+  return recs;
 }
 
 export type Recent = { type: 'task'; item: Task } | { type: 'routine'; item: Routine };

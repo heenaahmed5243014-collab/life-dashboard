@@ -3,7 +3,8 @@
 A phone-first app that shows what's due soon across five areas of life. See the scope doc for the why.
 
 - **Today**: Top 3, the rest of today, the next 3 days, the Inbox and today's routines.
-- **Tasks**: every task, project and idea, filterable by domain. Add, edit, complete.
+- **Tasks**: every task, project, idea and note, filterable by domain. Add, edit, complete.
+- **Routines**: streaks (only due days count) and a week grid, with a tick button.
 - **Quick add** on every screen (+ button, or N / Ctrl+K on a computer). Tap an area to save it yourself, or let **Claude** tidy it up and file it (optional).
 - Data is stored in **Supabase**, so it's the same on your phone and the desk PC. Sign-in uses email and password.
 

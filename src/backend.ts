@@ -4,6 +4,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_DOMAINS, type Domain, type Routine, type Task, type Tick } from './types';
 import { addDays, today, type Day } from './dates';
+import { TICK_HISTORY_DAYS } from './routines';
 
 export interface Snapshot {
   domains: Domain[];
@@ -52,7 +53,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         sb.from('tasks').select('*').eq('status', 'open'),
         sb.from('tasks').select('*').neq('status', 'open').gte('closed_at', since),
         sb.from('routines').select('*').eq('active', true).order('created_at'),
-        sb.from('routine_ticks').select('routine_id, day').gte('day', addDays(now, -RECENT_DAYS)),
+        sb.from('routine_ticks').select('routine_id, day').gte('day', addDays(now, -TICK_HISTORY_DAYS)).limit(5000),
       ]);
       return {
         domains,
@@ -109,14 +110,28 @@ export function demoBackend(): Backend {
   const routine = (title: string, dom: string, days: number[], time_of_day: Routine['time_of_day']): Routine => ({
     id: crypto.randomUUID(), title, domain_id: id(dom), days, time_of_day, active: true, created_at: stamp,
   });
+  const longAgo = new Date(Date.now() - 60 * 86400000).toISOString();
   const routines = [
-    routine('Gym', 'Home', [0, 1, 2, 3, 4, 5, 6], 'day'),
-    routine('20k steps', 'Home', [0, 1, 2, 3, 4, 5, 6], 'commute'),
-    routine('Evening reset', 'Home', [0, 1, 2, 3, 4, 5, 6], 'evening'),
+    { ...routine('Gym', 'Home', [0, 2, 4], 'day'), created_at: longAgo },
+    { ...routine('20k steps', 'Home', [0, 1, 2, 3, 4, 5, 6], 'commute'), created_at: longAgo },
+    { ...routine('Evening reset', 'Home', [0, 1, 2, 3, 4, 5, 6], 'evening'), created_at: longAgo },
+    { ...routine('Chase applications', 'Job search', [6], 'day'), created_at: longAgo },
   ];
+  // Some made-up history so streaks show: each routine done on its last few due days.
+  const ticks: Tick[] = [];
+  const runs = [4, 2, 5, 3];
+  routines.forEach((r, i) => {
+    let left = runs[i];
+    for (let d = addDays(now, -1); left > 0; d = addDays(d, -1)) {
+      if (r.days.includes((new Date(d).getUTCDay() + 6) % 7)) {
+        ticks.push({ routine_id: r.id, day: d });
+        left--;
+      }
+    }
+  });
   const noop = async () => {};
   return {
-    load: async () => ({ domains, tasks, routines, ticks: [] }),
+    load: async () => ({ domains, tasks, routines, ticks }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, addTick: noop, removeTick: noop,
   };
 }

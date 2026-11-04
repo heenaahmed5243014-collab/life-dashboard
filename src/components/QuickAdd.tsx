@@ -1,37 +1,42 @@
-// The quick-add sheet. Opens from the + button on every screen,
-// or with N / Ctrl+K (Cmd+K on Mac) on a computer.
+// The Add screen ("Quick capture" in the design). Opens from the + button on
+// every screen, or with N / Ctrl+K (Cmd+K on Mac) on a computer.
 //
-// Two ways to save:
-//  - Tap an area: saves straight away. Free, instant, no AI.
-//  - Don't tap an area: "Sort with Claude" cleans up the wording and picks
-//    the type, area, date, time and reminder for you.
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+// Type or speak, then either:
+//  - set the Area yourself and Save (free, instant, no AI), or
+//  - leave Area empty and Save: Claude tidies the wording and files it.
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useStore } from '../store';
+import type { TaskKind } from '../types';
 import { addDays, daysLabel, hhmm, reminderAt, shortDate, today, weekday, type Day } from '../dates';
-import { aiKnownOff, askClaude, ERROR_TEXT, recentlyAdded, toRecord, type CaptureError } from '../capture';
+import { aiKnownOff, askClaude, ERROR_TEXT, recentlyAdded, toRecords, type CaptureError } from '../capture';
+import { speechSupported, useSpeech } from '../speech';
 import { go } from '../router';
 import { useToast } from '../toast';
 import { whenText } from './ItemRow';
-import { Bell, Close, Sparkle } from '../icons';
+import { DaysPicker } from './Fields';
+import { Bell, Close, Mic, Sparkle } from '../icons';
 
-export function openQuickAdd(domainId?: string | null) {
-  dispatchEvent(new CustomEvent('ld:quickadd', { detail: { domainId: domainId ?? null } }));
+type Kind = Exclude<TaskKind, 'project'> | 'routine';
+interface OpenOptions { domainId?: string | null; kind?: Kind }
+
+export function openQuickAdd(opts: OpenOptions = {}) {
+  dispatchEvent(new CustomEvent('ld:quickadd', { detail: opts }));
 }
 
 const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
 
 export default function QuickAddHost() {
-  const [open, setOpen] = useState<{ domainId: string | null } | null>(null);
+  const [open, setOpen] = useState<OpenOptions | null>(null);
 
   useEffect(() => {
-    const onOpen = (e: Event) => setOpen({ domainId: (e as CustomEvent).detail?.domainId ?? null });
+    const onOpen = (e: Event) => setOpen((e as CustomEvent<OpenOptions>).detail ?? {});
     const onKey = (e: globalThis.KeyboardEvent) => {
       const combo = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
       const plainN = e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e.target);
       if (combo || plainN) {
         e.preventDefault();
-        setOpen((o) => o ?? { domainId: null });
+        setOpen((o) => o ?? {});
       }
     };
     addEventListener('ld:quickadd', onOpen);
@@ -43,7 +48,7 @@ export default function QuickAddHost() {
   }, []);
 
   if (!open) return null;
-  return <QuickAddSheet presetDomain={open.domainId} onClose={() => setOpen(null)} />;
+  return <AddSheet options={open} onClose={() => setOpen(null)} />;
 }
 
 function nextSaturday(now: Day): Day {
@@ -51,24 +56,41 @@ function nextSaturday(now: Day): Day {
   return addDays(now, d === 5 ? 7 : (5 - d + 7) % 7);
 }
 
-function QuickAddSheet({ presetDomain, onClose }: { presetDomain: string | null; onClose: () => void }) {
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="filed-row">
+      <span className="filed-label">{label}</span>
+      <div className="filed-value">{children}</div>
+    </div>
+  );
+}
+
+function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => void }) {
   const store = useStore();
   const toast = useToast();
   const input = useRef<HTMLTextAreaElement>(null);
   const areaRow = useRef<HTMLDivElement>(null);
+  const spokenBase = useRef('');
   const [text, setText] = useState('');
-  const [domainId, setDomainId] = useState<string | null>(presetDomain);
+  const [domainId, setDomainId] = useState<string | null>(options.domainId ?? null);
+  const [kind, setKind] = useState<Kind>(options.kind ?? 'task');
+  const [kindPicked, setKindPicked] = useState(Boolean(options.kind));
   const [due, setDue] = useState<Day | null>(null);
   const [time, setTime] = useState('');
   const [remind, setRemind] = useState(false);
+  const [days, setDays] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
-  const [justSaved, setJustSaved] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState<string[]>([]);
 
   const now = today();
   const realDomains = store.domains.filter((d) => !d.is_inbox);
   const aiOff = aiKnownOff();
-  const canSave = text.trim().length > 0 && !busy;
   const recents = recentlyAdded(store.tasks, store.routines);
+
+  const speech = useSpeech(
+    (spoken) => setText((spokenBase.current ? spokenBase.current + ' ' : '') + spoken),
+    (msg) => toast({ message: msg }),
+  );
 
   useEffect(() => {
     input.current?.focus();
@@ -81,76 +103,98 @@ function QuickAddSheet({ presetDomain, onClose }: { presetDomain: string | null;
     };
   }, [onClose]);
 
-  const reset = (savedId: string) => {
+  // Claude fills in whatever you leave blank. Only needed when no area is picked.
+  const willUseClaude = !domainId && !aiOff;
+  const canSave = text.trim().length > 0 && !busy && (kind !== 'routine' || days.length > 0 || willUseClaude);
+
+  const reset = (savedIds: string[]) => {
     setText('');
     setDue(null);
     setTime('');
     setRemind(false);
-    setDomainId(presetDomain);
-    setJustSaved(savedId);
+    setDays([]);
+    setKind(options.kind ?? 'task');
+    setKindPicked(Boolean(options.kind));
+    setDomainId(options.domainId ?? null);
+    setJustSaved(savedIds);
     areaRow.current?.scrollTo({ left: 0 });
     input.current?.focus();
   };
 
-  /** Free path: save exactly what was typed and tapped. */
-  const saveManual = (toDomain: string) => {
+  /** Save exactly what was typed and picked. Free. */
+  const saveManual = () => {
+    const title = text.trim();
+    const domain = domainId ?? store.inbox.id;
+    if (kind === 'routine') {
+      const home = realDomains.find((d) => d.short_name === 'Home') ?? realDomains[0];
+      const realDomain = store.domain(domain).is_inbox ? home?.id ?? domain : domain;
+      const r = store.addRoutine({ title, domain_id: realDomain, days: days.length ? days : [0, 1, 2, 3, 4, 5, 6] });
+      toast({ message: `Routine added · ${daysLabel(r.days)}` });
+      return reset([r.id]);
+    }
     const t = hhmm(time || null);
-    const date = due ?? (remind || t ? now : null);
+    const date = kind === 'idea' ? null : due ?? (remind || t ? now : null);
     const task = store.addTask({
-      title: text.trim(),
-      domain_id: toDomain,
+      title,
+      kind,
+      domain_id: domain,
       due: date,
       due_time: date ? t : null,
       remind_at: remind && date ? reminderAt(date, t) : null,
     });
-    toast({ message: `Saved to ${store.domain(toDomain).short_name}` });
-    reset(task.id);
+    toast({ message: `Saved to ${store.domain(domain).short_name}` });
+    reset([task.id]);
   };
 
-  /** Claude path: let Claude tidy it up and file it. Anything you picked yourself wins. */
+  /** Let Claude tidy it up and file it. A date or time you picked yourself wins. */
   const saveWithClaude = async () => {
     setBusy(true);
     const raw = text.trim();
     try {
       const result = await askClaude(raw, store.domains);
-      const rec = toRecord(result, store.domains, store.inbox);
-      if ('routine' in rec) {
-        const r = store.addRoutine(rec.routine);
-        toast({ message: `Routine added · ${daysLabel(r.days)}` });
-        reset(r.id);
-      } else {
-        const t = hhmm(time || null);
-        const date = due ?? rec.task.due ?? null;
-        const task = store.addTask({
-          ...rec.task,
-          due: date,
-          due_time: t ?? rec.task.due_time ?? null,
-          remind_at: remind && date ? reminderAt(date, t ?? rec.task.due_time ?? null) : rec.task.remind_at ?? null,
-        });
-        toast({ message: `Saved to ${store.domain(task.domain_id).short_name}` });
-        reset(task.id);
-      }
+      // Anything you picked yourself wins over Claude's guess.
+      if (kindPicked) result.kind = kind;
+      if (kind === 'routine' && days.length) result.days = days;
+      if (due) result.date = due;
+      if (time) result.time = time;
+      if (remind) result.reminder = true;
+      const recs = toRecords(result, store.domains, store.inbox);
+      const ids: string[] = [];
+      let first = '';
+      recs.forEach((rec, i) => {
+        if ('routine' in rec) {
+          const r = store.addRoutine(rec.routine);
+          ids.push(r.id);
+          if (i === 0) first = `Routine added · ${daysLabel(r.days)}`;
+        } else {
+          const task = store.addTask(rec.task);
+          ids.push(task.id);
+          if (i === 0) first = `Saved to ${store.domain(task.domain_id).short_name}`;
+        }
+      });
+      toast({ message: recs.length > 1 ? `${first} · plus a follow-up` : first });
+      reset(ids);
     } catch (e) {
-      // Never lose what was typed: save it as-is to the Inbox.
+      // Never lose what was typed: keep it as-is in the Inbox.
       const task = store.addTask({ title: raw, domain_id: store.inbox.id });
       toast({ message: ERROR_TEXT[(typeof e === 'string' ? e : 'failed') as CaptureError] });
-      reset(task.id);
+      reset([task.id]);
     } finally {
       setBusy(false);
     }
   };
 
-  const primary = () => {
+  const save = () => {
     if (!canSave) return;
-    if (domainId) saveManual(domainId);
-    else if (aiOff) saveManual(store.inbox.id);
-    else void saveWithClaude();
+    if (speech.listening) speech.toggle();
+    if (willUseClaude) void saveWithClaude();
+    else saveManual();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      primary();
+      save();
     }
   };
 
@@ -160,119 +204,161 @@ function QuickAddSheet({ presetDomain, onClose }: { presetDomain: string | null;
     { label: 'Sat', day: nextSaturday(now) },
   ];
   const pickedOther = due && !quickDates.some((q) => q.day === due);
+  const saveLabel = busy
+    ? 'Sorting…'
+    : willUseClaude
+      ? <><Sparkle /> Save · Claude sorts it</>
+      : domainId
+        ? `Save to ${store.domain(domainId).short_name}`
+        : kind === 'routine' ? 'Save routine' : 'Save to Inbox';
 
   return (
     <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="qa-title">
-        <div className="sheet-head">
-          <h2 id="qa-title" className="sheet-title">Quick add</h2>
+      <div className="sheet add-sheet" role="dialog" aria-modal="true" aria-labelledby="qa-title">
+        <header className="add-head">
           <button type="button" className="round-btn" onClick={onClose} aria-label="Close"><Close /></button>
-        </div>
+          <h1 id="qa-title" className="add-title">Add</h1>
+          <span />
+        </header>
 
-        <label htmlFor="qa-text" className="visually-hidden">What do you want to add?</label>
-        <textarea
-          id="qa-text"
-          ref={input}
-          className="card qa-input"
-          rows={2}
-          value={text}
-          enterKeyHint="done"
-          placeholder="e.g. Email Bulletproof back tomorrow at 10am"
-          onChange={(e) => { setText(e.target.value); setJustSaved(null); }}
-          onKeyDown={onKeyDown}
-        />
+        <div className="add-body">
+          <div className="card capture-card">
+            <label htmlFor="qa-text" className="field-label">Type or say it however it comes out</label>
+            <textarea
+              id="qa-text"
+              ref={input}
+              className="capture-input"
+              rows={3}
+              value={text}
+              enterKeyHint="done"
+              placeholder="Email Bulletproof back tomorrow at 10am"
+              onChange={(e) => { setText(e.target.value); setJustSaved([]); }}
+              onKeyDown={onKeyDown}
+            />
+          </div>
 
-        <div className="qa-row" role="radiogroup" aria-label="Area" ref={areaRow}>
-          {realDomains.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              role="radio"
-              aria-checked={domainId === d.id}
-              className={domainId === d.id ? 'chip on' : 'chip'}
-              onClick={() => setDomainId(domainId === d.id ? null : d.id)}
-            >
-              <span className="dot" style={{ background: d.color }} />
-              {d.short_name}
-            </button>
-          ))}
-        </div>
-
-        <div className="qa-row" aria-label="Date, time and reminder">
-          {quickDates.map((q) => (
-            <button key={q.label} type="button" className={due === q.day ? 'chip on' : 'chip'} aria-pressed={due === q.day} onClick={() => setDue(due === q.day ? null : q.day)}>
-              {q.label}
-            </button>
-          ))}
-          <label className={pickedOther ? 'chip on chip-input' : 'chip chip-input'}>
-            {pickedOther ? shortDate(due!) : 'Date…'}
-            <input type="date" aria-label="Pick a date" value={due ?? ''} onChange={(e) => setDue(e.target.value || null)} />
-          </label>
-          <label className={time ? 'chip on chip-input' : 'chip chip-input'}>
-            {time || 'Time…'}
-            <input type="time" aria-label="Pick a time" value={time} onChange={(e) => setTime(e.target.value)} />
-          </label>
-          <button type="button" className={remind ? 'chip on' : 'chip'} aria-pressed={remind} onClick={() => setRemind(!remind)}>
-            <Bell /> Remind
-          </button>
-        </div>
-
-        <div className="qa-actions">
-          {domainId || aiOff ? (
-            <button type="button" className="primary" disabled={!canSave} onClick={primary}>
-              {domainId ? `Save to ${store.domain(domainId).short_name}` : 'Save to Inbox'}
-            </button>
-          ) : (
-            <>
-              <button type="button" className="primary" disabled={!canSave} onClick={primary}>
-                {busy ? 'Sorting…' : <><Sparkle /> Sort with Claude</>}
+          {speechSupported && (
+            <div className="mic-row">
+              <button
+                type="button"
+                className={speech.listening ? 'mic on' : 'mic'}
+                aria-pressed={speech.listening}
+                aria-label={speech.listening ? 'Stop listening' : 'Speak instead'}
+                onClick={() => { spokenBase.current = text.trim(); speech.toggle(); }}
+              >
+                <Mic />
               </button>
-              <button type="button" className="link-btn qa-inbox" disabled={!canSave} onClick={() => saveManual(store.inbox.id)}>
-                Just save to Inbox
-              </button>
-            </>
+              <span className="mic-text">
+                <span className="mic-title">{speech.listening ? 'Listening…' : 'Tap to speak'}</span>
+                <span className="muted small">{speech.listening ? 'Tap again when you’re done' : 'Good for the commute'}</span>
+              </span>
+            </div>
+          )}
+
+          <section className="section">
+            <div className="section-head">
+              <h2 className="label">How it’ll be filed</h2>
+              <span className="muted small">{willUseClaude ? 'Claude fills in the blanks' : 'Tap to change'}</span>
+            </div>
+            <div className="card filed-card">
+              <Row label="Area">
+                <div className="qa-row" role="radiogroup" aria-label="Area" ref={areaRow}>
+                  {realDomains.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={domainId === d.id}
+                      className={domainId === d.id ? 'chip on' : 'chip'}
+                      onClick={() => setDomainId(domainId === d.id ? null : d.id)}
+                    >
+                      <span className="dot" style={{ background: d.color }} />
+                      {d.short_name}
+                    </button>
+                  ))}
+                </div>
+              </Row>
+              <Row label="Type">
+                <div className="qa-row" role="radiogroup" aria-label="Type">
+                  {(['task', 'routine', 'note', 'idea'] as Kind[]).map((k) => (
+                    <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'chip on' : 'chip'} onClick={() => { setKind(k); setKindPicked(true); }}>
+                      {k[0].toUpperCase() + k.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </Row>
+              {kind === 'routine' ? (
+                <Row label="Days">
+                  <DaysPicker value={days} onChange={setDays} />
+                </Row>
+              ) : kind !== 'idea' && (
+                <Row label="Date">
+                  <div className="qa-row" aria-label="Date, time and reminder">
+                    {quickDates.map((q) => (
+                      <button key={q.label} type="button" className={due === q.day ? 'chip on' : 'chip'} aria-pressed={due === q.day} onClick={() => setDue(due === q.day ? null : q.day)}>
+                        {q.label}
+                      </button>
+                    ))}
+                    <label className={pickedOther ? 'chip on chip-input' : 'chip chip-input'}>
+                      {pickedOther ? shortDate(due!) : 'Date…'}
+                      <input type="date" aria-label="Pick a date" value={due ?? ''} onChange={(e) => setDue(e.target.value || null)} />
+                    </label>
+                    <label className={time ? 'chip on chip-input' : 'chip chip-input'}>
+                      {time || 'Time…'}
+                      <input type="time" aria-label="Pick a time" value={time} onChange={(e) => setTime(e.target.value)} />
+                    </label>
+                    <button type="button" className={remind ? 'chip on' : 'chip'} aria-pressed={remind} onClick={() => setRemind(!remind)}>
+                      <Bell /> Remind
+                    </button>
+                  </div>
+                </Row>
+              )}
+            </div>
+            <p className="muted small">
+              {willUseClaude
+                ? 'Leave Area empty and Claude picks the area, type and date when you save.'
+                : aiOff && !domainId ? 'Pick an area, or it goes to the Inbox.' : 'Tap the area again to clear it.'}
+              <span className="desktop-only"> Enter saves, Esc closes.</span>
+            </p>
+          </section>
+
+          {recents.length > 0 && (
+            <section className="section">
+              <h2 className="label">Recently added</h2>
+              <ul className="list recent-list">
+                {recents.map((r) => {
+                  const d = store.domain(r.item.domain_id);
+                  const meta =
+                    r.type === 'routine'
+                      ? `Routine · ${daysLabel(r.item.days)}`
+                      : (r.item.kind === 'note' || r.item.kind === 'idea') && !r.item.due
+                        ? r.item.kind[0].toUpperCase() + r.item.kind.slice(1)
+                        : `${r.item.kind[0].toUpperCase() + r.item.kind.slice(1)} · ${whenText(r.item)}`;
+                  return (
+                    <li key={r.item.id}>
+                      <button
+                        type="button"
+                        className={justSaved.includes(r.item.id) ? 'recent just-saved' : 'recent'}
+                        onClick={() => { onClose(); go(r.type === 'routine' ? `/routine/${r.item.id}` : `/item/${r.item.id}`); }}
+                      >
+                        <span className="row-title">{r.item.title}</span>
+                        <span className="row-meta">
+                          <span className="dot" style={{ background: d.color }} />
+                          {d.short_name} · {meta}
+                          {r.type === 'task' && r.item.remind_at && <Bell />}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
         </div>
-        <p className="muted small qa-hint">
-          {domainId ? 'Tap the area again to let Claude choose instead.' : aiOff ? 'Tap an area to file it, or leave it in the Inbox.' : 'Tap an area to save it yourself, or let Claude sort it.'}
-          <span className="desktop-only"> Press Enter to save, Esc to close.</span>
-        </p>
-        <button type="button" className="link-btn quiet" onClick={() => { onClose(); go('/add'); }}>
-          More options (projects, ideas, routines)
-        </button>
 
-        {recents.length > 0 && (
-          <section className="section">
-            <h3 className="label">Recently added</h3>
-            <ul className="list recent-list">
-              {recents.map((r) => {
-                const d = store.domain(r.item.domain_id);
-                const meta =
-                  r.type === 'routine'
-                    ? `Routine · ${daysLabel(r.item.days)}`
-                    : r.item.kind === 'note' && !r.item.due
-                      ? 'Note'
-                      : `${r.item.kind[0].toUpperCase() + r.item.kind.slice(1)} · ${whenText(r.item)}`;
-                return (
-                  <li key={r.item.id}>
-                    <button
-                      type="button"
-                      className={r.item.id === justSaved ? 'recent just-saved' : 'recent'}
-                      onClick={() => { onClose(); go(r.type === 'routine' ? `/routine/${r.item.id}` : `/item/${r.item.id}`); }}
-                    >
-                      <span className="row-title">{r.item.title}</span>
-                      <span className="row-meta">
-                        <span className="dot" style={{ background: d.color }} />
-                        {d.short_name} · {meta}
-                        {r.type === 'task' && r.item.remind_at && <Bell />}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
+        <div className="add-foot">
+          <button type="button" className="primary" disabled={!canSave} onClick={save}>{saveLabel}</button>
+        </div>
       </div>
     </div>
   );
