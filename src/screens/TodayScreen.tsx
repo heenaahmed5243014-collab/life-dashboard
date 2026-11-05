@@ -1,18 +1,24 @@
-import { useState, type ReactNode } from 'react';
+// Today, in the Brain Planner's format: greeting + pills, Top 3 card, Slipping,
+// Routine checklist, the lists, the hourly plan, "Do this next", and a calm send-off.
+import { useState } from 'react';
 import { useStore } from '../store';
 import { buildDay, buildToday } from '../today';
-import { addDays, longDate, parseDay, today, weekday, WEEKDAY_SHORT, type Day } from '../dates';
+import { addDays, daysBetween, dueLabel, longDate, parseDay, toDay, today, weekday, WEEKDAY_SHORT, type Day } from '../dates';
 import { go } from '../router';
 import type { Task } from '../types';
-import ItemRow from '../components/ItemRow';
+import ItemRow, { whenText } from '../components/ItemRow';
 import Nav from '../components/Nav';
 import Planner from '../components/Planner';
 import { openQuickAdd } from '../components/QuickAdd';
+import { useToast } from '../toast';
+import { cheer } from '../cheers';
 import { Check, Person, Plus } from '../icons';
 import { routineStats } from '../routines';
 
-const CAP = 7; // lines shown below the Top 3 before "Show more" (about 10 in total)
+const NAME = 'Heena';
+const CAP = 7; // lines shown in the lists before "Show more"
 const DAY_KEY = 'ld:todayDay';
+const TIME_LABEL = { commute: 'Commute', day: 'Daytime', evening: 'Evening' } as const;
 
 function readDay(now: Day): Day {
   try {
@@ -21,6 +27,21 @@ function readDay(now: Day): Day {
   } catch {
     return now;
   }
+}
+
+/** Things that have sat too long: carried over 3+ days, or untouched for 2+ weeks. */
+function slipping(tasks: Task[], now: Day): { task: Task; why: string }[] {
+  const out: { task: Task; why: string }[] = [];
+  for (const t of tasks) {
+    if (t.status !== 'open' || t.kind === 'idea' || t.kind === 'note') continue;
+    if (t.due && daysBetween(t.due, now) >= 3) {
+      out.push({ task: t, why: `Carried over since ${WEEKDAY_SHORT[weekday(t.due)]} ${parseDay(t.due).getDate()}` });
+      continue;
+    }
+    const age = daysBetween(toDay(new Date(t.touched_at)), now);
+    if (!t.due && age >= 14) out.push({ task: t, why: `On your list ${age} days` });
+  }
+  return out;
 }
 
 export default function TodayScreen() {
@@ -34,78 +55,71 @@ export default function TodayScreen() {
   const isToday = day === now;
   const week = Array.from({ length: 7 }, (_, i) => addDays(now, i));
   const plan = buildDay(store.tasks, store.routines, store.ticks, day);
+  const hour = new Date().getHours();
+
+  const title = isToday
+    ? `${hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening'}, ${NAME}`
+    : day === addDays(now, 1) ? 'Tomorrow' : longDate(day).split(' ')[0];
+  const pills = plan.routines.slice(0, 3).map((r) => r.routine.title);
 
   return (
     <>
-      <main className="page">
+      <main className="page planner-page">
         <header className="page-head">
           <div className="page-head-row">
-            <p className="muted">{longDate(day)}</p>
+            <h1 className="h1">{title}</h1>
             <button type="button" className="icon-btn" aria-label="Account" onClick={() => go('/account')}><Person /></button>
           </div>
-          <h1 className="h1">{isToday ? 'Today' : day === addDays(now, 1) ? 'Tomorrow' : longDate(day).split(' ')[0]}</h1>
-          <p className="muted lead">{isToday ? 'Three things that matter. Everything else can wait.' : 'Planning ahead. Tap an hour to add something.'}</p>
+          <p className="sub">{longDate(day)}</p>
+          <div className="pills">
+            {pills.length ? pills.map((p, i) => <span key={p + i} className={`pill ${['p-sage', 'p-violet', 'p-pink'][i % 3]}`}>{p}</span>) : <span className="pill">Easy day</span>}
+            {plan.routines.length > 3 && <span className="pill">+{plan.routines.length - 3} more</span>}
+          </div>
         </header>
 
         <DayStrip days={week} selected={day} now={now} onPick={setDay} />
 
-        {isToday ? <TodayLists /> : (
-          plan.anytime.length > 0 && (
-            <Section title="Any time this day">
-              <div className="list">{plan.anytime.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-            </Section>
-          )
-        )}
-
-        <section className="section">
-          <div className="section-head">
-            <h2 className="label">{isToday ? 'Today’s plan' : 'Plan'}</h2>
-            <span className="muted small">Tap an hour to add</span>
-          </div>
-          <Planner day={day} isToday={isToday} items={plan.timed} />
-        </section>
-
-        {plan.routines.length > 0 && (
-          <section className="section">
-            <div className="section-head">
-              <h2 className="label">{isToday ? 'Routines today' : 'Routines this day'}</h2>
-              <a className="see-all" href="#/routines" onClick={(e) => { e.preventDefault(); go('/routines', true); }}>See all</a>
-            </div>
-            <div className="routine-grid">
-              {plan.routines.map(({ routine, done }) => {
-                const s = routineStats(routine, store.ticks, now);
-                return isToday ? (
-                  <button
-                    key={routine.id}
-                    type="button"
-                    className={done ? 'routine-tile done' : 'routine-tile'}
-                    aria-pressed={done}
-                    aria-label={`${done ? 'Untick' : 'Tick'} ${routine.title}`}
-                    onClick={() => store.toggleTick(routine.id, now)}
-                  >
-                    <span className="routine-text">
-                      <span className="routine-name">{routine.title}</span>
-                      <span className="routine-sub">{s.current} in a row</span>
-                    </span>
-                    <span className="routine-tick">{done && <Check size={18} />}</span>
-                  </button>
-                ) : (
-                  <div key={routine.id} className="routine-tile later">
-                    <span className="routine-text">
-                      <span className="routine-name">{routine.title}</span>
-                      <span className="routine-sub">{s.current} in a row</span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+        {isToday ? <TodayBody /> : (
+          <>
+            {plan.anytime.length > 0 && (
+              <section className="section">
+                <div className="between"><h2 className="h2">Any time this day</h2><span className="count">{plan.anytime.length}</span></div>
+                <div className="list">{plan.anytime.map((t) => <ItemRow key={t.id} task={t} />)}</div>
+              </section>
+            )}
+            <PlanSection day={day} isToday={false} items={plan.timed} />
+            {plan.routines.length > 0 && (
+              <section className="section">
+                <div className="between"><h2 className="h2">Routine</h2><span className="count">{plan.routines.length}</span></div>
+                <ul className="check-list">
+                  {plan.routines.map(({ routine }) => (
+                    <li key={routine.id} className="check-row static">
+                      <span className="row-title">{routine.title}</span>
+                      <span className="meta"><span className="tag t-violet">{TIME_LABEL[routine.time_of_day]}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
         )}
       </main>
 
       <button type="button" className="fab" aria-label="Add something" onClick={() => openQuickAdd(isToday ? {} : { date: day })}><Plus /></button>
       <Nav current="today" />
     </>
+  );
+}
+
+function PlanSection({ day, isToday, items }: { day: Day; isToday: boolean; items: Task[] }) {
+  return (
+    <section className="section">
+      <div className="between">
+        <h2 className="h2">{isToday ? 'Today’s plan' : 'Plan'}</h2>
+        <span className="note">Tap an hour to add</span>
+      </div>
+      <Planner day={day} isToday={isToday} items={items} />
+    </section>
   );
 }
 
@@ -142,12 +156,16 @@ function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day;
   );
 }
 
-/** Today's lists: Top 3, the rest due today, the next 3 days and the Inbox. */
-function TodayLists() {
+function TodayBody() {
   const store = useStore();
+  const toast = useToast();
   const now = today();
-  const data = buildToday(store.tasks, store.routines, store.ticks, store.inbox.id, now);
+  const slip = slipping(store.tasks, now);
+  const slipIds = new Set(slip.map((s) => s.task.id));
+  const data = buildToday(store.tasks.filter((t) => !slipIds.has(t.id)), store.routines, store.ticks, store.inbox.id, now);
+  const plan = buildDay(store.tasks, store.routines, store.ticks, now);
   const [expanded, setExpanded] = useState(false);
+  const [skip, setSkip] = useState(0);
 
   let budget = expanded ? Infinity : CAP;
   const take = (list: Task[]) => {
@@ -160,38 +178,113 @@ function TodayLists() {
   const inbox = take(data.inbox);
   const hidden = data.also.length + data.soon.length + data.inbox.length - also.length - soon.length - inbox.length;
 
+  const routinesDone = data.routines.filter((r) => r.done).length;
+  const queue = [...data.top, ...data.also, ...plan.timed, ...data.soon, ...slip.map((s) => s.task)];
+  const next = queue.length ? queue[skip % queue.length] : null;
+  const evening = new Date().getHours() >= 18;
+
+  const snooze = (t: Task) => {
+    const before = { due: t.due };
+    store.updateTask(t.id, { due: addDays(now, 3) });
+    toast({ message: `Snoozed to ${dueLabel(addDays(now, 3), now)}. No guilt.`, undo: () => store.updateTask(t.id, before) });
+  };
+  const doneNext = (t: Task) => {
+    store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString() });
+    toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
+  };
+
   return (
     <>
-      {data.top.length > 0 && (
-        <Section title="Top 3">
-          <div className="stack">
-            {data.top.map((t) => <div className="card" key={t.id}><ItemRow task={t} big /></div>)}
-          </div>
-        </Section>
+      <div className="card hero">
+        <div className="between"><span className="eyebrow">Top 3 today</span><span className="count">{data.top.length}/3</span></div>
+        {data.top.length
+          ? <div className="list in-card">{data.top.map((t) => <ItemRow key={t.id} task={t} />)}</div>
+          : <p className="empty-note">Nothing due today. Tap + to add the next thing on your mind.</p>}
+      </div>
+
+      {slip.length > 0 && (
+        <div className="card slip">
+          <div className="between"><span className="eyebrow">Slipping · {slip.length}</span></div>
+          <p className="note">These have sat too long. Do one, or snooze it for 3 days, guilt-free.</p>
+          <ul className="check-list in-card">
+            {slip.slice(0, 6).map(({ task, why }) => (
+              <li key={task.id} className="check-row">
+                <button type="button" className="row-body" onClick={() => go(`/item/${task.id}`)}>
+                  <span className="row-title">{task.title}</span>
+                  <span className="meta"><span className="tag t-amber">{why}</span></span>
+                </button>
+                <button type="button" className="btn small" onClick={() => snooze(task)}>Snooze</button>
+              </li>
+            ))}
+          </ul>
+          {slip.length > 6 && <p className="note">+{slip.length - 6} more</p>}
+        </div>
       )}
+
+      {data.routines.length > 0 && (
+        <section className="section">
+          <div className="between"><h2 className="h2">Routine</h2><span className="count">{routinesDone}/{data.routines.length}</span></div>
+          <div className="progress"><div className="bar"><i style={{ width: `${(routinesDone / data.routines.length) * 100}%` }} /></div></div>
+          <ul className="check-list">
+            {data.routines.map(({ routine, done }) => {
+              const s = routineStats(routine, store.ticks, now);
+              return (
+                <li key={routine.id} className={done ? 'check-row done' : 'check-row'}>
+                  <button
+                    type="button"
+                    className="tick"
+                    aria-pressed={done}
+                    aria-label={`${done ? 'Untick' : 'Tick'} ${routine.title}`}
+                    onClick={() => {
+                      store.toggleTick(routine.id, now);
+                      if (!done) toast({ message: cheer() });
+                    }}
+                  >
+                    <span className="box"><Check size={16} /></span>
+                  </button>
+                  <button type="button" className="row-body" onClick={() => go(`/routine/${routine.id}`)}>
+                    <span className="row-title">{routine.title}</span>
+                    <span className="meta">
+                      <span className="tag t-violet">{TIME_LABEL[routine.time_of_day]}</span>
+                      {s.current > 1 && <span className="tag t-sage">🔥 {s.current} day streak</span>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {also.length > 0 && <ListSection title="Also due today" tasks={also} />}
       {soon.length > 0 && <ListSection title="Next 3 days" tasks={soon} />}
-      {inbox.length > 0 && <ListSection title="Inbox · needs a domain" tasks={inbox} />}
-      {hidden > 0 && (
-        <button type="button" className="more-btn" onClick={() => setExpanded(true)}>Show {hidden} more</button>
-      )}
-    </>
-  );
-}
+      {inbox.length > 0 && <ListSection title="Inbox · needs an area" tasks={inbox} />}
+      {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="section">
-      <h2 className="label">{title}</h2>
-      {children}
-    </section>
+      <PlanSection day={now} isToday items={plan.timed} />
+
+      <div className="card">
+        <span className="eyebrow">Do this next</span>
+        <div className="big">{next ? next.title : 'All clear. Go enjoy your evening 💗'}</div>
+        {next && <p className="note">{store.domain(next.domain_id).short_name} · {whenText(next)}</p>}
+        {next && (
+          <div className="row">
+            <button type="button" className="btn primary" onClick={() => doneNext(next)}>Done ✓</button>
+            {queue.length > 1 && <button type="button" className="btn" onClick={() => setSkip((n) => n + 1)}>Not now</button>}
+          </div>
+        )}
+      </div>
+
+      <div className="calm">{evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
+    </>
   );
 }
 
 function ListSection({ title, tasks }: { title: string; tasks: Task[] }) {
   return (
-    <Section title={title}>
+    <section className="section">
+      <div className="between"><h2 className="h2">{title}</h2><span className="count">{tasks.length}</span></div>
       <div className="list">{tasks.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-    </Section>
+    </section>
   );
 }

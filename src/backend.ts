@@ -127,6 +127,7 @@ export function demoBackend(): Backend {
     task('HMICFRS application', 'Job search', null, { kind: 'project', stage: 'Applied' }),
     task('Amira wedding shoot', 'Made in Heaven', null, { kind: 'project', stage: 'Editing' }),
     task('Bedroom makeover', 'Home', null, { kind: 'project' }),
+    task('Sort Oyster connector', 'Home', addDays(now, -5)),
     task('Book the theory test', 'Home', null),
     task('Add new shoots to the portfolio site', 'Made in Heaven', null),
     task('Photo booth: price a starter kit', 'Side ideas', null, { kind: 'idea' }),

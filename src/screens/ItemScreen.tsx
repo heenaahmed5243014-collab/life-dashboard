@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import type { Task, TaskKind } from '../types';
 import { addDays, dueLabel, hhmm, reminderAt, today } from '../dates';
 import { Bell } from '../icons';
+import { cheer } from '../cheers';
 import { areaConfig } from '../areas';
 import { back, go } from '../router';
 import { useToast } from '../toast';
@@ -42,7 +43,7 @@ function ItemDetail({ task }: { task: Task }) {
 
   const close = (status: 'done' | 'not_doing') => {
     save({ status, closed_at: new Date().toISOString() });
-    toast({ message: status === 'done' ? 'Done' : 'Let go. It’s off your list.', undo: () => save(before) });
+    toast({ message: status === 'done' ? cheer() : 'Let go. It’s off your list.', undo: () => save(before) });
     back();
   };
 

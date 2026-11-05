@@ -8,6 +8,7 @@ import { go } from '../router';
 import { useToast } from '../toast';
 import { openQuickAdd } from './QuickAdd';
 import { Bell, Check, Plus } from '../icons';
+import { cheer } from '../cheers';
 
 const FIRST = 6;
 const LAST = 23;
@@ -39,7 +40,7 @@ export default function Planner({ day, isToday, items }: { day: Day; isToday: bo
 
   const done = (t: Task) => {
     store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString() });
-    toast({ message: 'Done', undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
+    toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
   };
 
   return (
@@ -58,7 +59,7 @@ export default function Planner({ day, isToday, items }: { day: Day; isToday: bo
                 const d = store.domain(t.domain_id);
                 return (
                   <div key={t.id} className="slot-item" style={{ borderLeftColor: d.color }}>
-                    <button type="button" className="tick tick-sm" onClick={() => done(t)} aria-label={`Mark ${t.title} done`}><Check size={16} /></button>
+                    <button type="button" className="tick" onClick={() => done(t)} aria-label={`Mark ${t.title} done`}><span className="box"><Check size={16} /></span></button>
                     <button type="button" className="slot-body" onClick={() => go(`/item/${t.id}`)}>
                       <span className="slot-title">{t.title}</span>
                       <span className="row-meta">

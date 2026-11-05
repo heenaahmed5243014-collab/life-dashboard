@@ -471,3 +471,154 @@ a { color: var(--accent); }
 .area-grid { grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 480px) { .area-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .area-tile { min-width: 0; width: 100%; }
+
+/* =====================================================================
+   Brain Planner format (from "Heena's Brain Planner")
+   ===================================================================== */
+:root {
+  --bg: #F6F0F4; --card: #FFFFFF; --ink: #2A1D2C; --muted: #76637A; --line: #E7DBE4; --edge: #E7DBE4; --ring: #76637A;
+  --accent: #C2366F; --accent-dark: #9B2457; --accent-soft: #F9DBE7; --accent-edge: #EFB6CC;
+  --sage: #3E7A64; --sage-text: #336A55; --sage-soft: #DCEFE6;
+  --amber: #A5620B; --amber-text: #8A5208; --amber-soft: #FBEAD0;
+  --violet: #6A4BC4; --violet-soft: #E8E1FA;
+  --display: 'Bricolage Grotesque', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --serif: var(--display);
+}
+body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height: 1.45; }
+
+/* Type */
+.h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-height: 1.05; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+.h2 { font-family: var(--display); font-weight: 600; font-size: 1.15rem; margin: 0; letter-spacing: 0; }
+.label { font-family: var(--display); font-weight: 600; font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.sub { color: var(--muted); margin: 6px 0 0; }
+.note { font-size: 0.88rem; color: var(--muted); margin: 0; }
+.muted.lead { color: var(--muted); }
+.between { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.row { gap: 8px; }
+.count { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 0.9rem; color: var(--muted); }
+.big { font-family: var(--display); font-weight: 800; font-size: 1.35rem; line-height: 1.15; overflow-wrap: anywhere; }
+.page-head-row { align-items: flex-start; }
+.planner-page { gap: 22px; }
+
+/* Pills and tags */
+.pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.pill { font-size: 0.78rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--line); color: var(--muted); white-space: nowrap; }
+.p-sage { background: var(--sage-soft); color: var(--sage-text); }
+.p-violet { background: var(--violet-soft); color: var(--violet); }
+.p-pink { background: var(--accent-soft); color: var(--accent-dark); }
+.meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.tag { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--line); color: var(--muted); }
+.tag-today, .t-pink { background: var(--accent-soft); color: var(--accent-dark); }
+.t-sage { background: var(--sage-soft); color: var(--sage-text); }
+.t-amber { background: var(--amber-soft); color: var(--amber-text); }
+.t-violet { background: var(--violet-soft); color: var(--violet); }
+.stage-pill { background: var(--violet-soft); color: var(--violet); border-radius: 99px; }
+.stage-pill.final { background: var(--sage-soft); color: var(--sage-text); }
+
+/* Cards */
+.card, .routine-card, .area-tile, .project-card, .empty, .filed-card, .capture-card, .planner, .routine-tile {
+  box-shadow: none; border: 1px solid var(--line);
+}
+.card { border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card.field, .card.notes, .card.prose { padding: 16px; }
+.card.hero { border: 2px solid var(--accent); }
+.card.slip { border: 2px solid var(--amber); }
+.eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; color: var(--accent); }
+.slip .eyebrow { color: var(--amber-text); }
+.empty-note { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.calm { background: var(--sage-soft); color: var(--sage-text); border-radius: 16px; padding: 14px 16px; font-weight: 500; }
+.area-tile { border-top-width: 4px; }
+
+/* Progress */
+.progress { display: flex; align-items: center; gap: 12px; }
+.bar { flex: 1; height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--sage); border-radius: 99px; transition: width 0.4s; }
+
+/* Buttons */
+.btn {
+  font: inherit; border-radius: 99px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 9px 16px; font-weight: 600; min-height: 44px;
+}
+.btn.primary, .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.primary:active, .btn.primary:active { background: var(--accent-dark); }
+.primary:disabled { background: #C9B8C6; }
+.btn.small { font-size: 0.82rem; padding: 6px 12px; min-height: 36px; }
+.btn.more { align-self: flex-start; }
+.secondary { border-color: var(--accent); color: var(--accent); }
+.see-all, .link-btn, a { color: var(--accent); }
+
+/* Lists: separate rounded rows, like the planner */
+.list { background: transparent; border-radius: 0; overflow: visible; display: flex; flex-direction: column; gap: 6px; box-shadow: none; }
+.list > .row + .row, .list > .plain-row + .plain-row, .recent-list li + li { border-top: none; }
+.list > .row, .list > .plain-row, .recent-list li { background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.list.in-card > .row { background: transparent; border: none; padding-left: 0; padding-right: 0; }
+.row, .row-big { min-height: 56px; padding: 6px 12px 6px 2px; gap: 6px; }
+.row-title, .row-big .row-title { font-weight: 500; font-size: 1rem; line-height: 1.35; }
+.row-meta { font-size: 0.82rem; }
+.check-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.check-row { background: var(--card); border: 1px solid var(--line); border-radius: 14px; display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 2px; min-height: 56px; }
+.check-row.static { padding: 10px 14px; flex-direction: column; align-items: flex-start; gap: 0; }
+.in-card .check-row { background: transparent; border: none; padding-left: 0; padding-right: 0; }
+.slip .check-row { padding-left: 0; }
+.check-row.done .row-title, .row.is-done .row-title { text-decoration: line-through; color: var(--muted); }
+.check-row.done, .row.is-done { opacity: 0.75; }
+
+/* Rounded-square checkboxes */
+.tick, .tick:active { width: 44px; height: 44px; flex: none; border: none; background: transparent; padding: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: transparent; }
+.box {
+  width: 26px; height: 26px; border: 2px solid var(--muted); border-radius: 8px; background: var(--card);
+  display: flex; align-items: center; justify-content: center; color: transparent; box-sizing: border-box;
+}
+.tick:active .box { background: var(--sage-soft); }
+.tick[aria-pressed="true"] .box, .row.is-done .box, .check-row.done .box { background: var(--sage); border-color: var(--sage); color: #fff; }
+.tick-sm { width: 44px; height: 44px; }
+
+/* Chips: dark when selected, as in the planner */
+.chip { border-radius: 99px; border: 1px solid var(--line); background: var(--card); font-size: 0.84rem; padding: 0 14px; font-weight: 600; }
+.chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.chip.on .dot { box-shadow: 0 0 0 2px var(--bg); }
+.day.on, .seg.on { color: var(--ink); }
+.day.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+/* Bottom tabs */
+.nav { padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 2px; border-top: 1px solid var(--line); }
+.tab { border-radius: 12px; font-size: 0.7rem; min-height: 54px; gap: 2px; }
+.tab.on { background: var(--accent-soft); color: var(--accent); }
+
+/* Floating add, toast */
+.fab { background: var(--accent); box-shadow: 0 6px 18px rgba(42, 29, 44, 0.22); }
+.fab:active { background: var(--accent-dark); }
+.toast { border-radius: 99px; background: var(--ink); color: var(--bg); padding: 8px 8px 8px 18px; font-weight: 600; }
+
+/* Day strip and hourly plan in planner colours */
+.day-pill { border-color: var(--line); border-radius: 14px; }
+.day-pill-dot { background: var(--accent); }
+.day-pill.on { background: var(--accent); border-color: var(--accent); }
+.planner { border-radius: 18px; }
+.slot-item { background: var(--violet-soft); border-radius: 12px; padding-left: 0; }
+.slot-item .row-meta { color: var(--violet); font-weight: 600; }
+.now-line, .now-line::before { background: var(--accent); }
+
+/* Routines screen */
+.routine-card { border-radius: 18px; }
+.routine-card-title h2 { font-family: var(--display); }
+.streak-num { font-family: var(--display); font-weight: 800; color: var(--accent); }
+.week-dot { border-radius: 10px; }
+.week-dot.done { background: var(--sage); }
+.week-dot.today { border-color: var(--accent); }
+.week-dot.missed { background: var(--amber-soft); border-color: var(--amber-soft); }
+.pill-btn { border-color: var(--accent); color: var(--accent); border-radius: 99px; }
+.pill-btn.on { background: var(--sage); border-color: var(--sage); color: #fff; }
+.routine-tile.done { background: var(--sage-soft); border-color: var(--sage); }
+.routine-tile.done .routine-tick { background: var(--sage); border-color: var(--sage); }
+
+/* Add screen */
+.mic { border-color: var(--accent); color: var(--accent); }
+.mic.on { background: var(--accent); }
+.capture-card:focus-within { border-color: var(--accent); box-shadow: none; }
+.recent.just-saved { background: var(--sage-soft); }
+
+/* Tasks screen sections */
+.section.soft .list > .row { background: transparent; border-style: dashed; }
+.btn { white-space: nowrap; }
+.card .row .btn.primary { flex: 1; }

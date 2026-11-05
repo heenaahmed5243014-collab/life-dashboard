@@ -51,9 +51,9 @@ export interface Tick {
 export const REMOVED_DOMAINS = ['Concierge job'];
 
 export const DEFAULT_DOMAINS: Omit<Domain, 'id'>[] = [
-  { name: 'Job search', short_name: 'Job search', color: '#D95926', is_inbox: false, sort: 2 },
-  { name: 'Made in Heaven Visuals', short_name: 'Made in Heaven', color: '#D55181', is_inbox: false, sort: 3 },
-  { name: 'Side ideas', short_name: 'Side ideas', color: '#C98500', is_inbox: false, sort: 4 },
-  { name: 'Personal & home', short_name: 'Home', color: '#199E70', is_inbox: false, sort: 5 },
-  { name: 'Inbox', short_name: 'Inbox', color: '#898781', is_inbox: true, sort: 99 },
+  { name: 'Job search', short_name: 'Job search', color: '#A5620B', is_inbox: false, sort: 2 },
+  { name: 'Made in Heaven Visuals', short_name: 'Made in Heaven', color: '#C2366F', is_inbox: false, sort: 3 },
+  { name: 'Side ideas', short_name: 'Side ideas', color: '#6A4BC4', is_inbox: false, sort: 4 },
+  { name: 'Personal & home', short_name: 'Home', color: '#3E7A64', is_inbox: false, sort: 5 },
+  { name: 'Inbox', short_name: 'Inbox', color: '#76637A', is_inbox: true, sort: 99 },
 ];

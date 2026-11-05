@@ -4,6 +4,7 @@ import { dueLabel, hhmm } from '../dates';
 import { go } from '../router';
 import { useToast } from '../toast';
 import { Bell, Check } from '../icons';
+import { cheer } from '../cheers';
 
 export function whenText(t: Task): string {
   if (t.kind === 'idea') return 'Idea';
@@ -26,13 +27,13 @@ export default function ItemRow({ task, big = false, tag }: { task: Task; big?: 
       return;
     }
     store.updateTask(task.id, { status: 'done', closed_at: new Date().toISOString() });
-    toast({ message: 'Done', undo: () => store.updateTask(task.id, { status: 'open', closed_at: null }) });
+    toast({ message: cheer(), undo: () => store.updateTask(task.id, { status: 'open', closed_at: null }) });
   };
 
   return (
     <div className={`row${big ? ' row-big' : ''}${done ? ' is-done' : ''}`}>
       <button type="button" className="tick" onClick={toggle} aria-pressed={done} aria-label={done ? `Mark ${task.title} not done` : `Mark ${task.title} done`}>
-        <Check />
+        <span className="box"><Check size={16} /></span>
       </button>
       <button type="button" className="row-body" onClick={() => go(`/item/${task.id}`)}>
         <span className="row-title">{task.title}</span>
