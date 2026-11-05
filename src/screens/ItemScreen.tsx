@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
-import type { Task, TaskKind } from '../types';
+import type { Energy, Task, TaskKind } from '../types';
 import { addDays, dueLabel, hhmm, reminderAt, today } from '../dates';
-import { Bell } from '../icons';
+import { Bell, Star } from '../icons';
 import { cheer } from '../cheers';
 import { areaConfig } from '../areas';
 import { back, go } from '../router';
 import { useToast } from '../toast';
 import Header from '../components/Header';
-import ItemRow from '../components/ItemRow';
+import ItemRow, { minutesLabel } from '../components/ItemRow';
 import { DatePicker, DomainPicker, FieldBlock, Segmented } from '../components/Fields';
 
 export default function ItemScreen({ id }: { id: string }) {
@@ -30,6 +30,8 @@ function ItemDetail({ task }: { task: Task }) {
   const toast = useToast();
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes);
+  const [step, setStep] = useState(task.step ?? '');
+  useEffect(() => setStep(task.step ?? ''), [task.step]);
   useEffect(() => setTitle(task.title), [task.title]);
   useEffect(() => setNotes(task.notes), [task.notes]);
 
@@ -42,7 +44,7 @@ function ItemDetail({ task }: { task: Task }) {
   const stages = areaConfig(store.domain(task.domain_id)).stages;
 
   const close = (status: 'done' | 'not_doing') => {
-    save({ status, closed_at: new Date().toISOString() });
+    save({ status, closed_at: new Date().toISOString(), starred: false });
     toast({ message: status === 'done' ? cheer() : 'Let go. It’s off your list.', undo: () => save(before) });
     back();
   };
@@ -88,9 +90,9 @@ function ItemDetail({ task }: { task: Task }) {
           <FieldBlock label="Stage">
             <div className="chips" role="radiogroup" aria-label="Stage">
               {stages.map((st) => {
-                const on = (task.stage ?? stages[0]) === st;
+                const on = task.stage === st;
                 return (
-                  <button key={st} type="button" role="radio" aria-checked={on} className={on ? 'chip on' : 'chip'} onClick={() => save({ stage: st })}>
+                  <button key={st} type="button" role="radio" aria-checked={on} className={on ? 'chip on' : 'chip'} onClick={() => save({ stage: on ? null : st })}>
                     {st}
                   </button>
                 );
@@ -103,17 +105,18 @@ function ItemDetail({ task }: { task: Task }) {
           <Segmented<TaskKind>
             label="Type"
             value={task.kind}
-            onChange={(kind) => save(kind === 'idea' ? { kind, due: null } : { kind })}
+            onChange={(kind) => save(kind === 'idea' || kind === 'goal' ? { kind, due: null, due_time: null, remind_at: null, starred: false } : { kind })}
             options={[
               { value: 'task', label: 'Task' },
               { value: 'project', label: 'Project' },
               { value: 'idea', label: 'Idea' },
               { value: 'note', label: 'Note' },
+              { value: 'goal', label: 'Goal' },
             ]}
           />
         </FieldBlock>
 
-        {task.kind !== 'idea' && (
+        {task.kind !== 'idea' && task.kind !== 'goal' && (
           <FieldBlock label="When">
             <DatePicker
               value={task.due}
@@ -159,6 +162,62 @@ function ItemDetail({ task }: { task: Task }) {
           <FieldBlock label="Tasks in this project">
             <div className="list">{children.map((c) => <ItemRow key={c.id} task={c} />)}</div>
           </FieldBlock>
+        )}
+
+        {(task.kind === 'task' || task.kind === 'project') && (
+          <>
+            <FieldBlock label="Top 3">
+              <button
+                type="button"
+                className={task.starred ? 'chip on' : 'chip'}
+                aria-pressed={task.starred}
+                onClick={() => {
+                  if (!task.starred && store.tasks.filter((t) => t.starred && t.status === 'open').length >= 3) {
+                    toast({ message: 'Top 3 is full. Unstar one first.' });
+                    return;
+                  }
+                  save({ starred: !task.starred });
+                }}
+              >
+                <Star filled={task.starred} /> {task.starred ? 'In your Top 3' : 'Add to Top 3'}
+              </button>
+            </FieldBlock>
+
+            <FieldBlock label="How long?">
+              <div className="chips" role="radiogroup" aria-label="Time estimate">
+                {[5, 10, 15, 30, 60, 90].map((m) => (
+                  <button key={m} type="button" role="radio" aria-checked={task.minutes === m} className={task.minutes === m ? 'chip on' : 'chip'} onClick={() => save({ minutes: task.minutes === m ? null : m })}>
+                    {minutesLabel(m)}
+                  </button>
+                ))}
+              </div>
+            </FieldBlock>
+
+            <FieldBlock label="Energy">
+              <Segmented<'' | Energy>
+                label="Energy"
+                value={task.energy ?? ''}
+                onChange={(e) => save({ energy: e || null })}
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'mid', label: 'Medium' },
+                  { value: 'high', label: 'Focus' },
+                  { value: '', label: 'Unset' },
+                ]}
+              />
+            </FieldBlock>
+
+            <FieldBlock label="First step">
+              <input
+                className="card step-input"
+                aria-label="First step"
+                value={step}
+                placeholder="The tiniest thing that gets it started"
+                onChange={(e) => setStep(e.target.value)}
+                onBlur={() => step.trim() !== (task.step ?? '') && save({ step: step.trim() || null })}
+              />
+            </FieldBlock>
+          </>
         )}
 
         <FieldBlock label="Notes">

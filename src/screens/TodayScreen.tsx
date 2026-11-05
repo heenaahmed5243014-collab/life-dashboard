@@ -6,7 +6,7 @@ import { buildDay, buildToday } from '../today';
 import { addDays, daysBetween, dueLabel, longDate, parseDay, toDay, today, weekday, WEEKDAY_SHORT, type Day } from '../dates';
 import { go } from '../router';
 import type { Task } from '../types';
-import ItemRow, { whenText } from '../components/ItemRow';
+import ItemRow, { EffortTags, whenText } from '../components/ItemRow';
 import Nav from '../components/Nav';
 import Planner from '../components/Planner';
 import { openQuickAdd } from '../components/QuickAdd';
@@ -33,7 +33,7 @@ function readDay(now: Day): Day {
 function slipping(tasks: Task[], now: Day): { task: Task; why: string }[] {
   const out: { task: Task; why: string }[] = [];
   for (const t of tasks) {
-    if (t.status !== 'open' || t.kind === 'idea' || t.kind === 'note') continue;
+    if (t.status !== 'open' || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
     if (t.due && daysBetween(t.due, now) >= 3) {
       out.push({ task: t, why: `Carried over since ${WEEKDAY_SHORT[weekday(t.due)]} ${parseDay(t.due).getDate()}` });
       continue;
@@ -127,7 +127,7 @@ function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day;
   const store = useStore();
   const counts = new Map<Day, number>();
   for (const t of store.tasks) {
-    if (t.status !== 'open' || !t.due || t.kind === 'idea' || t.kind === 'note') continue;
+    if (t.status !== 'open' || !t.due || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
     const d = t.due < now ? now : t.due;
     counts.set(d, (counts.get(d) ?? 0) + 1);
   }
@@ -189,7 +189,7 @@ function TodayBody() {
     toast({ message: `Snoozed to ${dueLabel(addDays(now, 3), now)}. No guilt.`, undo: () => store.updateTask(t.id, before) });
   };
   const doneNext = (t: Task) => {
-    store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString() });
+    store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString(), starred: false });
     toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
   };
 
@@ -266,7 +266,8 @@ function TodayBody() {
       <div className="card">
         <span className="eyebrow">Do this next</span>
         <div className="big">{next ? next.title : 'All clear. Go enjoy your evening 💗'}</div>
-        {next && <p className="note">{store.domain(next.domain_id).short_name} · {whenText(next)}</p>}
+        {next?.step && <p className="first-step"><span className="tag t-pink">First step</span> {next.step}</p>}
+        {next && <span className="meta"><span className="tag">{store.domain(next.domain_id).short_name} · {whenText(next)}</span><EffortTags task={next} /></span>}
         {next && (
           <div className="row">
             <button type="button" className="btn primary" onClick={() => doneNext(next)}>Done ✓</button>

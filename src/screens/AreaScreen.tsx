@@ -30,6 +30,7 @@ export default function AreaScreen({ id }: { id: string }) {
   const loose = open.filter((t) => t.kind === 'task' && !t.project_id).sort(byDue);
   const ideas = open.filter((t) => t.kind === 'idea');
   const notes = open.filter((t) => t.kind === 'note');
+  const goals = open.filter((t) => t.kind === 'goal');
   const routines = store.routines.filter((r) => r.domain_id === d.id);
   const tasksIn = (p: Task) => store.tasks.filter((t) => t.project_id === p.id && t.status === 'open').sort(byDue);
 
@@ -40,7 +41,7 @@ export default function AreaScreen({ id }: { id: string }) {
       <button key={p.id} type="button" className="project-card" onClick={() => go(`/item/${p.id}`)}>
         <span className="project-head">
           <span className="project-title">{p.title}</span>
-          {cfg.stages && <span className={`stage-pill${isFinalStage(p.stage) ? ' final' : ''}`}>{p.stage ?? cfg.stages[0]}</span>}
+          {cfg.stages && p.stage && <span className={`stage-pill${isFinalStage(p.stage) ? ' final' : ''}`}>{p.stage}</span>}
         </span>
         <span className="row-meta">
           {inside.length ? `${inside.length} open task${inside.length === 1 ? '' : 's'}` : 'No open tasks'}
@@ -88,6 +89,12 @@ export default function AreaScreen({ id }: { id: string }) {
         {notes.length > 0 && (
           <Block title="Notes" empty="">
             <div className="list">{notes.map((t) => <ItemRow key={t.id} task={t} />)}</div>
+          </Block>
+        )}
+
+        {goals.length > 0 && (
+          <Block title="Life goals" empty="">
+            <div className="list">{goals.map((t) => <ItemRow key={t.id} task={t} />)}</div>
           </Block>
         )}
 

@@ -111,7 +111,7 @@ export function demoBackend(): Backend {
   const id = (name: string) => domains.find((d) => d.short_name === name)!.id;
   const stamp = new Date().toISOString();
   const task = (title: string, dom: string, due: Day | null, extra: Partial<Task> = {}): Task => ({
-    id: crypto.randomUUID(), title, domain_id: id(dom), kind: 'task', project_id: null, due, due_time: null, remind_at: null, status: 'open',
+    id: crypto.randomUUID(), title, domain_id: id(dom), kind: 'task', project_id: null, due, due_time: null, remind_at: null, minutes: null, energy: null, step: null, starred: false, status: 'open',
     stage: null, notes: '', created_at: stamp, touched_at: stamp, closed_at: null, ...extra,
   });
   const tasks: Task[] = [
@@ -127,7 +127,11 @@ export function demoBackend(): Backend {
     task('HMICFRS application', 'Job search', null, { kind: 'project', stage: 'Applied' }),
     task('Amira wedding shoot', 'Made in Heaven', null, { kind: 'project', stage: 'Editing' }),
     task('Bedroom makeover', 'Home', null, { kind: 'project' }),
-    task('Sort Oyster connector', 'Home', addDays(now, -5)),
+    task('Sort Oyster connector', 'Home', addDays(now, -5), { minutes: 10, energy: 'low', step: 'Find what you need and do just the first step.' }),
+    task('Return cracked iPad mini', 'Home', null, { minutes: 20, energy: 'mid', step: 'Take photos of the crack first, then start the return.' }),
+    task('Edit Tisha’s wedding photos', 'Made in Heaven', null, { minutes: 90, energy: 'high', step: 'Open the folder and cull the first 50 photos. That’s it.', starred: true }),
+    task('120lb', 'Home', null, { kind: 'goal' }),
+    task('Pure Barre', 'Home', null, { kind: 'goal' }),
     task('Book the theory test', 'Home', null),
     task('Add new shoots to the portfolio site', 'Made in Heaven', null),
     task('Photo booth: price a starter kit', 'Side ideas', null, { kind: 'idea' }),

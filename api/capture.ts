@@ -21,7 +21,10 @@ interface CaptureRequest {
 
 export interface CaptureResult {
   title: string;
-  kind: 'task' | 'project' | 'routine' | 'note' | 'idea';
+  kind: 'task' | 'project' | 'routine' | 'note' | 'idea' | 'goal';
+  minutes: number | null;
+  energy: 'low' | 'mid' | 'high' | null;
+  first_step: string | null;
   stage: string | null;
   domain: string;
   date: string | null;
@@ -49,10 +52,13 @@ function schema(domains: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['title', 'kind', 'stage', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date'],
+    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date'],
     properties: {
       title: { type: 'string', description: 'Short, clear wording that starts with a verb where it makes sense. No date/time words.' },
-      kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea'] },
+      kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea', 'goal'] },
+      minutes: { type: ['integer', 'null'], description: 'Rough time estimate in minutes for a task, else null' },
+      energy: { type: ['string', 'null'], enum: ['low', 'mid', 'high', null] },
+      first_step: { type: ['string', 'null'], description: 'One tiny, concrete first action for a task, else null' },
       stage: { type: ['string', 'null'], enum: ['Applied', 'Test', 'Interview', 'Offer', 'Closed', 'Booked', 'Shot', 'Editing', 'Delivered', null] },
       domain: { type: 'string', enum: domains },
       date: { type: ['string', 'null'], description: 'YYYY-MM-DD, or null if no day was mentioned' },
@@ -70,7 +76,8 @@ const SYSTEM = `You sort quick notes for a personal to-do app. The user types on
 
 Decide:
 - title: rewrite it as a short, clean item. Fix spelling and capitals. Remove filler like "remind me to", "I need to", and remove date and time words (they go in their own fields). Keep names and details.
-- kind: "project" for something with an end point that will hold several tasks: one job application, or one client shoot. "task" for one-off things to do. "routine" for things that repeat (e.g. "gym mon wed fri", "every evening tidy up"). "note" for information to keep that isn't an action (e.g. "Sam's door code is 4512"). "idea" for side-business or someday thoughts (events, photo booth, head spa, "maybe I could...") unless the user clearly says it's a to-do.
+- kind: "project" for something with an end point that will hold several tasks: one job application, or one client shoot. "task" for one-off things to do. "routine" for things that repeat (e.g. "gym mon wed fri", "every evening tidy up"). "note" for information to keep that isn't an action (e.g. "Sam's door code is 4512"). "idea" for side-business or someday thoughts (events, photo booth, head spa, "maybe I could...") unless the user clearly says it's a to-do. "goal" for life goals that aren't to-dos (a target weight, "learn to swim", "travel to Japan").
+- minutes, energy and first_step (tasks and projects only; null otherwise): the user has ADHD, so make starting easy. minutes: a realistic estimate (5, 10, 15, 20, 30, 45, 60, 90...). energy: "low" for quick admin that needs little focus, "high" for deep work like editing or writing, otherwise "mid". first_step: one tiny, concrete action that takes under 2 minutes, e.g. "Open the order email and tap Return".
 - domain: the best match from the list. Hints: job applications, interviews, recruiters, CVs -> job search. Photo or video shoots, clients, galleries, editing, social posts for clients -> Made in Heaven Visuals. Business ideas like events, photo booth, head spa -> side ideas. Gym, home, shopping, returns, health, family, admin -> personal & home. If it is genuinely unclear, use "Inbox".
 - date: resolve words like "tomorrow", "Friday", "next week" (use Monday of next week), "in 3 days" against today's date. Null if none.
 - time: 24-hour HH:MM if a time is mentioned ("10am" -> "10:00", "half 2" -> "14:30" unless clearly morning). Null if none.

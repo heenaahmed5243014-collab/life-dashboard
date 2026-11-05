@@ -30,3 +30,9 @@ export const Person = () => (
 export const Mic = () => (
   <svg width="30" height="30" viewBox="0 0 24 24" strokeWidth={1.9} {...base}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
 );
+export const Star = ({ filled = false }: { filled?: boolean }) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" strokeWidth={1.8} {...base} fill={filled ? 'currentColor' : 'none'}><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" /></svg>
+);
+export const Search = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" strokeWidth={2} {...base}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+);

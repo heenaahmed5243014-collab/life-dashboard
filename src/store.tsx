@@ -79,7 +79,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       addTask(fields) {
         const stamp = nowIso();
         const t: Task = {
-          id: crypto.randomUUID(), kind: 'task', project_id: null, due: null, due_time: null, remind_at: null, status: 'open', stage: null, notes: '',
+          id: crypto.randomUUID(), kind: 'task', project_id: null, due: null, due_time: null, remind_at: null, minutes: null, energy: null, step: null, starred: false, status: 'open', stage: null, notes: '',
           created_at: stamp, touched_at: stamp, closed_at: null, ...fields,
         };
         setData((d) => d && { ...d, tasks: [...d.tasks, t] });

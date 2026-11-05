@@ -10,7 +10,8 @@ export interface Domain {
   sort: number;
 }
 
-export type TaskKind = 'task' | 'project' | 'idea' | 'note';
+export type TaskKind = 'task' | 'project' | 'idea' | 'note' | 'goal';
+export type Energy = 'low' | 'mid' | 'high';
 export type TaskStatus = 'open' | 'done' | 'not_doing';
 export type TimeOfDay = 'commute' | 'day' | 'evening';
 
@@ -25,6 +26,10 @@ export interface Task {
   remind_at: string | null; // ISO timestamp
   status: TaskStatus;
   stage: string | null;
+  minutes: number | null; // time estimate
+  energy: Energy | null;
+  step: string | null; // the tiny first step
+  starred: boolean; // pinned to Top 3
   notes: string;
   created_at: string;
   touched_at: string;

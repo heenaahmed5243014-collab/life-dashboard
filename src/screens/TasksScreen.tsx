@@ -7,7 +7,7 @@ import type { Task } from '../types';
 import ItemRow from '../components/ItemRow';
 import Nav from '../components/Nav';
 import { openQuickAdd } from '../components/QuickAdd';
-import { Plus } from '../icons';
+import { Plus, Search } from '../icons';
 
 const FILTER_KEY = 'ld:tasksFilter';
 
@@ -35,21 +35,32 @@ export default function TasksScreen() {
   const now = today();
   const [filter, setFilterState] = useState(readFilter);
   const [showDone, setShowDone] = useState(false);
+  const [quick, setQuick] = useState<'all' | 'top' | 'quick' | 'low'>('all');
+  const [search, setSearch] = useState('');
 
   const setFilter = (f: string) => {
     setFilterState(f);
     try { sessionStorage.setItem(FILTER_KEY, f); } catch { /* ignore */ }
   };
 
-  const inFilter = (t: Task) => filter === 'all' || t.domain_id === filter;
+  const words = search.trim().toLowerCase();
+  const inFilter = (t: Task) =>
+    (filter === 'all' || t.domain_id === filter) &&
+    (!words || `${t.title} ${t.notes} ${t.step ?? ''}`.toLowerCase().includes(words));
+  const passesQuick = (t: Task) =>
+    quick === 'all' ? true : quick === 'top' ? t.starred : quick === 'quick' ? Boolean(t.minutes && t.minutes <= 15) : t.energy === 'low';
   const open = store.tasks.filter((t) => t.status === 'open' && inFilter(t)).sort(byDue);
+  const todo = (t: Task) => isTodo(t) && passesQuick(t);
   const weekEnd = addDays(now, 6);
   const groups = [
-    { title: 'This week', note: 'Coming up in the next 7 days.', items: open.filter((t) => isTodo(t) && t.due && t.due <= weekEnd) },
-    { title: 'Later', note: 'Dated, but not yet. No need to look at these today.', items: open.filter((t) => isTodo(t) && t.due && t.due > weekEnd) },
-    { title: 'No date yet', note: 'Do one when you have a gap.', items: open.filter((t) => isTodo(t) && !t.due) },
-    { title: 'Ideas', note: 'Not to-dos. Parked until you decide to start one.', items: open.filter((t) => t.kind === 'idea'), soft: true },
-    { title: 'Notes', note: 'Things to remember.', items: open.filter((t) => t.kind === 'note'), soft: true },
+    { title: 'This week', note: 'Coming up in the next 7 days.', items: open.filter((t) => todo(t) && t.due && t.due <= weekEnd) },
+    { title: 'Later', note: 'Dated, but not yet. No need to look at these today.', items: open.filter((t) => todo(t) && t.due && t.due > weekEnd) },
+    { title: 'No date yet', note: 'Do one when you have a gap.', items: open.filter((t) => todo(t) && !t.due) },
+    ...(quick === 'all' ? [
+      { title: 'Ideas', note: 'Not to-dos. Parked until you decide to start one.', items: open.filter((t) => t.kind === 'idea'), soft: true },
+      { title: 'Notes', note: 'Things to remember.', items: open.filter((t) => t.kind === 'note'), soft: true },
+      { title: 'Life goals', note: 'Not to-dos. Reminders of where you’re heading.', items: open.filter((t) => t.kind === 'goal'), soft: true },
+    ] : []),
   ].filter((g) => g.items.length > 0);
 
   const done = store.tasks
@@ -74,6 +85,19 @@ export default function TasksScreen() {
           <span className="count">{doneCount} / {total}</span>
         </div>
 
+        <label className="search pad-x">
+          <Search />
+          <input type="search" placeholder="Search tasks, notes and steps" aria-label="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </label>
+
+        <div className="chip-scroll" role="radiogroup" aria-label="Quick filters">
+          {([['all', 'Everything'], ['top', '★ Top 3'], ['quick', 'Under 15 min'], ['low', 'Low energy']] as const).map(([k, label]) => (
+            <button key={k} type="button" role="radio" aria-checked={quick === k} className={quick === k ? 'chip on' : 'chip'} onClick={() => setQuick(k)}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="chip-scroll" role="radiogroup" aria-label="Filter by domain">
           {chips.map((c) => (
             <button
@@ -92,8 +116,8 @@ export default function TasksScreen() {
 
         {groups.length === 0 && (
           <section className="empty pad-x">
-            <p className="empty-title">Nothing open here.</p>
-            <p className="muted">Tap + to add something.</p>
+            <p className="empty-title">{words ? 'Nothing matches that search.' : 'Nothing here.'}</p>
+            <p className="muted">{words || quick !== 'all' ? 'Try another filter.' : 'Tap + to add something.'}</p>
           </section>
         )}
 

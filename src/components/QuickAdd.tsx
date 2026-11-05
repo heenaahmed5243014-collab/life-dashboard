@@ -137,7 +137,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
       return reset([r.id]);
     }
     const t = hhmm(time || null);
-    const date = kind === 'idea' ? null : due ?? (remind || t ? now : null);
+    const date = kind === 'idea' || kind === 'goal' ? null : due ?? (remind || t ? now : null);
     const stages = areaConfig(store.domain(domain)).stages;
     const task = store.addTask({
       title,
@@ -288,7 +288,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
               </Row>
               <Row label="Type">
                 <div className="qa-row" role="radiogroup" aria-label="Type">
-                  {(['task', 'project', 'routine', 'note', 'idea'] as Kind[]).map((k) => (
+                  {(['task', 'project', 'routine', 'note', 'idea', 'goal'] as Kind[]).map((k) => (
                     <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'chip on' : 'chip'} onClick={() => { setKind(k); setKindPicked(true); }}>
                       {k[0].toUpperCase() + k.slice(1)}
                     </button>
@@ -299,7 +299,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                 <Row label="Days">
                   <DaysPicker value={days} onChange={setDays} />
                 </Row>
-              ) : kind !== 'idea' && (
+              ) : kind !== 'idea' && kind !== 'goal' && (
                 <Row label="Date">
                   <div className="qa-row" aria-label="Date, time and reminder">
                     {quickDates.map((q) => (
@@ -339,7 +339,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                   const meta =
                     r.type === 'routine'
                       ? `Routine · ${daysLabel(r.item.days)}`
-                      : (r.item.kind === 'note' || r.item.kind === 'idea') && !r.item.due
+                      : (r.item.kind === 'note' || r.item.kind === 'idea' || r.item.kind === 'goal') && !r.item.due
                         ? r.item.kind[0].toUpperCase() + r.item.kind.slice(1)
                         : `${r.item.kind[0].toUpperCase() + r.item.kind.slice(1)} · ${whenText(r.item)}`;
                   return (

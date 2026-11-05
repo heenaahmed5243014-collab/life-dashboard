@@ -8,7 +8,10 @@ import { areaConfig } from './areas';
 
 export interface CaptureResult {
   title: string;
-  kind: 'task' | 'project' | 'routine' | 'note' | 'idea';
+  kind: 'task' | 'project' | 'routine' | 'note' | 'idea' | 'goal';
+  minutes: number | null;
+  energy: 'low' | 'mid' | 'high' | null;
+  first_step: string | null;
   stage: string | null;
   domain: string;
   date: string | null;
@@ -109,7 +112,7 @@ export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain): R
     }];
   }
   const time = hhmm(r.time);
-  const isIdea = r.kind === 'idea';
+  const isIdea = r.kind === 'idea' || r.kind === 'goal';
   // A reminder or time with no day means today.
   const date: Day | null = isIdea ? null : r.date ?? (r.reminder || time ? today() : null);
   const stages = areaConfig(domain).stages;
@@ -117,6 +120,9 @@ export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain): R
     task: {
       title: r.title,
       kind: r.kind,
+      minutes: r.minutes && r.minutes > 0 ? Math.round(r.minutes) : null,
+      energy: r.energy ?? null,
+      step: r.first_step || null,
       stage: r.kind === 'project' && stages ? (r.stage && stages.includes(r.stage) ? r.stage : stages[0]) : null,
       domain_id: domain.id,
       due: date,
@@ -124,7 +130,7 @@ export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain): R
       remind_at: r.reminder && date ? reminderAt(date, time) : null,
     },
   }];
-  if (r.kind !== 'idea' && r.follow_up_title && r.follow_up_date && /^\d{4}-\d{2}-\d{2}$/.test(r.follow_up_date)) {
+  if (!isIdea && r.follow_up_title && r.follow_up_date && /^\d{4}-\d{2}-\d{2}$/.test(r.follow_up_date)) {
     recs.push({ task: { title: r.follow_up_title, kind: 'task', domain_id: domain.id, due: r.follow_up_date } });
   }
   return recs;
