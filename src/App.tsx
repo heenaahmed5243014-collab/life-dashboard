@@ -11,6 +11,7 @@ import RoutineScreen from './screens/RoutineScreen';
 import RoutinesScreen from './screens/RoutinesScreen';
 import AreasScreen from './screens/AreasScreen';
 import AreaScreen from './screens/AreaScreen';
+import ReturnsScreen from './screens/ReturnsScreen';
 import AccountScreen from './screens/AccountScreen';
 import NotConnected from './screens/NotConnected';
 import QuickAddHost from './components/QuickAdd';
@@ -33,6 +34,7 @@ function Page() {
     case 'routines': return <RoutinesScreen />;
     case 'areas': return <AreasScreen />;
     case 'area': return <AreaScreen key={route.id} id={route.id} />;
+    case 'returns': return <ReturnsScreen />;
     case 'item': return <ItemScreen key={route.id} id={route.id} />;
     case 'routine': return <RoutineScreen key={route.id} id={route.id} />;
   }

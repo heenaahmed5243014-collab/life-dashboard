@@ -1,6 +1,6 @@
 // Scope section 3, "Areas": one tile per area. Tap one to see what sits under it.
 import { useStore } from '../store';
-import { areaConfig, isReturn } from '../areas';
+import { areaConfig, groupOf, isReturn } from '../areas';
 import { go } from '../router';
 import { whenText } from '../components/ItemRow';
 import Nav from '../components/Nav';
@@ -17,12 +17,13 @@ export default function AreasScreen() {
       <main className="page">
         <header className="page-head">
           <h1 className="h1">Areas</h1>
-          <p className="muted lead">Everything lives in one area. Projects hold tasks; routines and ideas sit directly under the area.</p>
+          <p className="muted lead">Each area has its own groups, like Returns or Client work. Tap an area to open it.</p>
         </header>
 
         <div className="area-grid">
           {store.domains.map((d) => {
             const mine = open.filter((t) => t.domain_id === d.id);
+            const subs = store.subcategoriesOf(d.id);
             const projects = mine.filter((t) => t.kind === 'project').length;
             const returns = mine.filter((t) => t.kind === 'task' && !t.project_id && isReturn(t)).length;
             const tasks = mine.filter((t) => t.kind === 'task').length - returns;
@@ -43,6 +44,11 @@ export default function AreasScreen() {
                   <Chevron />
                 </span>
                 <span className="area-counts">{parts.length ? parts.join(' · ') : 'Nothing here yet'}</span>
+                {subs.length > 0 && (
+                  <span className="area-subs">
+                    {subs.map((x) => <span key={x.id} className="pill">{x.name} · {mine.filter((t) => !t.project_id && groupOf(t, subs)?.id === x.id).length}</span>)}
+                  </span>
+                )}
                 {next && <span className="area-next">Next: {next.title} · {whenText(next)}</span>}
               </button>
             );

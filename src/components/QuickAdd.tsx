@@ -18,7 +18,7 @@ import { areaConfig } from '../areas';
 import { Bell, Close, Mic, Sparkle } from '../icons';
 
 type Kind = TaskKind | 'routine';
-interface OpenOptions { domainId?: string | null; kind?: Kind; date?: Day; time?: string }
+interface OpenOptions { domainId?: string | null; kind?: Kind; date?: Day; time?: string; subcategoryId?: string | null }
 
 export function openQuickAdd(opts: OpenOptions = {}) {
   dispatchEvent(new CustomEvent('ld:quickadd', { detail: opts }));
@@ -73,7 +73,12 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
   const areaRow = useRef<HTMLDivElement>(null);
   const spokenBase = useRef('');
   const [text, setText] = useState('');
-  const [domainId, setDomainId] = useState<string | null>(options.domainId ?? null);
+  const [domainId, setDomainIdState] = useState<string | null>(options.domainId ?? null);
+  const [subId, setSubId] = useState<string | null>(options.subcategoryId ?? null);
+  const setDomainId = (id: string | null) => {
+    setDomainIdState(id);
+    if (id !== domainId) setSubId(null);
+  };
   const [kind, setKind] = useState<Kind>(options.kind ?? 'task');
   const [kindPicked, setKindPicked] = useState(Boolean(options.kind));
   const [due, setDue] = useState<Day | null>(options.date ?? null);
@@ -119,7 +124,8 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     setDays([]);
     setKind(options.kind ?? 'task');
     setKindPicked(Boolean(options.kind));
-    setDomainId(options.domainId ?? null);
+    setDomainIdState(options.domainId ?? null);
+    setSubId(options.subcategoryId ?? null);
     setJustSaved(savedIds);
     areaRow.current?.scrollTo({ left: 0 });
     input.current?.focus();
@@ -142,6 +148,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     const task = store.addTask({
       title,
       kind,
+      subcategory_id: subId,
       stage: kind === 'project' && stages ? stages[0] : null,
       domain_id: domain,
       due: date,
@@ -175,7 +182,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
         } else {
           // A follow-up sits inside the project it came from.
           const parent = i > 0 && 'task' in recs[0] && recs[0].task.kind === 'project' ? ids[0] : null;
-          const task = store.addTask(parent ? { ...rec.task, project_id: parent } : rec.task);
+          const task = store.addTask({ ...(parent ? { ...rec.task, project_id: parent } : rec.task), subcategory_id: i === 0 && subId ? subId : rec.task.subcategory_id ?? null });
           ids.push(task.id);
           if (i === 0) first = `Saved to ${store.domain(task.domain_id).short_name}`;
         }
@@ -286,6 +293,17 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                   ))}
                 </div>
               </Row>
+              {domainId && store.subcategoriesOf(domainId).length > 0 && (
+                <Row label="Group">
+                  <div className="qa-row" role="radiogroup" aria-label="Sub-category">
+                    {store.subcategoriesOf(domainId).map((x) => (
+                      <button key={x.id} type="button" role="radio" aria-checked={subId === x.id} className={subId === x.id ? 'chip on' : 'chip'} onClick={() => setSubId(subId === x.id ? null : x.id)}>
+                        {x.name}
+                      </button>
+                    ))}
+                  </div>
+                </Row>
+              )}
               <Row label="Type">
                 <div className="qa-row" role="radiogroup" aria-label="Type">
                   {(['task', 'project', 'routine', 'note', 'idea', 'goal'] as Kind[]).map((k) => (

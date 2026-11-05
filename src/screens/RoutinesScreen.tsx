@@ -1,6 +1,7 @@
 // Matches the "Routines" design: one card per routine, streak, week grid, tick button.
 import { useStore } from '../store';
 import { routineStats } from '../routines';
+import ChunkTicks from '../components/ChunkTicks';
 import { daysLabel, longDate, today, WEEKDAY_LETTER } from '../dates';
 import { go } from '../router';
 import Nav from '../components/Nav';
@@ -57,7 +58,9 @@ export default function RoutinesScreen() {
                 ))}
               </div>
 
-              {s.dueToday ? (
+              {s.dueToday && r.chunks > 1 ? (
+                <ChunkTicks routine={r} day={now} />
+              ) : s.dueToday ? (
                 <button
                   type="button"
                   className={s.doneToday ? 'pill-btn on' : 'pill-btn'}

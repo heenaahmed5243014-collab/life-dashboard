@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Domain, Routine, Task, Tick } from './types';
+import type { Account, Balance, Domain, Routine, Subcategory, Task, Weight } from './types';
 import { today } from './dates';
 import { useToast } from './toast';
 
@@ -19,7 +19,22 @@ interface Store extends Snapshot {
   updateTask(id: string, changes: Partial<Task>): void;
   addRoutine(r: NewRoutine): Routine;
   updateRoutine(id: string, changes: Partial<Routine>): void;
+  /** How many chunks of a routine are done on a day (0 if none). */
+  tickCount(routineId: string, day: string): number;
+  setTickCount(routineId: string, day: string, count: number): void;
+  /** For one-chunk routines: tick or untick the whole day. */
   toggleTick(routineId: string, day: string): void;
+  subcategoriesOf(domainId: string): Subcategory[];
+  addSubcategory(domainId: string, name: string): Subcategory;
+  updateSubcategory(id: string, changes: Partial<Subcategory>): void;
+  removeSubcategory(id: string): void;
+  addAccount(name: string, isDebt: boolean): Account;
+  updateAccount(id: string, changes: Partial<Account>): void;
+  setBalance(b: Balance): void;
+  setWeight(w: Weight): void;
+  uploadQr(task: Task, file: File): Promise<void>;
+  removeQr(task: Task): void;
+  qrUrl(path: string): Promise<string>;
   reload(): void;
 }
 
@@ -72,14 +87,14 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
     if (!data) return null;
     const byId = new Map(data.domains.map((d) => [d.id, d]));
     const inbox = data.domains.find((d) => d.is_inbox) ?? data.domains[0] ?? FALLBACK;
-    return {
+    const api: Store = {
       ...data,
       inbox,
       domain: (id) => byId.get(id) ?? FALLBACK,
       addTask(fields) {
         const stamp = nowIso();
         const t: Task = {
-          id: crypto.randomUUID(), kind: 'task', project_id: null, due: null, due_time: null, remind_at: null, minutes: null, energy: null, step: null, starred: false, status: 'open', stage: null, notes: '',
+          id: crypto.randomUUID(), kind: 'task', project_id: null, due: null, due_time: null, remind_at: null, minutes: null, energy: null, step: null, starred: false, drop_off: null, qr_path: null, subcategory_id: null, status: 'open', stage: null, notes: '',
           created_at: stamp, touched_at: stamp, closed_at: null, ...fields,
         };
         setData((d) => d && { ...d, tasks: [...d.tasks, t] });
@@ -92,7 +107,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         save(backend.updateTask(id, c));
       },
       addRoutine(fields) {
-        const r: Routine = { id: crypto.randomUUID(), time_of_day: 'day', active: true, created_at: nowIso(), ...fields };
+        const r: Routine = { id: crypto.randomUUID(), time_of_day: 'day', active: true, created_at: nowIso(), chunks: 1, chunk_label: null, ...fields };
         setData((d) => d && { ...d, routines: [...d.routines, r] });
         save(backend.insertRoutine(r));
         return r;
@@ -104,17 +119,87 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         });
         save(backend.updateRoutine(id, changes));
       },
-      toggleTick(routineId, day) {
-        const tick: Tick = { routine_id: routineId, day };
-        const has = data.ticks.some((t) => t.routine_id === routineId && t.day === day);
+      tickCount(routineId, day) {
+        return data.ticks.find((t) => t.routine_id === routineId && t.day === day)?.count ?? 0;
+      },
+      setTickCount(routineId, day, count) {
         setData((d) => d && {
           ...d,
-          ticks: has ? d.ticks.filter((t) => !(t.routine_id === routineId && t.day === day)) : [...d.ticks, tick],
+          ticks: [
+            ...d.ticks.filter((t) => !(t.routine_id === routineId && t.day === day)),
+            ...(count > 0 ? [{ routine_id: routineId, day, count }] : []),
+          ],
         });
-        save(has ? backend.removeTick(tick) : backend.addTick(tick));
+        save(backend.setTick(routineId, day, count));
+      },
+      toggleTick(routineId, day) {
+        const r = data.routines.find((x) => x.id === routineId);
+        const full = r?.chunks ?? 1;
+        const has = data.ticks.find((t) => t.routine_id === routineId && t.day === day)?.count ?? 0;
+        api.setTickCount(routineId, day, has >= full ? 0 : full);
+      },
+      subcategoriesOf(domainId) {
+        return data.subcategories.filter((x) => x.domain_id === domainId).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+      },
+      addSubcategory(domainId, name) {
+        const sort = Math.max(0, ...data.subcategories.filter((x) => x.domain_id === domainId).map((x) => x.sort)) + 1;
+        const x: Subcategory = { id: crypto.randomUUID(), domain_id: domainId, name: name.trim(), note: '', sort };
+        setData((d) => d && { ...d, subcategories: [...d.subcategories, x] });
+        save(backend.insertSubcategory(x));
+        return x;
+      },
+      updateSubcategory(id, changes) {
+        setData((d) => d && { ...d, subcategories: d.subcategories.map((x) => (x.id === id ? { ...x, ...changes } : x)) });
+        save(backend.updateSubcategory(id, changes));
+      },
+      removeSubcategory(id) {
+        // Items in it stay in the area, just without a sub-category.
+        setData((d) => d && {
+          ...d,
+          subcategories: d.subcategories.filter((x) => x.id !== id),
+          tasks: d.tasks.map((t) => (t.subcategory_id === id ? { ...t, subcategory_id: null } : t)),
+        });
+        save(backend.deleteSubcategory(id));
+      },
+      addAccount(name, isDebt) {
+        const a: Account = { id: crypto.randomUUID(), name: name.trim(), is_debt: isDebt, active: true, sort: data.accounts.length + 1 };
+        setData((d) => d && { ...d, accounts: [...d.accounts, a] });
+        save(backend.insertAccount(a));
+        return a;
+      },
+      updateAccount(id, changes) {
+        setData((d) => d && { ...d, accounts: d.accounts.map((a) => (a.id === id ? { ...a, ...changes } : a)) });
+        save(backend.updateAccount(id, changes));
+      },
+      setBalance(b) {
+        setData((d) => d && {
+          ...d,
+          balances: [...d.balances.filter((x) => !(x.account_id === b.account_id && x.month === b.month)), b],
+        });
+        save(backend.setBalance(b));
+      },
+      setWeight(w) {
+        setData((d) => d && { ...d, weights: [...d.weights.filter((x) => x.day !== w.day), w].sort((a, b) => a.day.localeCompare(b.day)) });
+        save(backend.setWeight(w));
+      },
+      async uploadQr(task, file) {
+        const old = task.qr_path;
+        const path = await backend.uploadQr(task.id, file);
+        api.updateTask(task.id, { qr_path: path });
+        if (old) backend.removeQr(old).catch(() => {});
+      },
+      removeQr(task) {
+        if (!task.qr_path) return;
+        const old = task.qr_path;
+        api.updateTask(task.id, { qr_path: null });
+        backend.removeQr(old).catch(() => {});
+      },
+      qrUrl(path) {
+        return backend.qrUrl(path);
       },
       reload,
     };
+    return api;
   }, [data, backend, save, reload]);
 
   if (loadError && !data) {

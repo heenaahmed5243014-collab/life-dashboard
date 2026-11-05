@@ -4,7 +4,10 @@ import type { Energy, Task, TaskKind } from '../types';
 import { addDays, dueLabel, hhmm, reminderAt, today } from '../dates';
 import { Bell, Star } from '../icons';
 import { cheer } from '../cheers';
-import { areaConfig } from '../areas';
+import { allReturns, areaConfig } from '../areas';
+import { QrThumb, QrUpload, QrViewer } from '../components/Qr';
+
+const DROP_OFFS = ['Post Office', 'InPost locker', 'In store', 'Courier collection'];
 import { back, go } from '../router';
 import { useToast } from '../toast';
 import Header from '../components/Header';
@@ -41,6 +44,9 @@ function ItemDetail({ task }: { task: Task }) {
   const save = (changes: Partial<Task>) => store.updateTask(task.id, changes);
   const before = { status: task.status, closed_at: task.closed_at, due: task.due, remind_at: task.remind_at };
   const isOpen = task.status === 'open';
+  const subs = store.subcategoriesOf(task.domain_id);
+  const isReturnItem = task.kind === 'task' && allReturns([{ ...task, status: 'open' }], store.subcategories).length > 0;
+  const [showQr, setShowQr] = useState(false);
   const stages = areaConfig(store.domain(task.domain_id)).stages;
 
   const close = (status: 'done' | 'not_doing') => {
@@ -82,9 +88,47 @@ function ItemDetail({ task }: { task: Task }) {
           </div>
         )}
 
-        <FieldBlock label="Domain">
-          <DomainPicker value={task.domain_id} onChange={(domain_id) => save({ domain_id })} />
+        <FieldBlock label="Area">
+          <DomainPicker value={task.domain_id} onChange={(domain_id) => save(domain_id === task.domain_id ? {} : { domain_id, subcategory_id: null })} />
         </FieldBlock>
+
+        {subs.length > 0 && (
+          <FieldBlock label="Group">
+            <div className="chips" role="radiogroup" aria-label="Sub-category">
+              {subs.map((x) => (
+                <button key={x.id} type="button" role="radio" aria-checked={task.subcategory_id === x.id} className={task.subcategory_id === x.id ? 'chip on' : 'chip'} onClick={() => save({ subcategory_id: task.subcategory_id === x.id ? null : x.id })}>
+                  {x.name}
+                </button>
+              ))}
+            </div>
+          </FieldBlock>
+        )}
+
+        {isReturnItem && (
+          <>
+            <FieldBlock label="Drop-off">
+              <div className="chips" role="radiogroup" aria-label="Drop-off">
+                {DROP_OFFS.map((o) => (
+                  <button key={o} type="button" role="radio" aria-checked={task.drop_off === o} className={task.drop_off === o ? 'chip on' : 'chip'} onClick={() => save({ drop_off: task.drop_off === o ? null : o })}>
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </FieldBlock>
+            <FieldBlock label="QR code">
+              {task.qr_path ? (
+                <div className="qr-row">
+                  <QrThumb task={task} />
+                  <button type="button" className="btn primary small" onClick={() => setShowQr(true)}>Show QR</button>
+                  <QrUpload task={task} label="Replace" />
+                  <button type="button" className="link-btn quiet" onClick={() => store.removeQr(task)}>Remove</button>
+                </div>
+              ) : (
+                <QrUpload task={task} />
+              )}
+            </FieldBlock>
+          </>
+        )}
 
         {task.kind === 'project' && stages && (
           <FieldBlock label="Stage">
@@ -247,6 +291,7 @@ function ItemDetail({ task }: { task: Task }) {
           </div>
         </div>
       )}
+      {showQr && <QrViewer task={task} onClose={() => setShowQr(false)} onDone={() => { setShowQr(false); close('done'); }} />}
     </>
   );
 }

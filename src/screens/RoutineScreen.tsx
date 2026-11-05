@@ -6,6 +6,7 @@ import { back } from '../router';
 import { useToast } from '../toast';
 import Header from '../components/Header';
 import { DaysPicker, DomainPicker, FieldBlock, Segmented } from '../components/Fields';
+import ChunkTicks from '../components/ChunkTicks';
 
 export default function RoutineScreen({ id }: { id: string }) {
   const store = useStore();
@@ -27,7 +28,9 @@ function RoutineDetail({ routine }: { routine: Routine }) {
   const now = today();
   const [title, setTitle] = useState(routine.title);
   useEffect(() => setTitle(routine.title), [routine.title]);
-  const doneToday = store.ticks.some((t) => t.routine_id === routine.id && t.day === now);
+  const [label, setLabel] = useState(routine.chunk_label ?? '');
+  useEffect(() => setLabel(routine.chunk_label ?? ''), [routine.chunk_label]);
+  const doneToday = store.tickCount(routine.id, now) >= routine.chunks;
   const dueToday = routine.days.includes(weekday(now));
   const save = (changes: Partial<Routine>) => store.updateRoutine(routine.id, changes);
 
@@ -58,6 +61,29 @@ function RoutineDetail({ routine }: { routine: Routine }) {
           <DaysPicker value={routine.days} onChange={(days) => days.length > 0 && save({ days })} />
         </FieldBlock>
 
+        <FieldBlock label="Split into chunks">
+          <div className="chips" role="radiogroup" aria-label="Number of chunks">
+            {[1, 2, 3, 4].map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={routine.chunks === n} className={routine.chunks === n ? 'chip on' : 'chip'} onClick={() => save({ chunks: n })}>
+                {n === 1 ? 'No split' : `${n} chunks`}
+              </button>
+            ))}
+          </div>
+          {routine.chunks > 1 && (
+            <label className="card field chunk-label-field">
+              <span className="field-label">Each chunk is… (e.g. 10k, 1 litre, 15 min)</span>
+              <input
+                className="step-input"
+                value={label}
+                placeholder="10k"
+                onChange={(e) => setLabel(e.target.value)}
+                onBlur={() => label.trim() !== (routine.chunk_label ?? '') && save({ chunk_label: label.trim() || null })}
+              />
+            </label>
+          )}
+          {routine.chunks > 1 && <p className="note">Your streak counts a day once all {routine.chunks} are ticked.</p>}
+        </FieldBlock>
+
         <FieldBlock label="Time of day">
           <Segmented<TimeOfDay>
             label="Time of day"
@@ -79,9 +105,13 @@ function RoutineDetail({ routine }: { routine: Routine }) {
       </main>
       {dueToday && (
         <div className="bottom-bar">
-          <button type="button" className={doneToday ? 'secondary' : 'primary'} onClick={() => store.toggleTick(routine.id, now)}>
-            {doneToday ? 'Done today · tap to undo' : 'Mark done for today'}
-          </button>
+          {routine.chunks > 1 ? (
+            <ChunkTicks routine={routine} day={now} />
+          ) : (
+            <button type="button" className={doneToday ? 'secondary' : 'primary'} onClick={() => store.toggleTick(routine.id, now)}>
+              {doneToday ? 'Done today · tap to undo' : 'Mark done for today'}
+            </button>
+          )}
         </div>
       )}
     </>

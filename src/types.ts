@@ -30,6 +30,9 @@ export interface Task {
   energy: Energy | null;
   step: string | null; // the tiny first step
   starred: boolean; // pinned to Top 3
+  drop_off: string | null; // returns: Post Office, InPost locker...
+  qr_path: string | null; // returns: private QR screenshot in storage
+  subcategory_id: string | null;
   notes: string;
   created_at: string;
   touched_at: string;
@@ -43,12 +46,42 @@ export interface Routine {
   days: number[]; // 0 = Monday ... 6 = Sunday
   time_of_day: TimeOfDay;
   active: boolean;
+  chunks: number; // e.g. 2 for steps in 10k chunks
+  chunk_label: string | null; // e.g. "10k"
   created_at: string;
 }
 
 export interface Tick {
   routine_id: string;
   day: Day;
+  count: number; // how many chunks are done that day
+}
+
+export interface Subcategory {
+  id: string;
+  domain_id: string;
+  name: string;
+  note: string;
+  sort: number;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  is_debt: boolean;
+  active: boolean;
+  sort: number;
+}
+
+export interface Balance {
+  account_id: string;
+  month: Day; // first of the month
+  amount: number;
+}
+
+export interface Weight {
+  day: Day;
+  lb: number;
 }
 
 /** The fixed domains, plus Inbox. Created on first sign-in. */
@@ -56,6 +89,7 @@ export interface Tick {
 export const REMOVED_DOMAINS = ['Concierge job'];
 
 export const DEFAULT_DOMAINS: Omit<Domain, 'id'>[] = [
+  { name: 'Work', short_name: 'Work', color: '#3F6FB5', is_inbox: false, sort: 1 },
   { name: 'Job search', short_name: 'Job search', color: '#A5620B', is_inbox: false, sort: 2 },
   { name: 'Made in Heaven Visuals', short_name: 'Made in Heaven', color: '#C2366F', is_inbox: false, sort: 3 },
   { name: 'Side ideas', short_name: 'Side ideas', color: '#6A4BC4', is_inbox: false, sort: 4 },

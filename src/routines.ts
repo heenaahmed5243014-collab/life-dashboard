@@ -5,7 +5,7 @@ import { addDays, toDay, weekday, WEEKDAY_SHORT, type Day } from './dates';
 
 export const TICK_HISTORY_DAYS = 180;
 
-export type DayState = 'done' | 'today' | 'due' | 'missed' | 'off';
+export type DayState = 'done' | 'partial' | 'today' | 'due' | 'missed' | 'off';
 
 export interface RoutineStats {
   current: number;
@@ -17,7 +17,11 @@ export interface RoutineStats {
 }
 
 export function routineStats(r: Routine, ticks: Tick[], now: Day): RoutineStats {
-  const ticked = new Set(ticks.filter((t) => t.routine_id === r.id).map((t) => t.day));
+  const full = r.chunks ?? 1;
+  const mine = ticks.filter((t) => t.routine_id === r.id);
+  // A day only counts once every chunk is done (e.g. both 10ks).
+  const ticked = new Set(mine.filter((t) => (t.count ?? 1) >= full).map((t) => t.day));
+  const partial = new Set(mine.filter((t) => (t.count ?? 1) < full).map((t) => t.day));
   const isDue = (d: Day) => r.days.includes(weekday(d));
   const created = toDay(new Date(r.created_at));
   const start = [created, addDays(now, -TICK_HISTORY_DAYS)].sort().pop()!;
@@ -44,6 +48,7 @@ export function routineStats(r: Routine, ticks: Tick[], now: Day): RoutineStats 
     const day = addDays(monday, i);
     let state: DayState;
     if (ticked.has(day)) state = 'done';
+    else if (partial.has(day)) state = 'partial';
     else if (!isDue(day)) state = 'off';
     else if (day === now) state = 'today';
     else if (day < now) state = day < created ? 'off' : 'missed';

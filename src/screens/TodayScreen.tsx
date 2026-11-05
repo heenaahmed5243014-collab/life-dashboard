@@ -14,6 +14,9 @@ import { useToast } from '../toast';
 import { cheer } from '../cheers';
 import { Check, Person, Plus } from '../icons';
 import { routineStats } from '../routines';
+import ChunkTicks from '../components/ChunkTicks';
+import MoneyCard from '../components/MoneyCard';
+import WeightCard from '../components/WeightCard';
 
 const NAME = 'Heena';
 const CAP = 7; // lines shown in the lists before "Show more"
@@ -87,7 +90,7 @@ export default function TodayScreen() {
                 <div className="list">{plan.anytime.map((t) => <ItemRow key={t.id} task={t} />)}</div>
               </section>
             )}
-            <PlanSection day={day} isToday={false} items={plan.timed} />
+            <PlanSection day={day} isToday={false} items={plan.timed} tray={plan.anytime} />
             {plan.routines.length > 0 && (
               <section className="section">
                 <div className="between"><h2 className="h2">Routine</h2><span className="count">{plan.routines.length}</span></div>
@@ -111,14 +114,14 @@ export default function TodayScreen() {
   );
 }
 
-function PlanSection({ day, isToday, items }: { day: Day; isToday: boolean; items: Task[] }) {
+function PlanSection({ day, isToday, items, tray }: { day: Day; isToday: boolean; items: Task[]; tray: Task[] }) {
   return (
     <section className="section">
       <div className="between">
         <h2 className="h2">{isToday ? 'Today’s plan' : 'Plan'}</h2>
         <span className="note">Tap an hour to add</span>
       </div>
-      <Planner day={day} isToday={isToday} items={items} />
+      <Planner day={day} isToday={isToday} items={items} tray={tray} />
     </section>
   );
 }
@@ -226,29 +229,37 @@ function TodayBody() {
           <div className="between"><h2 className="h2">Routine</h2><span className="count">{routinesDone}/{data.routines.length}</span></div>
           <div className="progress"><div className="bar"><i style={{ width: `${(routinesDone / data.routines.length) * 100}%` }} /></div></div>
           <ul className="check-list">
-            {data.routines.map(({ routine, done }) => {
+            {data.routines.map(({ routine, done, count }) => {
               const s = routineStats(routine, store.ticks, now);
+              const chunked = routine.chunks > 1;
               return (
-                <li key={routine.id} className={done ? 'check-row done' : 'check-row'}>
-                  <button
-                    type="button"
-                    className="tick"
-                    aria-pressed={done}
-                    aria-label={`${done ? 'Untick' : 'Tick'} ${routine.title}`}
-                    onClick={() => {
-                      store.toggleTick(routine.id, now);
-                      if (!done) toast({ message: cheer() });
-                    }}
-                  >
-                    <span className="box"><Check size={16} /></span>
-                  </button>
+                <li key={routine.id} className={`check-row${done ? ' done' : ''}${chunked ? ' chunked' : ''}`}>
+                  {!chunked && (
+                    <button
+                      type="button"
+                      className="tick"
+                      aria-pressed={done}
+                      aria-label={`${done ? 'Untick' : 'Tick'} ${routine.title}`}
+                      onClick={() => {
+                        store.toggleTick(routine.id, now);
+                        if (!done) toast({ message: cheer() });
+                      }}
+                    >
+                      <span className="box"><Check size={16} /></span>
+                    </button>
+                  )}
                   <button type="button" className="row-body" onClick={() => go(`/routine/${routine.id}`)}>
-                    <span className="row-title">{routine.title}</span>
+                    <span className="between">
+                      <span className="row-title">{routine.title}</span>
+                      {chunked && <span className="count">{count} of {routine.chunks}</span>}
+                    </span>
                     <span className="meta">
                       <span className="tag t-violet">{TIME_LABEL[routine.time_of_day]}</span>
                       {s.current > 1 && <span className="tag t-sage">🔥 {s.current} day streak</span>}
+                      {chunked && !done && s.current > 0 && <span className="tag">Finish all {routine.chunks} to keep it</span>}
                     </span>
                   </button>
+                  {chunked && <ChunkTicks routine={routine} day={now} />}
                 </li>
               );
             })}
@@ -261,7 +272,7 @@ function TodayBody() {
       {inbox.length > 0 && <ListSection title="Inbox · needs an area" tasks={inbox} />}
       {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
 
-      <PlanSection day={now} isToday items={plan.timed} />
+      <PlanSection day={now} isToday items={plan.timed} tray={[...data.top, ...data.also].filter((t) => !t.due_time && t.kind !== 'project')} />
 
       <div className="card">
         <span className="eyebrow">Do this next</span>
@@ -275,6 +286,9 @@ function TodayBody() {
           </div>
         )}
       </div>
+
+      <MoneyCard />
+      <WeightCard />
 
       <div className="calm">{evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
     </>

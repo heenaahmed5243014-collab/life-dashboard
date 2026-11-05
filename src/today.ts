@@ -5,6 +5,7 @@ import { addDays, weekday, type Day } from './dates';
 export interface TodayRoutine {
   routine: Routine;
   done: boolean;
+  count: number; // chunks done today
 }
 
 export interface TodayView {
@@ -31,12 +32,15 @@ export function buildToday(tasks: Task[], routines: Routine[], ticks: Tick[], in
   const inbox = open.filter((t) => t.domain_id === inboxId && t.kind !== 'note' && t.kind !== 'goal').sort(byDue);
 
   const dow = weekday(now);
-  const ticked = new Set(ticks.filter((t) => t.day === now).map((t) => t.routine_id));
+  const counts = new Map(ticks.filter((t) => t.day === now).map((t) => [t.routine_id, t.count ?? 1] as const));
   const order = { commute: 0, day: 1, evening: 2 };
   const todays = routines
     .filter((r) => r.active && r.days.includes(dow))
     .sort((a, b) => order[a.time_of_day] - order[b.time_of_day] || a.created_at.localeCompare(b.created_at))
-    .map((routine) => ({ routine, done: ticked.has(routine.id) }));
+    .map((routine) => {
+      const count = counts.get(routine.id) ?? 0;
+      return { routine, count, done: count >= (routine.chunks ?? 1) };
+    });
 
   // Starred tasks go to the top of Top 3; the rest is filled by what's due.
   const starred = open.filter((t) => t.starred && t.kind !== 'idea' && t.kind !== 'note' && t.kind !== 'goal').sort(byDue);
@@ -63,12 +67,15 @@ export interface DayPlan {
 export function buildDay(tasks: Task[], routines: Routine[], ticks: Tick[], day: Day): DayPlan {
   const open = tasks.filter((t) => t.status === 'open' && t.kind !== 'idea' && t.kind !== 'note' && t.kind !== 'goal' && t.due === day);
   const dow = weekday(day);
-  const ticked = new Set(ticks.filter((t) => t.day === day).map((t) => t.routine_id));
+  const counts = new Map(ticks.filter((t) => t.day === day).map((t) => [t.routine_id, t.count ?? 1] as const));
   return {
     anytime: open.filter((t) => !t.due_time).sort(byDue),
     timed: open.filter((t) => t.due_time).sort(byDue),
     routines: routines
       .filter((r) => r.active && r.days.includes(dow))
-      .map((routine) => ({ routine, done: ticked.has(routine.id) })),
+      .map((routine) => {
+        const count = counts.get(routine.id) ?? 0;
+        return { routine, count, done: count >= (routine.chunks ?? 1) };
+      }),
   };
 }
