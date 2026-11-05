@@ -128,6 +128,7 @@ export function demoBackend(): Backend {
     task('Amira wedding shoot', 'Made in Heaven', null, { kind: 'project', stage: 'Editing' }),
     task('Bedroom makeover', 'Home', null, { kind: 'project' }),
     task('Sort Oyster connector', 'Home', addDays(now, -5), { minutes: 10, energy: 'low', step: 'Find what you need and do just the first step.' }),
+    task('TK Maxx (£27)', 'Home', null, { minutes: 10, energy: 'low', notes: 'Return window: check the order email for the last day.', step: 'Find the receipt. TK Maxx returns go back in store.' }),
     task('Return cracked iPad mini', 'Home', null, { minutes: 20, energy: 'mid', step: 'Take photos of the crack first, then start the return.' }),
     task('Edit Tisha’s wedding photos', 'Made in Heaven', null, { minutes: 90, energy: 'high', step: 'Open the folder and cull the first 50 photos. That’s it.', starred: true }),
     task('120lb', 'Home', null, { kind: 'goal' }),

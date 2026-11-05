@@ -1,6 +1,6 @@
 // Scope section 3, "Areas": one tile per area. Tap one to see what sits under it.
 import { useStore } from '../store';
-import { areaConfig } from '../areas';
+import { areaConfig, isReturn } from '../areas';
 import { go } from '../router';
 import { whenText } from '../components/ItemRow';
 import Nav from '../components/Nav';
@@ -24,12 +24,14 @@ export default function AreasScreen() {
           {store.domains.map((d) => {
             const mine = open.filter((t) => t.domain_id === d.id);
             const projects = mine.filter((t) => t.kind === 'project').length;
-            const tasks = mine.filter((t) => t.kind === 'task').length;
+            const returns = mine.filter((t) => t.kind === 'task' && !t.project_id && isReturn(t)).length;
+            const tasks = mine.filter((t) => t.kind === 'task').length - returns;
             const ideas = mine.filter((t) => t.kind === 'idea').length;
             const routines = store.routines.filter((r) => r.domain_id === d.id).length;
             const next = mine.filter((t) => t.kind === 'task' && t.due).sort(byDue)[0];
             const parts = [
               projects && `${projects} ${projects === 1 ? areaConfig(d).one : areaConfig(d).many}`,
+              returns && `${returns} return${returns === 1 ? '' : 's'}`,
               tasks && `${tasks} task${tasks === 1 ? '' : 's'}`,
               routines && `${routines} routine${routines === 1 ? '' : 's'}`,
               ideas && `${ideas} idea${ideas === 1 ? '' : 's'}`,

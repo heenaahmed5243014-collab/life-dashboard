@@ -1,7 +1,7 @@
 // One area: its projects (with stage where the area tracks one), loose tasks, routines, ideas and notes.
 import type { ReactNode } from 'react';
 import { useStore } from '../store';
-import { areaConfig, isFinalStage } from '../areas';
+import { areaConfig, isFinalStage, isReturn } from '../areas';
 import { daysLabel } from '../dates';
 import { go } from '../router';
 import { byDue } from '../today';
@@ -27,7 +27,9 @@ export default function AreaScreen({ id }: { id: string }) {
   const projects = open.filter((t) => t.kind === 'project').sort(byDue);
   const active = projects.filter((p) => !isFinalStage(p.stage));
   const finished = projects.filter((p) => isFinalStage(p.stage));
-  const loose = open.filter((t) => t.kind === 'task' && !t.project_id).sort(byDue);
+  const looseAll = open.filter((t) => t.kind === 'task' && !t.project_id).sort(byDue);
+  const returns = looseAll.filter(isReturn);
+  const loose = looseAll.filter((t) => !isReturn(t));
   const ideas = open.filter((t) => t.kind === 'idea');
   const notes = open.filter((t) => t.kind === 'note');
   const goals = open.filter((t) => t.kind === 'goal');
@@ -63,6 +65,14 @@ export default function AreaScreen({ id }: { id: string }) {
           {active.length > 0 && <div className="stack">{active.map(projectCard)}</div>}
           {cfg.stages && active.length > 0 && <p className="muted small stage-key">Stages: {cfg.stages.join(' → ')}</p>}
         </Block>
+
+        {returns.length > 0 && (
+          <section className="section">
+            <div className="between"><h2 className="label">Returns</h2><span className="count">{returns.length} left</span></div>
+            <p className="note">Do first. Print all labels in one go, then one post office trip.</p>
+            <div className="list">{returns.map((t) => <ItemRow key={t.id} task={t} />)}</div>
+          </section>
+        )}
 
         <Block title="Tasks" empty="No loose tasks.">
           {loose.length > 0 && <div className="list">{loose.map((t) => <ItemRow key={t.id} task={t} />)}</div>}
