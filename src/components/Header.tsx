@@ -5,7 +5,7 @@ import { openQuickAdd } from './QuickAdd';
 
 export default function Header({ title, close = false, right }: { title: string; close?: boolean; right?: ReactNode }) {
   return (
-    <header className="bar">
+    <header className="topbar">
       <button type="button" className="round-btn" onClick={back} aria-label={close ? 'Close' : 'Back'}>
         {close ? <Close /> : <BackArrow />}
       </button>

@@ -107,7 +107,7 @@ a { color: var(--accent); }
 .fab:active { background: var(--accent-dark); }
 
 /* Top bar on sub-screens */
-.bar {
+.topbar {
   position: sticky; top: 0; z-index: 5; background: var(--bg);
   padding: calc(12px + env(safe-area-inset-top)) 12px 8px;
   display: grid; grid-template-columns: 56px 1fr 56px; align-items: center;
