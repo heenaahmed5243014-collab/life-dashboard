@@ -253,7 +253,6 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
               rows={3}
               value={text}
               enterKeyHint="done"
-              placeholder="Email Bulletproof back tomorrow at 10am"
               onChange={(e) => { setText(e.target.value); setJustSaved([]); }}
               onKeyDown={onKeyDown}
             />
