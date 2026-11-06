@@ -935,3 +935,25 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .month-head-actions { margin-left: auto; display: inline-flex; gap: 14px; align-items: center; }
 .month-day.other .month-num { color: var(--muted); opacity: 0.5; }
 .month-day.past:not(.on) .month-num { color: var(--muted); }
+
+/* Work mode */
+.workmode-bar {
+  position: sticky; top: 0; z-index: 25; display: flex; align-items: center; gap: 8px;
+  background: #2F4E86; color: #fff; font-size: 0.86rem; font-weight: 600;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px));
+}
+.workmode-bar span { flex: 1; min-width: 0; }
+.workmode-bar .link-btn { color: #fff; opacity: 0.85; font-size: 0.84rem; }
+.workmode-off { background: #fff; color: #2F4E86; border: none; border-radius: 99px; padding: 5px 12px; font: inherit; font-weight: 700; font-size: 0.82rem; }
+.head-btns { display: inline-flex; gap: 6px; align-items: center; }
+.workmode-btn.on { background: #2F4E86; color: #fff; }
+.hidden-page { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding-top: 60px; }
+.hidden-icon { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: #E3EAF6; color: #2F4E86; }
+.switch { width: 52px; height: 30px; border-radius: 99px; border: none; background: var(--line); position: relative; padding: 0; flex: none; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.15s ease; }
+.switch.on { background: #2F4E86; }
+.switch.on i { transform: translateX(22px); }
+.check-line { display: flex; gap: 10px; align-items: flex-start; line-height: 2.1; }
+.check-line input[type=checkbox] { width: 20px; height: 20px; margin-top: 6px; flex: none; }
+.time-input { font: inherit; font-size: 16px; margin: 0 6px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .switch i { transition: none; } }

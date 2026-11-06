@@ -22,6 +22,8 @@ import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
 import MirrorCard from '../components/MirrorCard';
 import { dueFollowUps } from '../components/OutreachTab';
+import { WorkModeButton } from '../components/WorkModeBar';
+import { useWorkMode } from '../workmode';
 
 /** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
 function dayPill(title: string): { text: string; cls: string } {
@@ -102,7 +104,10 @@ export default function TodayScreen() {
         <header className="page-head">
           <div className="page-head-row">
             <h1 className="h1">{title}</h1>
-            <button type="button" className="icon-btn" aria-label="Account" onClick={() => go('/account')}><Person /></button>
+            <span className="head-btns">
+              <WorkModeButton />
+              <button type="button" className="icon-btn" aria-label="Account" onClick={() => go('/account')}><Person /></button>
+            </span>
           </div>
           <p className="sub">{longDate(day)}</p>
           <div className="pills">
@@ -278,6 +283,7 @@ function TodayBody() {
   const [expanded, setExpanded] = useState(false);
   const [skip, setSkip] = useState(0);
   const [focus, setFocusState] = useState(readFocus);
+  const work = useWorkMode();
   const setFocus = (on: boolean) => {
     setFocusState(on);
     try { localStorage.setItem(FOCUS_KEY, on ? '1' : '0'); } catch { /* ignore */ }
@@ -454,7 +460,7 @@ function TodayBody() {
         </section>
       )}
 
-      {mirror && <MirrorCard day={now} />}
+      {mirror && !work.active && <MirrorCard day={now} />}
 
       <section className="section">
         <div className="between"><h2 className="h2">Today’s to-dos</h2><span className="count">{also.length}</span></div>
@@ -491,9 +497,13 @@ function TodayBody() {
       {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
 
       <WeekProgress />
-      <MoneyCard />
-      {store.healthReady !== false && <StepsCard />}
-      <WeightCard />
+      {!work.active && (
+        <>
+          <MoneyCard />
+          {store.healthReady !== false && <StepsCard />}
+          <WeightCard />
+        </>
+      )}
 
       <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
     </>

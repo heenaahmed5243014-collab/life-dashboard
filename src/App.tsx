@@ -18,6 +18,9 @@ import AccountScreen from './screens/AccountScreen';
 import NotConnected from './screens/NotConnected';
 import { withOffline } from './offline';
 import SyncBanner from './components/SyncBanner';
+import WorkModeBar from './components/WorkModeBar';
+import HiddenScreen from './screens/HiddenScreen';
+import { useWorkMode } from './workmode';
 import type { Backend } from './backend';
 
 /** The real app for a signed-in user, with offline support. */
@@ -35,6 +38,7 @@ import QuickAddHost from './components/QuickAdd';
 function Screens() {
   return (
     <>
+      <WorkModeBar />
       <Page />
       <QuickAddHost />
     </>
@@ -43,6 +47,8 @@ function Screens() {
 
 function Page() {
   const route = useRoute();
+  const work = useWorkMode();
+  if (work.active && (route.name === 'income' || route.name === 'returns' || route.name === 'steps')) return <HiddenScreen />;
   switch (route.name) {
     case 'today': return <TodayScreen />;
     case 'tasks': return <TasksScreen />;

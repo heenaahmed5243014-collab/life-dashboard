@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { go } from '../router';
+import { useWorkMode } from '../workmode';
 
 type Tab = 'today' | 'areas' | 'tasks' | 'routines' | 'income';
 
@@ -22,9 +23,11 @@ const TABS: { key: Tab; label: string; path: string }[] = [
 ];
 
 export default function Nav({ current }: { current: Tab }) {
+  const work = useWorkMode();
+  const tabs = work.active ? TABS.filter((t) => t.key !== 'income') : TABS;
   return (
     <nav className="nav" aria-label="Main">
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <a
           key={t.key}
           href={'#' + t.path}

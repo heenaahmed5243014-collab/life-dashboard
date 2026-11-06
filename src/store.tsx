@@ -7,6 +7,7 @@ import type { Account, Affirmation, Lead, Balance, Bill, Domain, IncomeSettings,
 import { stepSize } from './steps';
 import { addDays, today, type Day } from './dates';
 import { useToast } from './toast';
+import { useWorkMode } from './workmode';
 
 const nowIso = () => new Date().toISOString();
 
@@ -74,6 +75,7 @@ const FALLBACK: Domain = { id: '', name: 'Unknown', short_name: 'Unknown', color
 
 export function StoreProvider({ backend, children }: { backend: Backend; children: ReactNode }) {
   const toast = useToast();
+  const work = useWorkMode();
   const [data, setData] = useState<Snapshot | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -139,13 +141,32 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
     if (!data) return null;
     const byId = new Map(data.domains.map((d) => [d.id, d]));
     const inbox = data.domains.find((d) => d.is_inbox) ?? data.domains[0] ?? FALLBACK;
+    // Work mode: screens only see the areas chosen to stay visible (saving still uses everything).
+    const shown = work.active
+      ? new Set(data.domains.filter((d) => work.showAreas.includes(d.is_inbox ? 'Inbox' : d.name)).map((d) => d.id))
+      : null;
+    const view: Snapshot = shown
+      ? (() => {
+          const routines = data.routines.filter((r) => shown.has(r.domain_id));
+          const rIds = new Set(routines.map((r) => r.id));
+          return {
+            ...data,
+            domains: data.domains.filter((d) => shown.has(d.id)),
+            tasks: data.tasks.filter((t) => shown.has(t.domain_id)),
+            routines,
+            ticks: data.ticks.filter((t) => rIds.has(t.routine_id)),
+            subcategories: data.subcategories.filter((x) => shown.has(x.domain_id)),
+            leads: (data.leads ?? []).filter((l) => shown.has(l.domain_id)),
+          };
+        })()
+      : data;
     const api: Store = {
-      ...data,
+      ...view,
       steps: data.steps ?? [],
       goals: data.goals ?? [],
       noSpend: data.noSpend ?? [],
       affirmations: data.affirmations ?? [],
-      leads: data.leads ?? [],
+      leads: view.leads ?? [],
       inbox,
       domain: (id) => byId.get(id) ?? FALLBACK,
       addTask(fields) {
@@ -356,7 +377,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       reload,
     };
     return api;
-  }, [data, backend, save, reload, toast]);
+  }, [data, backend, save, reload, toast, work.active, work.showAreas]);
 
   if (loadError && !data) {
     return (
