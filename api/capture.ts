@@ -15,6 +15,7 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_KEY;
 interface CaptureRequest {
   text: string;
   domains: string[]; // the user's domain names, e.g. "Job search"
+  groups?: string[]; // groups inside areas, as "Area > Group", e.g. "Personal & home > Returns"
   today: string; // "2026-11-04" in the user's time zone
   weekday: string; // "Wednesday"
   time: string; // "14:05"
@@ -35,6 +36,8 @@ export interface CaptureResult {
   time_of_day: 'commute' | 'day' | 'evening';
   follow_up_title: string | null;
   follow_up_date: string | null;
+  group: string | null;
+  refund_amount: number | null;
 }
 
 const json = (status: number, body: unknown) =>
@@ -52,11 +55,11 @@ async function isSignedIn(req: Request): Promise<boolean> {
 // Structured-output schema. "Can be empty" is written as anyOf [..., null], the documented form.
 const orNull = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: 'null' }] });
 
-function schema(domains: string[]) {
+function schema(domains: string[], groups: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date'],
+    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date', 'group', 'refund_amount'],
     properties: {
       title: { type: 'string', description: 'Short, clear wording that starts with a verb where it makes sense. No date/time words.' },
       kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea', 'goal'] },
@@ -72,6 +75,10 @@ function schema(domains: string[]) {
       time_of_day: { type: 'string', enum: ['commute', 'day', 'evening'] },
       follow_up_title: orNull({ type: 'string' }),
       follow_up_date: { ...orNull({ type: 'string' }), description: 'YYYY-MM-DD' },
+      group: groups.length
+        ? { ...orNull({ type: 'string', enum: groups }), description: 'The group inside the chosen area, written exactly as listed, or null' }
+        : { type: 'null' },
+      refund_amount: { ...orNull({ type: 'number' }), description: 'For a return or refund: the money coming back in pounds, else null' },
     },
   };
 }
@@ -91,7 +98,9 @@ Decide:
 - follow_up_title and follow_up_date: usually both null. Only two cases add one extra task, which goes inside the project:
   - The user says they applied for a job (e.g. "applied to Trifid"): a project titled "<Company> application", stage "Applied", no date; follow_up_title "Follow up with <company>", follow_up_date 7 days after today.
   - The user mentions a photo or video shoot for a client (e.g. "shoot for Amira on Sat"): a project titled "<Client> shoot", stage "Booked", date = the shoot day; follow_up_title "Deliver gallery to <client>", follow_up_date 14 days after the shoot.
-  Never add anything else.`;
+  Never add anything else.
+- group: some areas are split into groups, listed as "Area > Group". If one clearly fits the item AND belongs to the area you chose, give it exactly as listed (e.g. "Personal & home > Returns" for anything being sent back, "Made in Heaven Visuals > Client work" for edits and shoots, "Job search > Applications" for applications). If none clearly fits, null. Never invent a group.
+- refund_amount: only for returns and refunds. The amount of money coming back, as a number in pounds (e.g. "return Zara jacket £39.99" -> 39.99, "refund 12" -> 12). Null if no amount is mentioned or it isn't a return.`;
 
 export async function POST(req: Request): Promise<Response> {
   if (!process.env.ANTHROPIC_API_KEY) return json(503, { error: 'not_configured' });
@@ -105,6 +114,7 @@ export async function POST(req: Request): Promise<Response> {
   }
   const text = String(body.text ?? '').trim().slice(0, 500);
   const domains = Array.isArray(body.domains) ? body.domains.map(String).slice(0, 20) : [];
+  const groups = Array.isArray(body.groups) ? body.groups.map(String).filter((g) => g.length <= 120).slice(0, 60) : [];
   if (!text || domains.length === 0) return json(400, { error: 'bad_request' });
 
   const client = new Anthropic();
@@ -112,14 +122,15 @@ export async function POST(req: Request): Promise<Response> {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 8000,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: schema(domains) } },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: schema(domains, groups) } },
       system: SYSTEM,
       messages: [
         {
           role: 'user',
           content:
             `Today is ${body.weekday} ${body.today}; the time is ${body.time}.\n` +
-            `Domains: ${domains.join(', ')}\n\n` +
+            `Domains: ${domains.join(', ')}\n` +
+            `Groups: ${groups.length ? groups.join('; ') : 'none'}\n\n` +
             `Text: ${text}`,
         },
       ],

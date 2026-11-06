@@ -2,7 +2,7 @@
 // and turns the answer into a task, note or routine.
 import { supabase } from './backend';
 import { hhmm, longDate, reminderAt, today, type Day } from './dates';
-import type { Domain, Routine, Task, TimeOfDay } from './types';
+import type { Domain, Routine, Subcategory, Task, TimeOfDay } from './types';
 import type { NewRoutine, NewTask } from './store';
 import { areaConfig } from './areas';
 
@@ -21,6 +21,8 @@ export interface CaptureResult {
   time_of_day: TimeOfDay;
   follow_up_title: string | null;
   follow_up_date: string | null;
+  group?: string | null;
+  refund_amount?: number | null;
 }
 
 export type CaptureError = 'not_configured' | 'bad_key' | 'no_credit' | 'offline' | 'failed';
@@ -52,7 +54,10 @@ export async function checkClaude(): Promise<boolean> {
   }
 }
 
-export async function askClaude(text: string, domains: Domain[]): Promise<CaptureResult> {
+/** Groups inside areas, as Claude sees them: "Area > Group". */
+export const groupLabel = (s: Subcategory, domains: Domain[]) => `${domains.find((d) => d.id === s.domain_id)?.name ?? ''} > ${s.name.trim()}`;
+
+export async function askClaude(text: string, domains: Domain[], subs: Subcategory[] = []): Promise<CaptureResult> {
   lastCaptureProblem = '';
   const now = new Date();
   const token = supabase ? (await supabase.auth.getSession()).data.session?.access_token : undefined;
@@ -64,6 +69,7 @@ export async function askClaude(text: string, domains: Domain[]): Promise<Captur
       body: JSON.stringify({
         text,
         domains: domains.map((d) => d.name),
+        groups: subs.filter((s) => domains.some((d) => d.id === s.domain_id)).map((s) => groupLabel(s, domains)),
         today: today(),
         weekday: longDate(today()).split(' ')[0],
         time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
@@ -104,8 +110,11 @@ export function matchDomain(name: string, domains: Domain[], inbox: Domain): Dom
 type Rec = { task: NewTask } | { routine: NewRoutine };
 
 /** Converts Claude's answer into what the store saves: the item, plus at most one follow-up. */
-export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain): Rec[] {
+export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain, subs: Subcategory[] = []): Rec[] {
   const domain = matchDomain(r.domain, domains, inbox);
+  // Only use a group that really exists in the chosen area.
+  const group = r.group ? subs.find((s) => s.domain_id === domain.id && groupLabel(s, domains).toLowerCase() === r.group!.trim().toLowerCase()) : undefined;
+  const refund = typeof r.refund_amount === 'number' && Number.isFinite(r.refund_amount) && r.refund_amount >= 0 && r.refund_amount < 100000 ? Math.round(r.refund_amount * 100) / 100 : null;
   if (r.kind === 'routine') {
     const realDomain = domain.is_inbox ? domains.find((d) => !d.is_inbox) ?? domain : domain;
     return [{
@@ -134,10 +143,12 @@ export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain): R
       due: date,
       due_time: date ? time : null,
       remind_at: r.reminder && date ? reminderAt(date, time) : null,
+      subcategory_id: group?.id ?? null,
+      ...(r.kind === 'task' && refund !== null ? { refund_amount: refund } : {}),
     },
   }];
   if (!isIdea && r.follow_up_title && r.follow_up_date && /^\d{4}-\d{2}-\d{2}$/.test(r.follow_up_date)) {
-    recs.push({ task: { title: r.follow_up_title, kind: 'task', domain_id: domain.id, due: r.follow_up_date } });
+    recs.push({ task: { title: r.follow_up_title, kind: 'task', domain_id: domain.id, due: r.follow_up_date, subcategory_id: group?.id ?? null } });
   }
   return recs;
 }

@@ -164,14 +164,14 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     setBusy(true);
     const raw = text.trim();
     try {
-      const result = await askClaude(raw, store.domains);
+      const result = await askClaude(raw, store.domains, store.subcategories);
       // Anything you picked yourself wins over Claude's guess.
       if (kindPicked) result.kind = kind;
       if (kind === 'routine' && days.length) result.days = days;
       if (due) result.date = due;
       if (time) result.time = time;
       if (remind) result.reminder = true;
-      const recs = toRecords(result, store.domains, store.inbox);
+      const recs = toRecords(result, store.domains, store.inbox, store.subcategories);
       const ids: string[] = [];
       let first = '';
       recs.forEach((rec, i) => {
@@ -184,7 +184,10 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
           const parent = i > 0 && 'task' in recs[0] && recs[0].task.kind === 'project' ? ids[0] : null;
           const task = store.addTask({ ...(parent ? { ...rec.task, project_id: parent } : rec.task), subcategory_id: i === 0 && subId ? subId : rec.task.subcategory_id ?? null });
           ids.push(task.id);
-          if (i === 0) first = `Saved to ${store.domain(task.domain_id).short_name}`;
+          if (i === 0) {
+            const group = store.subcategories.find((x) => x.id === task.subcategory_id);
+            first = `Saved to ${store.domain(task.domain_id).short_name}${group ? ` › ${group.name}` : ''}${task.refund_amount ? ` · £${task.refund_amount.toFixed(2)} back` : ''}`;
+          }
         }
       });
       toast({ message: recs.length > 1 ? `${first} · plus a follow-up` : first });
