@@ -81,6 +81,18 @@ export interface Balance {
   recorded_on?: Day | null; // the day it was typed in; interest counts from here
 }
 
+export interface IncomeSettings {
+  daily_rate: number; // before tax
+  work_days: number[]; // 0 = Monday ... 6 = Sunday
+}
+
+export interface Payslip {
+  id: string;
+  paid_on: Day;
+  gross: number;
+  net: number;
+}
+
 export interface Weight {
   day: Day;
   lb: number;

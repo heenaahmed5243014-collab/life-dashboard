@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Balance, type Domain, type Routine, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Balance, type Domain, type Routine, type IncomeSettings, type Payslip, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -15,6 +15,8 @@ export interface Snapshot {
   accounts: Account[];
   balances: Balance[];
   weights: Weight[];
+  income: IncomeSettings | null;
+  payslips: Payslip[];
 }
 
 export interface Backend {
@@ -32,6 +34,9 @@ export interface Backend {
   updateAccount(id: string, changes: Partial<Account>): Promise<void>;
   setBalance(b: Balance): Promise<void>;
   setWeight(w: Weight): Promise<void>;
+  setIncome(i: IncomeSettings): Promise<void>;
+  addPayslip(p: Payslip): Promise<void>;
+  deletePayslip(id: string): Promise<void>;
   /** Saves a QR screenshot privately and returns where it's stored. */
   uploadQr(taskId: string, file: File): Promise<string>;
   /** A short-lived link to show a stored QR screenshot. */
@@ -58,6 +63,23 @@ const check = <T,>(res: { error: { message: string } | null; data?: unknown }) =
 const RECENT_DAYS = 14;
 
 export function supabaseBackend(sb: SupabaseClient): Backend {
+  // Income is loaded separately so the rest of the app still opens if its tables aren't set up yet.
+  const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
+    const [inc, slips] = await Promise.all([
+      sb.from('income_settings').select('daily_rate, work_days').maybeSingle(),
+      sb.from('payslips').select('id, paid_on, gross, net').order('paid_on', { ascending: false }).limit(24),
+    ]);
+    if (inc.error || slips.error) {
+      const msg = (inc.error ?? slips.error)!.message;
+      if (/fetch|network|load failed/i.test(msg)) throw new Error(msg);
+      return { income: null, payslips: [] }; // tables missing: Income tab will ask for the update
+    }
+    const i = inc.data as IncomeSettings | null;
+    return {
+      income: i ? { daily_rate: Number(i.daily_rate), work_days: i.work_days } : null,
+      payslips: (slips.data as Payslip[]).map((p) => ({ ...p, gross: Number(p.gross), net: Number(p.net) })),
+    };
+  };
   return {
     async load(now) {
       let domains = check<Domain[]>(await sb.from('domains').select('*').order('sort'));
@@ -107,6 +129,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         accounts: check<Account[]>(accounts).map((a) => ({ ...a, daily_growth: Number(a.daily_growth ?? 0) })),
         balances: check<(Balance & { user_id?: string })[]>(balances).map(({ user_id: _u, ...b }) => ({ ...b, amount: Number(b.amount) })),
         weights: check<Weight[]>(weights).map((w) => ({ ...w, lb: Number(w.lb) })),
+        ...(await loadIncome()),
       };
     },
     async insertTask(t) {
@@ -145,6 +168,15 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     },
     async setWeight(w) {
       check(await sb.from('weights').upsert(w, { onConflict: 'user_id,day' }));
+    },
+    async setIncome(i) {
+      check(await sb.from('income_settings').upsert({ ...i, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
+    },
+    async addPayslip(p) {
+      check(await sb.from('payslips').upsert(p, { onConflict: 'user_id,paid_on' }));
+    },
+    async deletePayslip(id) {
+      check(await sb.from('payslips').delete().eq('id', id));
     },
     async uploadQr(taskId, file) {
       const { data } = await sb.auth.getUser();
@@ -258,10 +290,15 @@ export function demoBackend(): Backend {
   const qrFiles = new Map<string, string>();
   const noop = async () => {};
   return {
-    load: async () => ({ domains, tasks, routines, ticks, subcategories, accounts, balances, weights }),
+    load: async () => ({
+      domains, tasks, routines, ticks, subcategories, accounts, balances, weights,
+      income: { daily_rate: 144.72, work_days: [0, 1, 2, 3, 4] },
+      payslips: [{ id: 'p1', paid_on: '2026-11-05', gross: 3064.02, net: 2333.94 }],
+    }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
+    setIncome: noop, addPayslip: noop, deletePayslip: noop,
     uploadQr: async (taskId, file) => {
       const path = `demo/${taskId}-${Date.now()}`;
       qrFiles.set(path, URL.createObjectURL(file));

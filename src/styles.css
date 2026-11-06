@@ -775,3 +775,15 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .money-input.small { min-height: 34px; }
 .money-input.small input { width: 64px; font-size: 15px; }
 .mini-figures .tag { max-width: 100%; }
+
+/* Income */
+.nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.income-page { gap: 16px; }
+.big-money { font-family: var(--display); font-weight: 800; font-size: 2.2rem; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.mid-money { font-family: var(--display); font-weight: 800; font-size: 1.5rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.mid-money .note { font-family: 'Figtree', system-ui, sans-serif; font-weight: 500; font-size: 0.9rem; }
+.payslip-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 6px 10px 14px; }
+.payslip-date { font-weight: 600; width: 92px; flex: none; }
+.payslip-figures { flex: 1; display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.payslip-net { color: var(--sage-text); font-weight: 600; }
+.date-plain { width: auto; flex: none; padding: 8px 10px; }

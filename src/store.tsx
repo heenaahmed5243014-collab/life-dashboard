@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Balance, Domain, Routine, Subcategory, Task, Weight } from './types';
+import type { Account, Balance, Domain, IncomeSettings, Payslip, Routine, Subcategory, Task, Weight } from './types';
 import { today } from './dates';
 import { useToast } from './toast';
 
@@ -32,6 +32,9 @@ interface Store extends Snapshot {
   updateAccount(id: string, changes: Partial<Account>): void;
   setBalance(b: Balance): void;
   setWeight(w: Weight): void;
+  setIncome(i: IncomeSettings): void;
+  addPayslip(p: Omit<Payslip, 'id'>): void;
+  deletePayslip(id: string): void;
   uploadQr(task: Task, file: File): Promise<void>;
   removeQr(task: Task): void;
   qrUrl(path: string): Promise<string>;
@@ -209,6 +212,19 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       setWeight(w) {
         setData((d) => d && { ...d, weights: [...d.weights.filter((x) => x.day !== w.day), w].sort((a, b) => a.day.localeCompare(b.day)) });
         save(backend.setWeight(w));
+      },
+      setIncome(i) {
+        setData((d) => d && { ...d, income: i });
+        save(backend.setIncome(i));
+      },
+      addPayslip(p) {
+        const slip: Payslip = { id: crypto.randomUUID(), ...p };
+        setData((d) => d && { ...d, payslips: [slip, ...d.payslips.filter((x) => x.paid_on !== p.paid_on)].sort((a, b) => b.paid_on.localeCompare(a.paid_on)) });
+        save(backend.addPayslip(slip));
+      },
+      deletePayslip(id) {
+        setData((d) => d && { ...d, payslips: d.payslips.filter((x) => x.id !== id) });
+        save(backend.deletePayslip(id));
       },
       async uploadQr(task, file) {
         const old = task.qr_path;
