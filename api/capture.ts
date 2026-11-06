@@ -6,7 +6,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 // Change this to 'claude-haiku-5-5' for a much cheaper (slightly less clever) option.
-const MODEL = process.env.CLAUDE_MODEL || 'claude-opus-5-5';
+// Claude Haiku 5.5: fast and very cheap, plenty for sorting a short note.
+const MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-5-5';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_KEY;
@@ -105,11 +106,9 @@ export async function POST(req: Request): Promise<Response> {
 
   const client = new Anthropic();
   try {
-    const response = await client.beta.messages.create({
+    const response = await client.messages.create({
       model: MODEL,
       max_tokens: 2000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
       output_config: { effort: 'low', format: { type: 'json_schema', schema: schema(domains) } },
       system: SYSTEM,
       messages: [
