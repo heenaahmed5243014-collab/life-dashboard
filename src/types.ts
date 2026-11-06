@@ -37,6 +37,7 @@ export interface Task {
   refund_status?: 'waiting' | 'received' | null;
   dropped_off_on?: Day | null;
   refund_received_on?: Day | null;
+  paused?: boolean; // projects: on hold, not finished
   notes: string;
   created_at: string;
   touched_at: string;
@@ -150,4 +151,20 @@ export interface Affirmation {
   id: string;
   text: string;
   created_at?: string;
+}
+
+export type LeadStage = 'todo' | 'contacted' | 'follow' | 'replied' | 'won' | 'no';
+
+/** Someone in the outreach pipeline (Brain Planner "Outreach"). */
+export interface Lead {
+  id: string;
+  domain_id: string;
+  name: string;
+  biz: string;
+  channel: string;
+  stage: LeadStage;
+  follow_up: Day | null;
+  notes: string;
+  created_at?: string;
+  updated_at?: string;
 }

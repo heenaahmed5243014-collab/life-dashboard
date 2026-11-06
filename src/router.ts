@@ -10,13 +10,13 @@ export type Route =
   | { name: 'returns' }
   | { name: 'income' }
   | { name: 'steps' }
-  | { name: 'area'; id: string }
+  | { name: 'area'; id: string; tab?: string }
   | { name: 'account' }
   | { name: 'item'; id: string }
   | { name: 'routine'; id: string };
 
 function parse(hash: string): Route {
-  const [page, arg] = hash.replace(/^#\/?/, '').split('/');
+  const [page, arg, sub] = hash.replace(/^#\/?/, '').split('/');
   if (page === 'tasks') return { name: 'tasks' };
   if (page === 'account') return { name: 'account' };
   if (page === 'routines') return { name: 'routines' };
@@ -24,7 +24,7 @@ function parse(hash: string): Route {
   if (page === 'returns') return { name: 'returns' };
   if (page === 'steps') return { name: 'steps' };
   if (page === 'income' || page === 'money') return { name: 'income' };
-  if (page === 'area' && arg) return { name: 'area', id: arg };
+  if (page === 'area' && arg) return { name: 'area', id: arg, tab: sub };
   if (page === 'item' && arg) return { name: 'item', id: arg };
   if (page === 'routine' && arg) return { name: 'routine', id: arg };
   return { name: 'today' };

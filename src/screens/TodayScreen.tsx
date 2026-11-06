@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { buildDay, buildToday } from '../today';
-import { addDays, daysBetween, dueLabel, longDate, parseDay, toDay, today, weekday, WEEKDAY_SHORT, type Day } from '../dates';
+import { addDays, daysBetween, dueLabel, shortDate, longDate, parseDay, toDay, today, weekday, WEEKDAY_SHORT, type Day } from '../dates';
 import { go } from '../router';
 import type { Task } from '../types';
 import ItemRow, { EffortTags, whenText } from '../components/ItemRow';
@@ -21,6 +21,7 @@ import StepsCard from '../components/StepsCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
 import MirrorCard from '../components/MirrorCard';
+import { dueFollowUps } from '../components/OutreachTab';
 
 /** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
 function dayPill(title: string): { text: string; cls: string } {
@@ -58,6 +59,7 @@ function slipping(tasks: Task[], now: Day): { task: Task; why: string }[] {
       if (n >= 14) out.push({ task: t, why: `Refund${t.refund_amount ? ` of £${t.refund_amount.toFixed(2)}` : ''} not received after ${n} days` });
       continue;
     }
+    if (t.paused) continue;
     if (t.status !== 'open' || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
     if (t.due && daysBetween(t.due, now) >= 3) {
       out.push({ task: t, why: `Carried over since ${WEEKDAY_SHORT[weekday(t.due)]} ${parseDay(t.due).getDate()}` });
@@ -188,6 +190,7 @@ function TodayBody() {
   const now = today();
   const slip = slipping(store.tasks, now);
   const slipIds = new Set(slip.map((s) => s.task.id));
+  const follows = dueFollowUps(store.leads, now);
   const data = buildToday(store.tasks.filter((t) => !slipIds.has(t.id)), store.routines, store.ticks, store.inbox.id, now);
   const plan = buildDay(store.tasks, store.routines, store.ticks, now);
   const [expanded, setExpanded] = useState(false);
@@ -291,9 +294,9 @@ function TodayBody() {
       {modeSwitch}
       {top}
 
-      {slip.length > 0 && (
+      {slip.length + follows.length > 0 && (
         <div className="card slip">
-          <div className="between"><span className="eyebrow">Slipping · {slip.length}</span></div>
+          <div className="between"><span className="eyebrow">Slipping · {slip.length + follows.length}</span></div>
           <p className="note">These have sat too long. Do one, or snooze it for 3 days, guilt-free.</p>
           <ul className="check-list in-card">
             {slip.slice(0, 6).map(({ task, why }) => (
@@ -306,6 +309,22 @@ function TodayBody() {
               </li>
             ))}
           </ul>
+          {follows.length > 0 && (
+            <ul className="check-list in-card">
+              {follows.map((l) => (
+                <li key={l.id} className="check-row">
+                  <button type="button" className="row-body" onClick={() => go(`/area/${l.domain_id}/outreach`)}>
+                    <span className="row-title">Follow up: {l.name}</span>
+                    <span className="meta"><span className="tag t-amber">{l.follow_up! < now ? `Follow-up was due ${shortDate(l.follow_up!)}` : 'Follow-up due today'}</span></span>
+                  </button>
+                  <button type="button" className="btn small" onClick={() => {
+                    store.updateLead(l.id, { follow_up: addDays(now, 3) });
+                    toast({ message: 'Snoozed for 3 days. No guilt.', undo: () => store.updateLead(l.id, { follow_up: l.follow_up }) });
+                  }}>Snooze</button>
+                </li>
+              ))}
+            </ul>
+          )}
           {slip.length > 6 && <p className="note">+{slip.length - 6} more</p>}
         </div>
       )}

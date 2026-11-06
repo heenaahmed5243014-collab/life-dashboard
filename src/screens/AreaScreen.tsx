@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { useStore } from '../store';
 import { allReturns, areaConfig, groupOf, isFinalStage } from '../areas';
-import { daysLabel } from '../dates';
+import { daysLabel, today } from '../dates';
 import { go } from '../router';
 import { byDue } from '../today';
 import type { Subcategory, Task } from '../types';
@@ -11,6 +11,12 @@ import Header from '../components/Header';
 import ItemRow, { whenText } from '../components/ItemRow';
 import { openQuickAdd } from '../components/QuickAdd';
 import { Chevron, Plus } from '../icons';
+import ProjectsTab from '../components/ProjectsTab';
+import OutreachTab from '../components/OutreachTab';
+
+/** Areas that get the Brain Planner's Projects and Outreach tabs. */
+const PROJECT_AREAS = ['Made in Heaven Visuals'];
+type Tab = 'overview' | 'projects' | 'outreach';
 
 const SHOW = 5;
 const openKey = (areaId: string) => `ld:area-open:${areaId}`;
@@ -18,8 +24,13 @@ const readOpen = (areaId: string): string[] => {
   try { return JSON.parse(sessionStorage.getItem(openKey(areaId)) ?? '[]') as string[]; } catch { return []; }
 };
 
-export default function AreaScreen({ id }: { id: string }) {
+export default function AreaScreen({ id, tab: startTab }: { id: string; tab?: string }) {
   const store = useStore();
+  const [tab, setTabState] = useState<Tab>(() => (startTab === 'projects' || startTab === 'outreach' ? startTab : 'overview'));
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    history.replaceState(history.state, '', `${location.search}#/area/${id}${t === 'overview' ? '' : `/${t}`}`);
+  };
   const [opened, setOpened] = useState<string[]>(() => readOpen(id));
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -41,6 +52,8 @@ export default function AreaScreen({ id }: { id: string }) {
   };
 
   const cfg = areaConfig(d);
+  const hasTabs = PROJECT_AREAS.includes(d.name);
+  const followsDue = store.leads.filter((l) => l.domain_id === d.id && l.follow_up && l.follow_up <= today() && !['won', 'no', 'todo'].includes(l.stage)).length;
   const subs = store.subcategoriesOf(d.id);
   const open = store.tasks.filter((t) => t.status === 'open' && t.domain_id === d.id).sort(byDue);
   const group = (t: Task) => groupOf(t, subs);
@@ -115,6 +128,21 @@ export default function AreaScreen({ id }: { id: string }) {
           <p className="sub">{todo === 0 ? 'All clear here.' : `${todo} thing${todo === 1 ? '' : 's'} to do. Just start with the first one.`}</p>
         </header>
 
+        {hasTabs && (
+          <div className="segmented area-tabs" role="tablist" aria-label={`${d.name} sections`}>
+            {(['overview', 'projects', 'outreach'] as Tab[]).map((t) => (
+              <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'seg on' : 'seg'} onClick={() => setTab(t)}>
+                {t === 'overview' ? 'Overview' : t === 'projects' ? 'Projects' : 'Outreach'}
+                {t === 'outreach' && followsDue > 0 && <span className="seg-dot" aria-label={`${followsDue} follow-ups due`}>{followsDue}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {hasTabs && tab === 'projects' && <ProjectsTab area={d} canPause={store.affirmReady !== false} />}
+        {hasTabs && tab === 'outreach' && <OutreachTab area={d} ready={store.affirmReady !== false} />}
+        {(!hasTabs || tab === 'overview') && (<>
+
         {nextUp.length > 0 && (
           <section className="card hero">
             <span className="eyebrow">Next up</span>
@@ -148,7 +176,16 @@ export default function AreaScreen({ id }: { id: string }) {
             );
           })}
 
-          {projects.length > 0 && (
+          {projects.length > 0 && hasTabs && (
+            <div className="fold">
+              <button type="button" className="fold-head" onClick={() => setTab('projects')}>
+                <span className="fold-name">{cfg.projectsLabel}</span>
+                <span className="row-meta">{projects.length} · open the Projects tab</span>
+                <Chevron />
+              </button>
+            </div>
+          )}
+          {projects.length > 0 && !hasTabs && (
             <Fold id="projects" title={cfg.projectsLabel} count={projects.length} isOpen={opened.includes('projects')} onToggle={toggle}>
               <div className="stack">{projects.map(projectCard)}</div>
               {cfg.stages && <p className="muted small stage-key">Stages: {cfg.stages.join(' → ')}</p>}
@@ -197,6 +234,7 @@ export default function AreaScreen({ id }: { id: string }) {
         ) : (
           <button type="button" className="link-btn quiet edit-groups" onClick={() => setEditing(true)}>Edit groups</button>
         )}
+        </>)}
       </main>
       <button type="button" className="fab fab-low" aria-label={`Add to ${d.short_name}`} onClick={() => openQuickAdd({ domainId: d.id })}><Plus /></button>
     </>

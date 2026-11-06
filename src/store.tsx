@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Affirmation, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Lead, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { addDays, today, type Day } from './dates';
 import { useToast } from './toast';
@@ -52,6 +52,10 @@ interface Store extends Snapshot {
   affirmations: Affirmation[];
   addAffirmation(text: string): Affirmation;
   deleteAffirmation(id: string): void;
+  leads: Lead[];
+  addLead(l: Omit<Lead, 'id'>): Lead;
+  updateLead(id: string, changes: Partial<Lead>): void;
+  deleteLead(id: string): void;
   uploadQr(task: Task, file: File): Promise<void>;
   removeQr(task: Task): void;
   qrUrl(path: string): Promise<string>;
@@ -141,6 +145,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       goals: data.goals ?? [],
       noSpend: data.noSpend ?? [],
       affirmations: data.affirmations ?? [],
+      leads: data.leads ?? [],
       inbox,
       domain: (id) => byId.get(id) ?? FALLBACK,
       addTask(fields) {
@@ -315,6 +320,20 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       deleteAffirmation(id) {
         setData((d) => d && { ...d, affirmations: (d.affirmations ?? []).filter((x) => x.id !== id) });
         save(backend.deleteAffirmation(id));
+      },
+      addLead(fields) {
+        const l: Lead = { id: crypto.randomUUID(), ...fields };
+        setData((d) => d && { ...d, leads: [...(d.leads ?? []), { ...l, created_at: nowIso() }] });
+        save(backend.insertLead(l));
+        return l;
+      },
+      updateLead(id, changes) {
+        setData((d) => d && { ...d, leads: (d.leads ?? []).map((x) => (x.id === id ? { ...x, ...changes, updated_at: nowIso() } : x)) });
+        save(backend.updateLead(id, changes));
+      },
+      deleteLead(id) {
+        setData((d) => d && { ...d, leads: (d.leads ?? []).filter((x) => x.id !== id) });
+        save(backend.deleteLead(id));
       },
       stepLink(fresh) {
         return backend.stepLink(fresh);

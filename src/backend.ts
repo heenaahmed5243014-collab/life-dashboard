@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -26,6 +26,7 @@ export interface Snapshot {
   affirmations?: Affirmation[];
   /** False until database update 10 has been run. */
   affirmReady?: boolean;
+  leads?: Lead[];
 }
 
 export interface Backend {
@@ -58,6 +59,9 @@ export interface Backend {
   stepLink(fresh: boolean): Promise<string | null>;
   insertAffirmation(a: Affirmation): Promise<void>;
   deleteAffirmation(id: string): Promise<void>;
+  insertLead(l: Lead): Promise<void>;
+  updateLead(id: string, changes: Partial<Lead>): Promise<void>;
+  deleteLead(id: string): Promise<void>;
   /** Saves a QR screenshot privately and returns where it's stored. */
   uploadQr(taskId: string, file: File): Promise<string>;
   /** A short-lived link to show a stored QR screenshot. */
@@ -114,13 +118,18 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       healthReady: !err,
     };
   };
-  const loadAffirmations = async (): Promise<{ affirmations: Affirmation[]; affirmReady: boolean }> => {
-    const res = await sb.from('affirmations').select('id, text, created_at').order('created_at');
-    if (res.error) {
-      if (/fetch|network|load failed/i.test(res.error.message)) throw new Error(res.error.message);
-      return { affirmations: [], affirmReady: false };
+  // Update 10: your affirmations, plus the outreach pipeline. Missing tables just mean "not set up yet".
+  const loadAffirmations = async (): Promise<{ affirmations: Affirmation[]; affirmReady: boolean; leads: Lead[] }> => {
+    const [res, leads] = await Promise.all([
+      sb.from('affirmations').select('id, text, created_at').order('created_at'),
+      sb.from('leads').select('id, domain_id, name, biz, channel, stage, follow_up, notes, created_at, updated_at').order('created_at'),
+    ]);
+    const err = res.error ?? leads.error;
+    if (err) {
+      if (/fetch|network|load failed/i.test(err.message)) throw new Error(err.message);
+      return { affirmations: [], affirmReady: false, leads: [] };
     }
-    return { affirmations: res.data as Affirmation[], affirmReady: true };
+    return { affirmations: res.data as Affirmation[], affirmReady: true, leads: leads.data as Lead[] };
   };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
@@ -285,6 +294,15 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     async deleteAffirmation(id) {
       check(await sb.from('affirmations').delete().eq('id', id));
     },
+    async insertLead(l) {
+      check(await sb.from('leads').insert(l));
+    },
+    async updateLead(id, changes) {
+      check(await sb.from('leads').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', id));
+    },
+    async deleteLead(id) {
+      check(await sb.from('leads').delete().eq('id', id));
+    },
     async uploadQr(taskId, file) {
       const { data } = await sb.auth.getUser();
       if (!data.user) throw new Error('Not signed in');
@@ -380,6 +398,13 @@ export function demoBackend(): Backend {
     if (/Tisha|Amira/.test(t.title) && t.kind === 'task') t.subcategory_id = subId('Client work');
     if (t.kind === 'idea') t.subcategory_id = subId('Ideas');
   }
+  // Brain Planner project with steps, and a paused one
+  const site = task('Made in Heaven Visuals website', 'Made in Heaven', null, { kind: 'project', created_at: '2026-11-03T10:00:00Z' });
+  tasks.push(site,
+    task('Turn the Canva portfolio into the website', 'Made in Heaven', null, { project_id: site.id, created_at: '2026-11-03T10:01:00Z' }),
+    task('Finish the client services pack (social media vs photography)', 'Made in Heaven', null, { project_id: site.id, created_at: '2026-11-03T10:02:00Z' }),
+    task('Events and photo booth hire', 'Made in Heaven', null, { kind: 'project', paused: true, notes: 'Idea for later: candy stand, welded bracelets, popcorn, mocktails, photo booth.' }),
+  );
   const ipad = tasks.find((t) => t.title === 'Return cracked iPad mini')!;
   Object.assign(ipad, { due: addDays(now, 2), drop_off: 'Post Office' });
   const boots = tasks.find((t) => t.title === 'Return the boots')!;
@@ -413,6 +438,10 @@ export function demoBackend(): Backend {
       goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
       noSpend: [addDays(now, -2), addDays(now, -4)],
       healthReady: true,
+      leads: [
+        { id: 'l1', domain_id: id('Made in Heaven'), name: 'Glow Aesthetics', biz: 'social media', channel: 'Instagram DM', stage: 'contacted', follow_up: addDays(now, -1), notes: '' },
+        { id: 'l2', domain_id: id('Made in Heaven'), name: 'Bloom Bridal', biz: 'wedding photography', channel: 'Email', stage: 'todo', follow_up: null, notes: '' },
+      ],
       affirmations: [],
       affirmReady: true,
     }),
@@ -420,7 +449,7 @@ export function demoBackend(): Backend {
     insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
     setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
-    insertAffirmation: noop, deleteAffirmation: noop,
+    insertAffirmation: noop, deleteAffirmation: noop, insertLead: noop, updateLead: noop, deleteLead: noop,
     setSteps: noop, insertGoal: noop, updateGoal: noop, deleteGoal: noop, setNoSpend: noop,
     stepLink: async () => 'demo0000000000000000000000000000demo',
     uploadQr: async (taskId, file) => {

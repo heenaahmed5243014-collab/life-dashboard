@@ -49,7 +49,7 @@ function Page() {
     case 'account': return <AccountScreen />;
     case 'routines': return <RoutinesScreen />;
     case 'areas': return <AreasScreen />;
-    case 'area': return <AreaScreen key={route.id} id={route.id} />;
+    case 'area': return <AreaScreen key={route.id + (route.tab ?? '')} id={route.id} tab={route.tab} />;
     case 'returns': return <ReturnsScreen />;
     case 'income': return <IncomeScreen />;
     case 'steps': return <StepsScreen />;
