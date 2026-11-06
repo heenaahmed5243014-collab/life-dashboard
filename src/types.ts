@@ -145,3 +145,9 @@ export interface SavingsGoal {
   account_id: string | null;
   sort: number;
 }
+
+export interface Affirmation {
+  id: string;
+  text: string;
+  created_at?: string;
+}

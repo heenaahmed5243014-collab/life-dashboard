@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -23,6 +23,9 @@ export interface Snapshot {
   noSpend?: Day[];
   /** False until database update 9 (steps, goals, no-spend days) has been run. */
   healthReady?: boolean;
+  affirmations?: Affirmation[];
+  /** False until database update 10 has been run. */
+  affirmReady?: boolean;
 }
 
 export interface Backend {
@@ -53,6 +56,8 @@ export interface Backend {
   setNoSpend(day: Day, on: boolean): Promise<void>;
   /** The private code the iPhone Shortcut uses to send steps. `fresh` makes a new one. */
   stepLink(fresh: boolean): Promise<string | null>;
+  insertAffirmation(a: Affirmation): Promise<void>;
+  deleteAffirmation(id: string): Promise<void>;
   /** Saves a QR screenshot privately and returns where it's stored. */
   uploadQr(taskId: string, file: File): Promise<string>;
   /** A short-lived link to show a stored QR screenshot. */
@@ -108,6 +113,14 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       noSpend: ns.error ? [] : (ns.data as { day: Day }[]).map((x) => x.day),
       healthReady: !err,
     };
+  };
+  const loadAffirmations = async (): Promise<{ affirmations: Affirmation[]; affirmReady: boolean }> => {
+    const res = await sb.from('affirmations').select('id, text, created_at').order('created_at');
+    if (res.error) {
+      if (/fetch|network|load failed/i.test(res.error.message)) throw new Error(res.error.message);
+      return { affirmations: [], affirmReady: false };
+    }
+    return { affirmations: res.data as Affirmation[], affirmReady: true };
   };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
@@ -184,6 +197,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         weights: check<Weight[]>(weights).map((w) => ({ ...w, lb: Number(w.lb) })),
         ...(await loadIncome()),
         ...(await loadHealthMoney(now)),
+        ...(await loadAffirmations()),
       };
     },
     async insertTask(t) {
@@ -264,6 +278,12 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         if (row) return row.token;
       }
       return check<string>(await sb.rpc('new_step_link'));
+    },
+    async insertAffirmation(a) {
+      check(await sb.from('affirmations').insert({ id: a.id, text: a.text }));
+    },
+    async deleteAffirmation(id) {
+      check(await sb.from('affirmations').delete().eq('id', id));
     },
     async uploadQr(taskId, file) {
       const { data } = await sb.auth.getUser();
@@ -393,11 +413,14 @@ export function demoBackend(): Backend {
       goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
       noSpend: [addDays(now, -2), addDays(now, -4)],
       healthReady: true,
+      affirmations: [],
+      affirmReady: true,
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
     setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
+    insertAffirmation: noop, deleteAffirmation: noop,
     setSteps: noop, insertGoal: noop, updateGoal: noop, deleteGoal: noop, setNoSpend: noop,
     stepLink: async () => 'demo0000000000000000000000000000demo',
     uploadQr: async (taskId, file) => {

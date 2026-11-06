@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { addDays, today, type Day } from './dates';
 import { useToast } from './toast';
@@ -49,6 +49,9 @@ interface Store extends Snapshot {
   deleteGoal(id: string): void;
   toggleNoSpend(day: Day): void;
   stepLink(fresh: boolean): Promise<string | null>;
+  affirmations: Affirmation[];
+  addAffirmation(text: string): Affirmation;
+  deleteAffirmation(id: string): void;
   uploadQr(task: Task, file: File): Promise<void>;
   removeQr(task: Task): void;
   qrUrl(path: string): Promise<string>;
@@ -137,6 +140,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       steps: data.steps ?? [],
       goals: data.goals ?? [],
       noSpend: data.noSpend ?? [],
+      affirmations: data.affirmations ?? [],
       inbox,
       domain: (id) => byId.get(id) ?? FALLBACK,
       addTask(fields) {
@@ -301,6 +305,16 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         const on = !(data.noSpend ?? []).includes(day);
         setData((d) => d && { ...d, noSpend: on ? [...(d.noSpend ?? []), day] : (d.noSpend ?? []).filter((x) => x !== day) });
         save(backend.setNoSpend(day, on));
+      },
+      addAffirmation(text) {
+        const a: Affirmation = { id: crypto.randomUUID(), text: text.trim(), created_at: nowIso() };
+        setData((d) => d && { ...d, affirmations: [...(d.affirmations ?? []), a] });
+        save(backend.insertAffirmation(a));
+        return a;
+      },
+      deleteAffirmation(id) {
+        setData((d) => d && { ...d, affirmations: (d.affirmations ?? []).filter((x) => x.id !== id) });
+        save(backend.deleteAffirmation(id));
       },
       stepLink(fresh) {
         return backend.stepLink(fresh);
