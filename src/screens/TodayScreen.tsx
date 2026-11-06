@@ -391,7 +391,7 @@ function TodayBody() {
 
       <WeekProgress />
       <MoneyCard />
-      <StepsCard />
+      {store.healthReady !== false && <StepsCard />}
       <WeightCard />
 
       <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>

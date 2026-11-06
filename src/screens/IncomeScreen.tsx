@@ -185,11 +185,11 @@ export default function IncomeScreen() {
           )}
         </section>
 
-        <NoSpendCard />
+        {store.healthReady !== false && <NoSpendCard />}
 
         <BillsSection />
 
-        <SavingsGoals />
+        {store.healthReady !== false && <SavingsGoals />}
 
         <section className="section">
           <div className="between"><h2 className="h2">Payslips</h2><span className="count">{payslips.length}</span></div>

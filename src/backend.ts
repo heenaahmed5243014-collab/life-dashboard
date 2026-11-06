@@ -21,6 +21,8 @@ export interface Snapshot {
   steps?: StepDay[];
   goals?: SavingsGoal[];
   noSpend?: Day[];
+  /** False until database update 9 (steps, goals, no-spend days) has been run. */
+  healthReady?: boolean;
 }
 
 export interface Backend {
@@ -91,7 +93,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     };
   };
   // Steps, savings goals and no-spend days (update 9). Missing tables just mean empty lists.
-  const loadHealthMoney = async (now: Day): Promise<{ steps: StepDay[]; goals: SavingsGoal[]; noSpend: Day[] }> => {
+  const loadHealthMoney = async (now: Day): Promise<{ steps: StepDay[]; goals: SavingsGoal[]; noSpend: Day[]; healthReady: boolean }> => {
     const [steps, goals, ns] = await Promise.all([
       sb.from('steps').select('day, count, source').gte('day', addDays(now, -120)).order('day'),
       sb.from('savings_goals').select('id, name, target, months, account_id, sort').order('sort'),
@@ -104,6 +106,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       steps: steps.error ? [] : (steps.data as StepDay[]).map((s) => ({ ...s, count: Number(s.count) })),
       goals: goals.error ? [] : (goals.data as SavingsGoal[]).map((g) => ({ ...g, target: g.target === null ? null : Number(g.target) })),
       noSpend: ns.error ? [] : (ns.data as { day: Day }[]).map((x) => x.day),
+      healthReady: !err,
     };
   };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
@@ -389,6 +392,7 @@ export function demoBackend(): Backend {
       steps: [9200, 21400, 17800, 22100, 12600, 20300].map((count, i) => ({ day: addDays(now, i - 6), count })),
       goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
       noSpend: [addDays(now, -2), addDays(now, -4)],
+      healthReady: true,
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
