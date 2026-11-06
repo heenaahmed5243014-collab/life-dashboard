@@ -20,6 +20,7 @@ export default function ReturnsScreen() {
   const toast = useToast();
   const now = today();
   const [showing, setShowing] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
   const open = allReturns(store.tasks, store.subcategories).sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'));
   const recent = store.tasks.filter((t) => t.status === 'done' && allReturnsDone(t));
   const total = open.length + recent.length;
@@ -47,6 +48,19 @@ export default function ReturnsScreen() {
     .filter((t) => t.status === 'done' && t.refund_status === 'waiting')
     .sort((a, b) => (a.dropped_off_on ?? a.closed_at ?? '').localeCompare(b.dropped_off_on ?? b.closed_at ?? ''));
   const owed = waiting.reduce((s, t) => s + (t.refund_amount ?? 0), 0) + open.reduce((s, t) => s + (t.refund_amount ?? 0), 0);
+  const clearAll = () => {
+    const all = [...new Map([...open, ...waiting, ...recent].map((t) => [t.id, t])).values()];
+    const stamp = new Date().toISOString();
+    for (const t of all) {
+      if (t.qr_path) store.removeQr(t);
+      store.updateTask(t.id, { status: 'not_doing', closed_at: stamp, starred: false, refund_status: null });
+    }
+    setClearing(false);
+    toast({
+      message: `Removed ${all.length} return${all.length === 1 ? '' : 's'}`,
+      undo: () => all.forEach((t) => store.updateTask(t.id, { status: t.status, closed_at: t.closed_at, starred: t.starred, refund_status: t.refund_status ?? null })),
+    });
+  };
   const sinceDrop = (t: Task) => daysBetween(t.dropped_off_on ?? (t.closed_at ? t.closed_at.slice(0, 10) : now), now);
 
   const dueTag = (t: Task) => {
@@ -144,6 +158,26 @@ export default function ReturnsScreen() {
               );
             })}
           </section>
+        )}
+
+        {(open.length > 0 || waiting.length > 0 || recent.length > 0) && (
+          clearing ? (
+            <section className="card stack clear-card" role="alertdialog" aria-label="Remove all returns">
+              <span className="eyebrow">Remove all returns?</span>
+              <p className="note">
+                This takes {open.length} return{open.length === 1 ? '' : 's'} off your list
+                {waiting.length ? `, plus ${waiting.length} waiting for a refund` : ''}
+                {recent.length - waiting.filter((t) => recent.includes(t)).length > 0 ? ' and the dropped-off ones' : ''}.
+                {' '}Their QR screenshots are deleted too.
+              </p>
+              <div className="row">
+                <button type="button" className="btn danger small" onClick={clearAll}>Remove all</button>
+                <button type="button" className="btn small" onClick={() => setClearing(false)}>Cancel</button>
+              </div>
+            </section>
+          ) : (
+            <button type="button" className="link-btn quiet clear-link" onClick={() => setClearing(true)}>Remove all returns</button>
+          )
         )}
       </main>
 

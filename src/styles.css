@@ -957,3 +957,6 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .check-line input[type=checkbox] { width: 20px; height: 20px; margin-top: 6px; flex: none; }
 .time-input { font: inherit; font-size: 16px; margin: 0 6px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .switch i { transition: none; } }
+.clear-link { margin: 22px auto 0; display: block; }
+.clear-card { border-color: #B3261E; }
+.btn.danger { background: #B3261E; border-color: #B3261E; color: #fff; }
