@@ -929,3 +929,9 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .month-day.on { background: var(--accent); color: #fff; }
 .month-day.on .day-pill-dot:not(.is-none) { background: #fff; }
 @media (prefers-reduced-motion: reduce) { .day-strip { scroll-behavior: auto; } }
+.month-head { display: flex; align-items: center; gap: 4px; }
+.month-head .day-nav-month { min-width: 130px; text-align: center; }
+.month-arrow { width: 40px; height: 40px; margin: 0; font-size: 1.4rem; line-height: 1; }
+.month-head-actions { margin-left: auto; display: inline-flex; gap: 14px; align-items: center; }
+.month-day.other .month-num { color: var(--muted); opacity: 0.5; }
+.month-day.past:not(.on) .month-num { color: var(--muted); }
