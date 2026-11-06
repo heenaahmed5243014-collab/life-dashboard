@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { useStore } from '../store';
 import type { TaskKind } from '../types';
 import { addDays, daysLabel, hhmm, reminderAt, shortDate, today, weekday, type Day } from '../dates';
-import { aiKnownOff, askClaude, checkClaude, ERROR_TEXT, recentlyAdded, toRecords, type CaptureError } from '../capture';
+import { aiKnownOff, askClaude, checkClaude, ERROR_TEXT, lastCaptureProblem, recentlyAdded, toRecords, type CaptureError } from '../capture';
 import { speechSupported, useSpeech } from '../speech';
 import { go } from '../router';
 import { useToast } from '../toast';
@@ -191,7 +191,8 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
       reset(ids);
     } catch (e) {
       // Never lose what was typed: save it with whatever you picked yourself.
-      const why = ERROR_TEXT[(typeof e === 'string' ? e : 'failed') as CaptureError];
+      const code = (typeof e === 'string' ? e : 'failed') as CaptureError;
+      const why = ERROR_TEXT[code] + (typeof e !== 'string' && e instanceof Error ? ` (${e.message.slice(0, 120)})` : code === 'failed' && lastCaptureProblem ? ` (${lastCaptureProblem.slice(0, 120)})` : '');
       if (e === 'not_configured') setAiOff(true);
       saveManual(kind === 'routine' ? why.replace('so it went to the Inbox', 'so it was saved as you set it') : why);
     } finally {

@@ -49,6 +49,9 @@ async function isSignedIn(req: Request): Promise<boolean> {
   return res.ok;
 }
 
+// Structured-output schema. "Can be empty" is written as anyOf [..., null], the documented form.
+const orNull = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: 'null' }] });
+
 function schema(domains: string[]) {
   return {
     type: 'object',
@@ -57,18 +60,18 @@ function schema(domains: string[]) {
     properties: {
       title: { type: 'string', description: 'Short, clear wording that starts with a verb where it makes sense. No date/time words.' },
       kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea', 'goal'] },
-      minutes: { type: ['integer', 'null'], description: 'Rough time estimate in minutes for a task, else null' },
-      energy: { type: ['string', 'null'], enum: ['low', 'mid', 'high', null] },
-      first_step: { type: ['string', 'null'], description: 'One tiny, concrete first action for a task, else null' },
-      stage: { type: ['string', 'null'], enum: ['Applied', 'Test', 'Interview', 'Offer', 'Closed', 'Booked', 'Shot', 'Editing', 'Delivered', null] },
+      minutes: { ...orNull({ type: 'integer' }), description: 'Rough time estimate in minutes for a task, else null' },
+      energy: orNull({ type: 'string', enum: ['low', 'mid', 'high'] }),
+      first_step: { ...orNull({ type: 'string' }), description: 'One tiny, concrete first action for a task, else null' },
+      stage: orNull({ type: 'string', enum: ['Applied', 'Test', 'Interview', 'Offer', 'Closed', 'Booked', 'Shot', 'Editing', 'Delivered'] }),
       domain: { type: 'string', enum: domains },
-      date: { type: ['string', 'null'], description: 'YYYY-MM-DD, or null if no day was mentioned' },
-      time: { type: ['string', 'null'], description: '24-hour HH:MM, or null if no time was mentioned' },
+      date: { ...orNull({ type: 'string' }), description: 'YYYY-MM-DD, or null if no day was mentioned' },
+      time: { ...orNull({ type: 'string' }), description: '24-hour HH:MM, or null if no time was mentioned' },
       reminder: { type: 'boolean' },
       days: { type: 'array', items: { type: 'integer', enum: [0, 1, 2, 3, 4, 5, 6] }, description: 'Routine days, 0=Monday..6=Sunday. Empty unless kind is routine.' },
       time_of_day: { type: 'string', enum: ['commute', 'day', 'evening'] },
-      follow_up_title: { type: ['string', 'null'] },
-      follow_up_date: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+      follow_up_title: orNull({ type: 'string' }),
+      follow_up_date: { ...orNull({ type: 'string' }), description: 'YYYY-MM-DD' },
     },
   };
 }
@@ -108,7 +111,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 2000,
+      max_tokens: 8000,
       output_config: { effort: 'low', format: { type: 'json_schema', schema: schema(domains) } },
       system: SYSTEM,
       messages: [
@@ -122,6 +125,7 @@ export async function POST(req: Request): Promise<Response> {
       ],
     });
     if (response.stop_reason === 'refusal') return json(422, { error: 'refused' });
+    if (response.stop_reason === 'max_tokens') return json(502, { error: 'api_error', detail: 'answer was cut off' });
     const out = response.content.find((b) => b.type === 'text');
     if (!out || out.type !== 'text') return json(502, { error: 'no_output' });
     const result = JSON.parse(out.text) as CaptureResult;
@@ -132,10 +136,10 @@ export async function POST(req: Request): Promise<Response> {
     if (error instanceof Anthropic.APIError) {
       console.error('Anthropic error', error.status, error.message);
       // 400 with "credit balance" means the account needs topping up
-      return json(502, { error: error.status === 400 && /credit/i.test(error.message) ? 'no_credit' : 'api_error' });
+      return json(502, { error: error.status === 400 && /credit/i.test(error.message) ? 'no_credit' : 'api_error', detail: `${error.status ?? ''} ${error.message}`.trim().slice(0, 160) });
     }
     console.error(error);
-    return json(500, { error: 'server_error' });
+    return json(500, { error: 'server_error', detail: String(error instanceof Error ? error.message : error).slice(0, 160) });
   }
 }
 

@@ -53,6 +53,7 @@ export async function checkClaude(): Promise<boolean> {
 }
 
 export async function askClaude(text: string, domains: Domain[]): Promise<CaptureResult> {
+  lastCaptureProblem = '';
   const now = new Date();
   const token = supabase ? (await supabase.auth.getSession()).data.session?.access_token : undefined;
   let res: Response;
@@ -72,14 +73,19 @@ export async function askClaude(text: string, domains: Domain[]): Promise<Captur
     throw 'offline' as CaptureError;
   }
   if (res.ok) return (await res.json()) as CaptureResult;
-  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  const body = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
   if (body.error === 'not_configured' || res.status === 404) {
     try { sessionStorage.setItem(AI_OFF_KEY, '1'); } catch { /* ignore */ }
     throw 'not_configured' as CaptureError;
   }
   if (body.error === 'bad_key' || body.error === 'no_credit') throw body.error as CaptureError;
+  // Keep the real reason so the message can show it.
+  lastCaptureProblem = [body.error ?? `error ${res.status}`, body.detail].filter(Boolean).join(': ');
   throw 'failed' as CaptureError;
 }
+
+/** The last reason Claude couldn't sort something (shown in the message). */
+export let lastCaptureProblem = '';
 
 export const ERROR_TEXT: Record<CaptureError, string> = {
   not_configured: 'Claude isn’t connected yet, so it went to the Inbox.',
