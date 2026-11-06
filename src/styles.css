@@ -787,3 +787,29 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .payslip-figures { flex: 1; display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
 .payslip-net { color: var(--sage-text); font-weight: 600; }
 .date-plain { width: auto; flex: none; padding: 8px 10px; }
+
+/* Bills & spending money */
+.big-money .note { font-family: 'Figtree', system-ui, sans-serif; font-weight: 500; font-size: 1rem; }
+.warn-text { color: var(--amber-text); font-weight: 600; }
+.due-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.due-list li { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.due-list li:first-child { border-top: none; }
+.due-date { width: 86px; white-space: nowrap; flex: none; font-weight: 600; font-size: 0.9rem; }
+.due-name { flex: 1; min-width: 0; }
+.due-amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+.bill-row {
+  width: 100%; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 14px; text-align: left; font: inherit; color: var(--ink); min-height: 60px;
+}
+.bill-row.paused { opacity: 0.6; }
+.bill-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bill-side { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.bill-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.bill-form .bill-name { flex: 1; min-width: 0; padding: 10px 12px; }
+.small-select { min-height: 40px; padding: 0 10px; }
+.push-right { margin-left: auto; }
+.refund-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; }
+.refund-row.late { border-color: var(--amber, #A5620B); }
+.refund-row .row-body { flex: 1; min-width: 0; }
+.refund-row .row-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.refund-input { max-width: 160px; }

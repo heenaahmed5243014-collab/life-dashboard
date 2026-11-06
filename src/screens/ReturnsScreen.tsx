@@ -13,6 +13,8 @@ import { useToast } from '../toast';
 import { cheer } from '../cheers';
 import { Check, Plus } from '../icons';
 
+const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function ReturnsScreen() {
   const store = useStore();
   const toast = useToast();
@@ -31,9 +33,21 @@ export default function ReturnsScreen() {
   }
 
   const dropOff = (t: Task) => {
-    store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString(), starred: false });
-    toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
+    store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString(), starred: false, refund_status: 'waiting', dropped_off_on: now });
+    toast({
+      message: t.refund_amount ? `${cheer()} ${money(t.refund_amount)} on its way back` : cheer(),
+      undo: () => store.updateTask(t.id, { status: 'open', closed_at: null, refund_status: null, dropped_off_on: null }),
+    });
   };
+  const received = (t: Task) => {
+    store.updateTask(t.id, { refund_status: 'received', refund_received_on: now });
+    toast({ message: t.refund_amount ? `${money(t.refund_amount)} back. Nice.` : 'Refund ticked off', undo: () => store.updateTask(t.id, { refund_status: 'waiting', refund_received_on: null }) });
+  };
+  const waiting = store.tasks
+    .filter((t) => t.status === 'done' && t.refund_status === 'waiting')
+    .sort((a, b) => (a.dropped_off_on ?? a.closed_at ?? '').localeCompare(b.dropped_off_on ?? b.closed_at ?? ''));
+  const owed = waiting.reduce((s, t) => s + (t.refund_amount ?? 0), 0) + open.reduce((s, t) => s + (t.refund_amount ?? 0), 0);
+  const sinceDrop = (t: Task) => daysBetween(t.dropped_off_on ?? (t.closed_at ? t.closed_at.slice(0, 10) : now), now);
 
   const dueTag = (t: Task) => {
     if (!t.due) return { text: 'Add return-by date', cls: 'tag t-amber' };
@@ -58,6 +72,7 @@ export default function ReturnsScreen() {
           <div className="pills">
             <span className="pill p-sage">{open.filter((t) => t.qr_path).length} QR codes ready</span>
             {soon.length > 0 && <span className="pill t-amber">{soon.length} due this week</span>}
+            {owed > 0 && <span className="pill p-violet">{money(owed)} owed back to you</span>}
           </div>
         </header>
 
@@ -89,6 +104,7 @@ export default function ReturnsScreen() {
                         onChange={(e) => store.updateTask(t.id, { due: e.target.value || null })}
                       />
                     </label>
+                    {t.refund_amount != null && <span className="tag t-sage">{money(t.refund_amount)}</span>}
                     {t.drop_off && <span className="tag t-violet">{t.drop_off}</span>}
                   </span>
                 </div>
@@ -105,6 +121,30 @@ export default function ReturnsScreen() {
             </article>
           );
         })}
+
+        {waiting.length > 0 && (
+          <section className="section">
+            <div className="between"><h2 className="h2">Waiting for refund</h2><span className="count">{money(waiting.reduce((s, t) => s + (t.refund_amount ?? 0), 0))}</span></div>
+            <p className="note">Most shops refund within 14 days of getting it back. Tick when the money lands.</p>
+            {waiting.map((t) => {
+              const n = sinceDrop(t);
+              const late = n >= 14;
+              return (
+                <div key={t.id} className={`refund-row${late ? ' late' : ''}`}>
+                  <button type="button" className="row-body" onClick={() => go(`/item/${t.id}`)}>
+                    <span className="row-title">{t.title}</span>
+                    <span className="row-meta">
+                      {n === 0 ? 'Dropped off today' : `Dropped off ${n} day${n === 1 ? '' : 's'} ago`}
+                      {late && <span className="tag t-amber">Chase it</span>}
+                    </span>
+                  </button>
+                  {t.refund_amount != null && <span className="bill-amount">{money(t.refund_amount)}</span>}
+                  <button type="button" className="btn small" onClick={() => received(t)}>Got it ✓</button>
+                </div>
+              );
+            })}
+          </section>
+        )}
       </main>
 
       <button

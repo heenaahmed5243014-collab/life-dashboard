@@ -6,6 +6,8 @@ import { addDays, daysLabel, shortDate, today, weekday, type Day } from '../date
 import Nav from '../components/Nav';
 import { DaysPicker } from '../components/Fields';
 import { useToast } from '../toast';
+import BillsSection, { scheduleText } from '../components/BillsSection';
+import { billsDue, payPeriod, spendingMoney } from '../bills';
 
 const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const roundMoney = (n: number) => '£' + Math.round(n).toLocaleString('en-GB');
@@ -69,6 +71,10 @@ export default function IncomeScreen() {
     return parts.length ? ' · ' + parts.join(' · ') : '';
   };
 
+  const period = payPeriod(payslips, now);
+  const spend = spendingMoney(store.bills ?? [], income, payslips, now);
+  const upcoming = billsDue(store.bills ?? [], now, addDays(period.next, -1));
+
   const startEdit = () => {
     setRate(r ? String(r) : '');
     setTravel(t ? String(t) : '');
@@ -98,12 +104,40 @@ export default function IncomeScreen() {
     <>
       <main className="page income-page">
         <header className="page-head">
-          <h1 className="h1">Income</h1>
-          <p className="sub">Before tax, with take-home estimated from your latest payslip.</p>
+          <h1 className="h1">Money</h1>
+          <p className="sub">A plan from your pay, bills and travel. Not your bank balance.</p>
         </header>
 
-        <section className="card hero">
-          <div className="between"><span className="eyebrow">This week</span><span className="count">{weekSoFar} of {weekAll} days</span></div>
+        {spend && (
+          <section className="card hero">
+            <div className="between"><span className="eyebrow">Spending money until payday</span><span className="count">{spend.daysToPayday} days</span></div>
+            <div className="big-money">{roundMoney(Math.max(0, spend.perWeek))} <span className="note">a week</span></div>
+            <p className="note">
+              {roundMoney(spend.left)} for this pay month: {spend.payIsEstimate ? '≈ ' : ''}{roundMoney(spend.pay)} pay − {roundMoney(spend.billsTotal)} bills − {roundMoney(spend.travelTotal)} travel.
+              {' '}Payday {shortDate(period.next)}.
+            </p>
+            {spend.left < 0 && <p className="note warn-text">Bills and travel are more than this month’s pay. Worth a look.</p>}
+          </section>
+        )}
+
+        {upcoming.length > 0 && (
+          <section className="card">
+            <div className="between"><span className="eyebrow">Coming out before payday</span><span className="count">{money(upcoming.reduce((s, x) => s + x.bill.amount, 0))}</span></div>
+            <ul className="due-list">
+              {upcoming.slice(0, 8).map(({ bill, day }) => (
+                <li key={bill.id + day}>
+                  <span className="due-date">{day === now ? 'Today' : shortDate(day)}</span>
+                  <span className="due-name">{bill.name}<span className="note"> · {scheduleText(bill)}</span></span>
+                  <span className="due-amount">{money(bill.amount)}</span>
+                </li>
+              ))}
+            </ul>
+            {upcoming.length > 8 && <p className="note">+{upcoming.length - 8} more</p>}
+          </section>
+        )}
+
+        <section className="card">
+          <div className="between"><span className="eyebrow">Earned this week</span><span className="count">{weekSoFar} of {weekAll} days</span></div>
           <div className="big-money">{money(r * weekSoFar)}</div>
           <p className="note">of {money(r * weekAll)} this week{net(weekAll)}</p>
           <div className="progress"><div className="bar"><i style={{ width: `${weekAll ? (weekSoFar / weekAll) * 100 : 0}%` }} /></div></div>
@@ -148,6 +182,8 @@ export default function IncomeScreen() {
             </>
           )}
         </section>
+
+        <BillsSection />
 
         <section className="section">
           <div className="between"><h2 className="h2">Payslips</h2><span className="count">{payslips.length}</span></div>

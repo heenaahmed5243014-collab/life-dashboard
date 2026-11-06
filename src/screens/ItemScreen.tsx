@@ -110,6 +110,26 @@ function ItemDetail({ task }: { task: Task }) {
               <DatePicker forReturn value={task.due} onChange={(due) => save({ due })} />
               {!task.due && <p className="note">Check the order email or receipt for the last day. Most shops give 14 to 30 days.</p>}
             </FieldBlock>
+            <FieldBlock label="Refund amount">
+              <span className="money-input refund-input">
+                <span aria-hidden="true">£</span>
+                <input
+                  inputMode="decimal"
+                  aria-label="Refund amount"
+                  placeholder="0.00"
+                  defaultValue={task.refund_amount ?? ''}
+                  key={task.id + String(task.refund_amount)}
+                  onBlur={(e) => {
+                    const v = e.target.value.replace(/[£,\s]/g, '');
+                    const n = v === '' ? null : Number(v);
+                    if (n === null || (Number.isFinite(n) && n >= 0)) {
+                      const r = n === null ? null : Math.round(n * 100) / 100;
+                      if (r !== (task.refund_amount ?? null)) save({ refund_amount: r });
+                    }
+                  }}
+                />
+              </span>
+            </FieldBlock>
             <FieldBlock label="Drop-off">
               <div className="chips" role="radiogroup" aria-label="Drop-off">
                 {DROP_OFFS.map((o) => (

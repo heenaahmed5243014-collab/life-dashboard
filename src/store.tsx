@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Balance, Domain, IncomeSettings, Payslip, Routine, Subcategory, Task, Weight } from './types';
+import type { Account, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, Subcategory, Task, Weight } from './types';
 import { today } from './dates';
 import { useToast } from './toast';
 
@@ -35,6 +35,9 @@ interface Store extends Snapshot {
   setIncome(i: IncomeSettings): void;
   addPayslip(p: Omit<Payslip, 'id'>): void;
   deletePayslip(id: string): void;
+  addBill(b: Omit<Bill, 'id' | 'active'>): Bill;
+  updateBill(id: string, changes: Partial<Bill>): void;
+  deleteBill(id: string): void;
   uploadQr(task: Task, file: File): Promise<void>;
   removeQr(task: Task): void;
   qrUrl(path: string): Promise<string>;
@@ -225,6 +228,20 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       deletePayslip(id) {
         setData((d) => d && { ...d, payslips: d.payslips.filter((x) => x.id !== id) });
         save(backend.deletePayslip(id));
+      },
+      addBill(fields) {
+        const b: Bill = { id: crypto.randomUUID(), active: true, ...fields };
+        setData((d) => d && { ...d, bills: [...(d.bills ?? []), b] });
+        save(backend.insertBill(b));
+        return b;
+      },
+      updateBill(id, changes) {
+        setData((d) => d && { ...d, bills: (d.bills ?? []).map((b) => (b.id === id ? { ...b, ...changes } : b)) });
+        save(backend.updateBill(id, changes));
+      },
+      deleteBill(id) {
+        setData((d) => d && { ...d, bills: (d.bills ?? []).filter((b) => b.id !== id) });
+        save(backend.deleteBill(id));
       },
       async uploadQr(task, file) {
         const old = task.qr_path;

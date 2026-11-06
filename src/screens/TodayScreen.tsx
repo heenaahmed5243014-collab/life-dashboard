@@ -36,6 +36,12 @@ function readDay(now: Day): Day {
 function slipping(tasks: Task[], now: Day): { task: Task; why: string }[] {
   const out: { task: Task; why: string }[] = [];
   for (const t of tasks) {
+    if (t.status === 'done' && t.refund_status === 'waiting') {
+      const since = t.dropped_off_on ?? (t.closed_at ? toDay(new Date(t.closed_at)) : null);
+      const n = since ? daysBetween(since, now) : 0;
+      if (n >= 14) out.push({ task: t, why: `Refund${t.refund_amount ? ` of £${t.refund_amount.toFixed(2)}` : ''} not received after ${n} days` });
+      continue;
+    }
     if (t.status !== 'open' || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
     if (t.due && daysBetween(t.due, now) >= 3) {
       out.push({ task: t, why: `Carried over since ${WEEKDAY_SHORT[weekday(t.due)]} ${parseDay(t.due).getDate()}` });

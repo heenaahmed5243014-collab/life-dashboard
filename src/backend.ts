@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Balance, type Domain, type Routine, type IncomeSettings, type Payslip, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -17,6 +17,7 @@ export interface Snapshot {
   weights: Weight[];
   income: IncomeSettings | null;
   payslips: Payslip[];
+  bills: Bill[];
 }
 
 export interface Backend {
@@ -37,6 +38,9 @@ export interface Backend {
   setIncome(i: IncomeSettings): Promise<void>;
   addPayslip(p: Payslip): Promise<void>;
   deletePayslip(id: string): Promise<void>;
+  insertBill(b: Bill): Promise<void>;
+  updateBill(id: string, changes: Partial<Bill>): Promise<void>;
+  deleteBill(id: string): Promise<void>;
   /** Saves a QR screenshot privately and returns where it's stored. */
   uploadQr(taskId: string, file: File): Promise<string>;
   /** A short-lived link to show a stored QR screenshot. */
@@ -64,6 +68,18 @@ const RECENT_DAYS = 14;
 
 export function supabaseBackend(sb: SupabaseClient): Backend {
   // Income is loaded separately so the rest of the app still opens if its tables aren't set up yet.
+  const loadExtras = async (): Promise<{ bills: Bill[]; waiting: Task[] }> => {
+    const [bills, waiting] = await Promise.all([
+      sb.from('bills').select('*').order('created_at'),
+      sb.from('tasks').select('*').eq('refund_status', 'waiting'),
+    ]);
+    const net = (e: { message: string } | null) => e && /fetch|network|load failed/i.test(e.message);
+    if (net(bills.error) || net(waiting.error)) throw new Error((bills.error ?? waiting.error)!.message);
+    return {
+      bills: bills.error ? [] : (bills.data as (Bill & { user_id?: string })[]).map(({ user_id: _u, ...b }) => ({ ...b, amount: Number(b.amount) })),
+      waiting: waiting.error ? [] : (waiting.data as Task[]),
+    };
+  };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
       sb.from('income_settings').select('*').maybeSingle(),
@@ -120,9 +136,17 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         sb.from('balances').select('*').gte('month', addDays(now, -260)),
         sb.from('weights').select('day, lb').gte('day', addDays(now, -180)).order('day'),
       ]);
+      const extras = await loadExtras();
+      const loaded = [...check<Task[]>(open), ...check<Task[]>(closed)];
+      const seen = new Set(loaded.map((t) => t.id));
+      const tasks = [...loaded, ...extras.waiting.filter((t) => !seen.has(t.id))].map((t) => ({
+        ...t,
+        refund_amount: t.refund_amount === null || t.refund_amount === undefined ? null : Number(t.refund_amount),
+      }));
       return {
         domains,
-        tasks: [...check<Task[]>(open), ...check<Task[]>(closed)],
+        bills: extras.bills,
+        tasks,
         routines: check<Routine[]>(routines),
         ticks: check<Tick[]>(ticks),
         subcategories: check<Subcategory[]>(subcategories),
@@ -178,6 +202,15 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     async deletePayslip(id) {
       check(await sb.from('payslips').delete().eq('id', id));
     },
+    async insertBill(b) {
+      check(await sb.from('bills').insert(b));
+    },
+    async updateBill(id, changes) {
+      check(await sb.from('bills').update(changes).eq('id', id));
+    },
+    async deleteBill(id) {
+      check(await sb.from('bills').delete().eq('id', id));
+    },
     async uploadQr(taskId, file) {
       const { data } = await sb.auth.getUser();
       if (!data.user) throw new Error('Not signed in');
@@ -220,7 +253,8 @@ export function demoBackend(): Backend {
     task('Amira wedding shoot', 'Made in Heaven', null, { kind: 'project', stage: 'Editing' }),
     task('Bedroom makeover', 'Home', null, { kind: 'project' }),
     task('Sort Oyster connector', 'Home', addDays(now, -5), { minutes: 10, energy: 'low', step: 'Find what you need and do just the first step.' }),
-    task('TK Maxx (£27)', 'Home', null, { minutes: 10, energy: 'low', notes: 'Return window: check the order email for the last day.', step: 'Find the receipt. TK Maxx returns go back in store.' }),
+    task('Return glasses (£12.99)', 'Home', null, { status: 'done', closed_at: new Date(Date.now() - 16 * 86400000).toISOString(), refund_amount: 12.99, refund_status: 'waiting', dropped_off_on: addDays(now, -16) }),
+    task('TK Maxx (£27)', 'Home', null, { refund_amount: 27, minutes: 10, energy: 'low', notes: 'Return window: check the order email for the last day.', step: 'Find the receipt. TK Maxx returns go back in store.' }),
     task('Return cracked iPad mini', 'Home', null, { minutes: 20, energy: 'mid', step: 'Take photos of the crack first, then start the return.' }),
     task('Edit Tisha’s wedding photos', 'Made in Heaven', null, { minutes: 90, energy: 'high', step: 'Open the folder and cull the first 50 photos. That’s it.', starred: true }),
     task('120lb', 'Home', null, { kind: 'goal' }),
@@ -294,11 +328,17 @@ export function demoBackend(): Backend {
       domains, tasks, routines, ticks, subcategories, accounts, balances, weights,
       income: { daily_rate: 144.72, work_days: [0, 1, 2, 3, 4], daily_travel: 9.75 },
       payslips: [{ id: 'p1', paid_on: '2026-11-05', gross: 3064.02, net: 2333.94 }],
+      bills: [
+        { id: 'b1', name: 'Rent', amount: 650, frequency: 'monthly', due_day: 1, due_month: null, kind: 'bill', active: true },
+        { id: 'b2', name: 'Phone', amount: 25, frequency: 'monthly', due_day: 12, due_month: null, kind: 'bill', active: true },
+        { id: 'b3', name: 'Spotify', amount: 11.99, frequency: 'monthly', due_day: 18, due_month: null, kind: 'subscription', active: true },
+        { id: 'b4', name: 'Gym', amount: 8.5, frequency: 'weekly', due_day: 0, due_month: null, kind: 'subscription', active: true },
+      ],
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
-    setIncome: noop, addPayslip: noop, deletePayslip: noop,
+    setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
     uploadQr: async (taskId, file) => {
       const path = `demo/${taskId}-${Date.now()}`;
       qrFiles.set(path, URL.createObjectURL(file));

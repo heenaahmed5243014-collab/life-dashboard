@@ -33,6 +33,10 @@ export interface Task {
   drop_off: string | null; // returns: Post Office, InPost locker...
   qr_path: string | null; // returns: private QR screenshot in storage
   subcategory_id: string | null;
+  refund_amount?: number | null; // returns: how much comes back
+  refund_status?: 'waiting' | 'received' | null;
+  dropped_off_on?: Day | null;
+  refund_received_on?: Day | null;
   notes: string;
   created_at: string;
   touched_at: string;
@@ -85,6 +89,20 @@ export interface IncomeSettings {
   daily_rate: number; // before tax
   work_days: number[]; // 0 = Monday ... 6 = Sunday
   daily_travel?: number; // spent on travel each work day
+}
+
+export type BillFrequency = 'weekly' | 'monthly' | 'yearly';
+export type BillKind = 'bill' | 'subscription' | 'debt' | 'saving';
+
+export interface Bill {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: BillFrequency;
+  due_day: number; // monthly: 1-31 · weekly: 0 = Monday ... 6 = Sunday · yearly: day of due_month
+  due_month: number | null; // yearly only, 1-12
+  kind: BillKind;
+  active: boolean;
 }
 
 export interface Payslip {

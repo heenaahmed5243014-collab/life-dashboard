@@ -18,7 +18,7 @@ const TABS: { key: Tab; label: string; path: string }[] = [
   { key: 'areas', label: 'Areas', path: '/areas' },
   { key: 'tasks', label: 'Tasks', path: '/tasks' },
   { key: 'routines', label: 'Routines', path: '/routines' },
-  { key: 'income', label: 'Income', path: '/income' },
+  { key: 'income', label: 'Money', path: '/income' },
 ];
 
 export default function Nav({ current }: { current: Tab }) {
