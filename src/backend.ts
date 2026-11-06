@@ -66,7 +66,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
   // Income is loaded separately so the rest of the app still opens if its tables aren't set up yet.
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
-      sb.from('income_settings').select('daily_rate, work_days').maybeSingle(),
+      sb.from('income_settings').select('*').maybeSingle(),
       sb.from('payslips').select('id, paid_on, gross, net').order('paid_on', { ascending: false }).limit(24),
     ]);
     if (inc.error || slips.error) {
@@ -76,7 +76,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     }
     const i = inc.data as IncomeSettings | null;
     return {
-      income: i ? { daily_rate: Number(i.daily_rate), work_days: i.work_days } : null,
+      income: i ? { daily_rate: Number(i.daily_rate), work_days: i.work_days, daily_travel: Number(i.daily_travel ?? 0) } : null,
       payslips: (slips.data as Payslip[]).map((p) => ({ ...p, gross: Number(p.gross), net: Number(p.net) })),
     };
   };
@@ -292,7 +292,7 @@ export function demoBackend(): Backend {
   return {
     load: async () => ({
       domains, tasks, routines, ticks, subcategories, accounts, balances, weights,
-      income: { daily_rate: 144.72, work_days: [0, 1, 2, 3, 4] },
+      income: { daily_rate: 144.72, work_days: [0, 1, 2, 3, 4], daily_travel: 9.75 },
       payslips: [{ id: 'p1', paid_on: '2026-11-05', gross: 3064.02, net: 2333.94 }],
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,

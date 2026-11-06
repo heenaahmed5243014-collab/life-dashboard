@@ -13,6 +13,7 @@ create table if not exists public.income_settings (
   user_id     uuid primary key default auth.uid() references auth.users (id) on delete cascade,
   daily_rate  numeric(10, 2) not null default 0 check (daily_rate >= 0),
   work_days   smallint[] not null default '{0,1,2,3,4}' check (work_days <@ array[0,1,2,3,4,5,6]::smallint[]),
+  daily_travel numeric(10, 2) not null default 0 check (daily_travel >= 0),
   updated_at  timestamptz not null default now()
 );
 create table if not exists public.payslips (
@@ -24,6 +25,9 @@ create table if not exists public.payslips (
   created_at  timestamptz not null default now(),
   unique (user_id, paid_on)
 );
+-- (for a database where this table was created before travel was added)
+alter table public.income_settings add column if not exists daily_travel numeric(10, 2) not null default 0 check (daily_travel >= 0);
+
 alter table public.income_settings enable row level security;
 alter table public.payslips enable row level security;
 drop policy if exists "own rows" on public.income_settings;
@@ -33,7 +37,7 @@ create policy "own rows" on public.income_settings
 create policy "own rows" on public.payslips
   for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
--- Your starting figures: £144.72 a day, Monday to Friday, and the 5 Nov payslip totals
+-- Your starting figures: £144.72 a day, Monday to Friday, £9.75 travel a work day, and the 5 Nov payslip totals
 do $$
 declare
   uid uuid;
@@ -44,8 +48,9 @@ begin
     raise exception 'Expected exactly one account, found %. Tables were added; starting figures were not.', n;
   end if;
   select id into uid from auth.users limit 1;
-  insert into public.income_settings (user_id, daily_rate, work_days) values (uid, 144.72, '{0,1,2,3,4}')
+  insert into public.income_settings (user_id, daily_rate, work_days, daily_travel) values (uid, 144.72, '{0,1,2,3,4}', 9.75)
   on conflict (user_id) do nothing;
+  update public.income_settings set daily_travel = 9.75 where user_id = uid and daily_travel = 0;
   insert into public.payslips (user_id, paid_on, gross, net) values (uid, '2026-11-05', 3064.02, 2333.94)
   on conflict (user_id, paid_on) do nothing;
 end $$;

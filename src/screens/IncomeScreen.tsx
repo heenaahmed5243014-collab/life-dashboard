@@ -25,6 +25,7 @@ export default function IncomeScreen() {
   const now = today();
   const [editing, setEditing] = useState(false);
   const [rate, setRate] = useState('');
+  const [travel, setTravel] = useState('');
   const [days, setDays] = useState<number[]>([]);
   const [adding, setAdding] = useState(false);
   const [slip, setSlip] = useState({ paid_on: now, gross: '', net: '' });
@@ -57,17 +58,29 @@ export default function IncomeScreen() {
   const monthSoFar = workDaysBetween(monthStart, now, workDays);
   const monthAll = workDaysBetween(monthStart, monthEndDay, workDays);
   const yearly = r * workDays.length * 52;
-  const net = (n: number) => (takeHome ? ` · ≈ ${roundMoney(n * takeHome)} take-home` : '');
+  const t = income?.daily_travel ?? 0;
+  /** "≈ £551 take-home · £48.75 travel · ≈ £502 left" for a number of work days */
+  const net = (daysWorked: number) => {
+    const gross = r * daysWorked;
+    const parts: string[] = [];
+    if (takeHome) parts.push(`≈ ${roundMoney(gross * takeHome)} take-home`);
+    if (t) parts.push(`${money(t * daysWorked)} travel`);
+    if (takeHome && t) parts.push(`≈ ${roundMoney(gross * takeHome - t * daysWorked)} left`);
+    return parts.length ? ' · ' + parts.join(' · ') : '';
+  };
 
   const startEdit = () => {
     setRate(r ? String(r) : '');
+    setTravel(t ? String(t) : '');
     setDays(workDays);
     setEditing(true);
   };
   const saveRate = () => {
     const v = Number(rate.replace(/[£,\s]/g, ''));
+    const tv = Number((travel || '0').replace(/[£,\s]/g, ''));
     if (!Number.isFinite(v) || v < 0) return toast({ message: 'Type your daily pay as a number, e.g. 144.72' });
-    store.setIncome({ daily_rate: Math.round(v * 100) / 100, work_days: days.length ? days : [0, 1, 2, 3, 4] });
+    if (!Number.isFinite(tv) || tv < 0) return toast({ message: 'Type your daily travel as a number, e.g. 9.75' });
+    store.setIncome({ daily_rate: Math.round(v * 100) / 100, work_days: days.length ? days : [0, 1, 2, 3, 4], daily_travel: Math.round(tv * 100) / 100 });
     setEditing(false);
     toast({ message: 'Daily pay saved' });
   };
@@ -92,14 +105,14 @@ export default function IncomeScreen() {
         <section className="card hero">
           <div className="between"><span className="eyebrow">This week</span><span className="count">{weekSoFar} of {weekAll} days</span></div>
           <div className="big-money">{money(r * weekSoFar)}</div>
-          <p className="note">of {money(r * weekAll)} this week{net(r * weekAll)}</p>
+          <p className="note">of {money(r * weekAll)} this week{net(weekAll)}</p>
           <div className="progress"><div className="bar"><i style={{ width: `${weekAll ? (weekSoFar / weekAll) * 100 : 0}%` }} /></div></div>
         </section>
 
         <section className="card">
           <div className="between"><span className="eyebrow">{MONTHS[Number(now.slice(5, 7)) - 1]}</span><span className="count">{monthSoFar} of {monthAll} days</span></div>
           <div className="mid-money">{money(r * monthSoFar)} <span className="note">so far</span></div>
-          <p className="note">{money(r * monthAll)} expected this month{net(r * monthAll)}</p>
+          <p className="note">{money(r * monthAll)} expected this month{net(monthAll)}</p>
           <div className="progress"><div className="bar"><i style={{ width: `${monthAll ? (monthSoFar / monthAll) * 100 : 0}%` }} /></div></div>
         </section>
 
@@ -110,6 +123,10 @@ export default function IncomeScreen() {
               <label className="money-row">
                 <span className="money-name">Daily pay (before tax)</span>
                 <span className="money-input"><span aria-hidden="true">£</span><input inputMode="decimal" aria-label="Daily pay" value={rate} onChange={(e) => setRate(e.target.value)} /></span>
+              </label>
+              <label className="money-row">
+                <span className="money-name">Travel each work day</span>
+                <span className="money-input"><span aria-hidden="true">£</span><input inputMode="decimal" aria-label="Daily travel" placeholder="0.00" value={travel} onChange={(e) => setTravel(e.target.value)} /></span>
               </label>
               <span className="note">Days you work</span>
               <DaysPicker value={days} onChange={setDays} />
@@ -123,6 +140,8 @@ export default function IncomeScreen() {
               <div className="mid-money">{money(r)} <span className="note">a day · {daysLabel(workDays)}</span></div>
               <div className="meta">
                 {takeHome && <span className="tag t-sage">≈ {money(r * takeHome)} a day take-home ({pct}%)</span>}
+                {t > 0 && <span className="tag t-amber">{money(t)} travel a work day</span>}
+                {takeHome && t > 0 && <span className="tag t-violet">≈ {money(r * takeHome - t)} a day after tax and travel</span>}
                 <span className="tag">≈ {roundMoney(yearly)} a year before tax</span>
               </div>
               <p className="note">Assumes every work day is paid. Holidays and sick days show on your payslips.</p>

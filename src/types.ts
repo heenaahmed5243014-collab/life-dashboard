@@ -84,6 +84,7 @@ export interface Balance {
 export interface IncomeSettings {
   daily_rate: number; // before tax
   work_days: number[]; // 0 = Monday ... 6 = Sunday
+  daily_travel?: number; // spent on travel each work day
 }
 
 export interface Payslip {
