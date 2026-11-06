@@ -988,3 +988,4 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .stmt-top li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.92rem; }
 .stmt-top li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
 .stmt-top li span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+.stmt-hint { margin-top: -2px; }

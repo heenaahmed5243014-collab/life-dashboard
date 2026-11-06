@@ -1,8 +1,9 @@
-// "Upload a statement": reads a bank CSV on the phone, shows a summary, and saves only
-// the closing balance to the account you pick.
+// "Upload a statement": a CSV is read on the phone; photos, screenshots and PDFs are read by
+// Claude (sent, not stored). Shows a summary and saves only the closing balance to the account you pick.
 import { useRef, useState } from 'react';
 import { useStore } from '../store';
 import { readStatement, type StatementSummary } from '../statement';
+import { readStatementWithClaude } from '../statementAi';
 import { shortDate, today } from '../dates';
 import { useToast } from '../toast';
 import type { Account } from '../types';
@@ -26,23 +27,35 @@ export default function StatementUpload({ accounts }: { accounts: Account[] }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [account, setAccount] = useState('');
   const [closing, setClosing] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [viaClaude, setViaClaude] = useState(false);
 
-  const pick = async (file: File | undefined) => {
+  const pick = async (list: FileList | null) => {
     setProblem(null);
-    if (!file) return;
-    if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
-      setProblem('That’s a PDF. In your banking app, look for Export or Download and choose CSV (or Excel/CSV).');
-      return;
-    }
+    const files = list ? [...list] : [];
+    if (!files.length) return;
+    const isCsv = (f: File) => /\.csv$/i.test(f.name) || /csv|comma-separated/.test(f.type);
+    setBusy(true);
     try {
-      const sum = readStatement(await file.text());
+      let sum: StatementSummary;
+      let named: string | null = null;
+      if (files.every(isCsv)) {
+        sum = readStatement(await files[0].text());
+        setViaClaude(false);
+      } else {
+        const ai = await readStatementWithClaude(files.filter((f) => !isCsv(f)), accounts.map((a) => a.name));
+        sum = ai;
+        named = ai.account;
+        setViaClaude(true);
+      }
       setS(sum);
-      const a = guessAccount(accounts, file.name);
+      const a = (named && accounts.find((x) => x.name === named)) || guessAccount(accounts, files[0].name);
       setAccount(a?.id ?? accounts[0]?.id ?? '');
       setClosing(sum.closing !== null ? String(Math.abs(sum.closing)) : '');
     } catch (e) {
       setProblem(e instanceof Error ? e.message : 'Couldn’t read that file.');
     } finally {
+      setBusy(false);
       if (input.current) input.current.value = '';
     }
   };
@@ -63,13 +76,15 @@ export default function StatementUpload({ accounts }: { accounts: Account[] }) {
 
   return (
     <div className="stmt">
-      <input ref={input} type="file" accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel" className="visually-hidden" id="stmt-file" onChange={(e) => void pick(e.target.files?.[0])} />
-      {!s && (
+      <input ref={input} type="file" accept="image/*,.pdf,application/pdf,.csv,text/csv,text/comma-separated-values,application/vnd.ms-excel" multiple className="visually-hidden" id="stmt-file" onChange={(e) => void pick(e.target.files)} />
+      {busy && <p className="note" role="status">Reading your statement…</p>}
+      {!s && !busy && (
         <label htmlFor="stmt-file" className="btn small stmt-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3" /></svg>
           Upload a statement
         </label>
       )}
+      {!s && !busy && <p className="note stmt-hint">A screenshot or photo of your banking app, a PDF, or a CSV. Up to 4 pictures at once.</p>}
       {problem && <p className="note warn-text">{problem}</p>}
       {s && (
         <div className="stmt-card stack">
@@ -94,8 +109,8 @@ export default function StatementUpload({ accounts }: { accounts: Account[] }) {
             <span className="money-name">Closing balance</span>
             <span className="money-input"><span aria-hidden="true">£</span><input inputMode="decimal" aria-label="Closing balance" value={closing} placeholder="0.00" onChange={(e) => setClosing(e.target.value)} /></span>
           </label>
-          {s.closing === null && <p className="note">This file doesn’t include balances, so type the closing balance from your banking app.</p>}
-          <p className="note">Only the closing balance is saved. The payments stay on your phone.</p>
+          {s.closing === null && <p className="note">{viaClaude ? 'No balance was visible, so type it from your banking app.' : 'This file doesn’t include balances, so type the closing balance from your banking app.'}</p>}
+          <p className="note">{viaClaude ? 'Read by Claude: double-check the balance before saving. Only the closing balance is saved; the picture isn’t kept.' : 'Only the closing balance is saved. The payments stay on your phone.'}</p>
           <div className="row">
             <button type="button" className="btn primary small" onClick={save}>Save balance</button>
             <button type="button" className="btn small" onClick={() => setS(null)}>Cancel</button>
