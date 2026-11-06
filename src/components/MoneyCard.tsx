@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { daysBetween, today } from '../dates';
 import { useStore } from '../store';
 import type { Account, Balance } from '../types';
-import StatementUpload from './StatementUpload';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -123,7 +122,7 @@ export default function MoneyCard() {
       </div>
 
       {accounts.length === 0 && !editing ? (
-        <p className="note">Add your accounts once (current, savings, ISA, pension, credit card…). Then upload a statement or type the balances each month.</p>
+        <p className="note">Add your accounts once (current, savings, ISA, pension, credit card…). After that, a Balance check pops up on Today around payday: screenshot or type each balance.</p>
       ) : (
         <div className="mini-main">
           <div className="mini-figures">
@@ -174,8 +173,6 @@ export default function MoneyCard() {
           </div>
         </div>
       )}
-
-      {!editing && accounts.length > 0 && <StatementUpload accounts={accounts} />}
 
       <div className="row">
         {editing ? (

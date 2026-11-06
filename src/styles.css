@@ -989,3 +989,13 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .stmt-top li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
 .stmt-top li span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
 .stmt-hint { margin-top: -2px; }
+
+/* Balance check */
+.balance-prompt { border: 2px solid var(--sage, #3E7A64); }
+.balance-prompt .eyebrow { color: var(--sage-text, #2F6A54); }
+.bp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.bp-row { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.bp-row:first-child { border-top: none; padding-top: 0; }
+.bp-shot { cursor: pointer; }
+.bp-confirm { align-items: center; }
+.bp-shot { flex: none; width: auto; display: inline-flex; align-items: center; justify-content: center; }

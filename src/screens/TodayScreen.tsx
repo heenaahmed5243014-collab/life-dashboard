@@ -21,6 +21,7 @@ import StepsCard from '../components/StepsCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
 import MirrorCard from '../components/MirrorCard';
+import BalancePrompt from '../components/BalancePrompt';
 import { dueFollowUps } from '../components/OutreachTab';
 import { WorkModeButton } from '../components/WorkModeBar';
 import { useWorkMode } from '../workmode';
@@ -429,6 +430,8 @@ function TodayBody() {
           {slip.length > 6 && <p className="note">+{slip.length - 6} more</p>}
         </div>
       )}
+
+      {!work.active && <BalancePrompt />}
 
       {data.routines.length > 0 && (
         <section className="section">
