@@ -76,7 +76,15 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
     (p: Promise<void>) => {
       p.catch((e: Error) => {
         console.error(e);
-        toast({ message: 'Couldn’t save that. Check your connection and try again.' });
+        // Only blame the connection when it really is the connection.
+        const offline = !navigator.onLine || /failed to fetch|networkerror|load failed|network request failed/i.test(e.message);
+        toast({
+          message: offline
+            ? 'Couldn’t save that: no internet connection. Try again in a moment.'
+            : /column|schema|relation|does not exist/i.test(e.message)
+              ? 'Couldn’t save that: your database needs an update. Ask Claude for the latest Supabase update.'
+              : `Couldn’t save that (${e.message.slice(0, 80)}).`,
+        });
         reload();
       });
     },

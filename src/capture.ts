@@ -85,7 +85,7 @@ export const ERROR_TEXT: Record<CaptureError, string> = {
   not_configured: 'Claude isn’t connected yet, so it went to the Inbox.',
   bad_key: 'Claude’s API key isn’t working, so it went to the Inbox.',
   no_credit: 'Your Anthropic credit has run out, so it went to the Inbox.',
-  offline: 'No connection to Claude, so it went to the Inbox.',
+  offline: 'Couldn’t reach Claude just now, so it went to the Inbox.',
   failed: 'Claude couldn’t sort that one, so it went to the Inbox.',
 };
 
