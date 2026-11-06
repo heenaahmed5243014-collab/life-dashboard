@@ -37,6 +37,8 @@ export interface Backend {
   /** A short-lived link to show a stored QR screenshot. */
   qrUrl(path: string): Promise<string>;
   removeQr(path: string): Promise<void>;
+  /** Offline support: keep a copy of the list on the phone. */
+  saveSnapshot?(s: Snapshot): void;
 }
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;

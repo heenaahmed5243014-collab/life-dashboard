@@ -4,14 +4,47 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './backend';
 
+/** The last signed-in session saved on this phone (used only while offline). */
+function savedSession(): Session | null {
+  try {
+    const key = Object.keys(localStorage).find((k) => /^sb-.*-auth-token$/.test(k));
+    if (!key) return null;
+    const raw = JSON.parse(localStorage.getItem(key) ?? 'null');
+    const s = raw?.currentSession ?? raw;
+    return s?.user?.id ? (s as Session) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthGate({ children }: { children: (session: Session) => ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => data.subscription.unsubscribe();
+    const check = () =>
+      supabase!.auth.getSession().then(
+        ({ data, error }) => {
+          // Offline and the sign-in needs refreshing: carry on with the saved session.
+          if (!data.session && (!navigator.onLine || (error && /fetch|network|load failed/i.test(error.message)))) {
+            setSession(savedSession());
+          } else {
+            setSession(data.session);
+          }
+        },
+        () => setSession(savedSession()),
+      );
+    void check();
+    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+      if (!s && event !== 'SIGNED_OUT' && !navigator.onLine) return; // don't sign out just because there's no signal
+      setSession(s);
+    });
+    const onOnline = () => void check(); // refresh the sign-in once there's a connection
+    addEventListener('online', onOnline);
+    return () => {
+      data.subscription.unsubscribe();
+      removeEventListener('online', onOnline);
+    };
   }, []);
 
   if (session === undefined) return <main className="page center"><p className="muted">Loading…</p></main>;

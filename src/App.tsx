@@ -14,6 +14,20 @@ import AreaScreen from './screens/AreaScreen';
 import ReturnsScreen from './screens/ReturnsScreen';
 import AccountScreen from './screens/AccountScreen';
 import NotConnected from './screens/NotConnected';
+import { withOffline } from './offline';
+import SyncBanner from './components/SyncBanner';
+import type { Backend } from './backend';
+
+/** The real app for a signed-in user, with offline support. */
+function SignedInApp({ userId, real }: { userId: string; real: Backend }) {
+  const backend = useMemo(() => withOffline(real, userId), [real, userId]);
+  return (
+    <StoreProvider backend={backend}>
+      <SyncBanner />
+      <Screens />
+    </StoreProvider>
+  );
+}
 import QuickAddHost from './components/QuickAdd';
 
 function Screens() {
@@ -52,7 +66,7 @@ export default function App() {
   } else {
     body = (
       <AuthGate>
-        {(session) => <StoreProvider key={session.user.id} backend={real}><Screens /></StoreProvider>}
+        {(session) => <SignedInApp key={session.user.id} userId={session.user.id} real={real} />}
       </AuthGate>
     );
   }

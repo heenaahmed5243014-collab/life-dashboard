@@ -65,6 +65,26 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
 
   useEffect(reload, [reload]);
 
+  // Keep a copy on the phone after every change, so the app works offline.
+  useEffect(() => {
+    if (data && backend.saveSnapshot) backend.saveSnapshot(data);
+  }, [data, backend]);
+
+  // When offline changes have all synced, load the fresh copy; tell the user if one was refused.
+  useEffect(() => {
+    const onSynced = () => {
+      toast({ message: 'Back online. Everything’s synced.' });
+      reload();
+    };
+    const onError = () => toast({ message: 'One offline change couldn’t be saved. Check the item and try again.' });
+    addEventListener('ld:synced', onSynced);
+    addEventListener('ld:sync-error', onError);
+    return () => {
+      removeEventListener('ld:synced', onSynced);
+      removeEventListener('ld:sync-error', onError);
+    };
+  }, [reload, toast]);
+
   // Reload when the app comes back to the front, so phone and PC stay in step.
   useEffect(() => {
     const onVisible = () => document.visibilityState === 'visible' && reload();

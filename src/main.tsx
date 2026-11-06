@@ -11,3 +11,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+// Keep the app itself on the phone so it opens with no signal (live site only).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* offline opening just won't be available */
+    });
+  });
+}
