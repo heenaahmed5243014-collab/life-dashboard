@@ -129,3 +129,19 @@ export const DEFAULT_DOMAINS: Omit<Domain, 'id'>[] = [
   { name: 'Personal & home', short_name: 'Home', color: '#3E7A64', is_inbox: false, sort: 5 },
   { name: 'Inbox', short_name: 'Inbox', color: '#76637A', is_inbox: true, sort: 99 },
 ];
+
+export interface StepDay {
+  day: Day;
+  count: number;
+  source?: string;
+}
+
+/** target null = emergency fund, worked out from bills and travel. */
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  target: number | null;
+  months: number;
+  account_id: string | null;
+  sort: number;
+}

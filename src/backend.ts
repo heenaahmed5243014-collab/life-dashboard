@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -18,6 +18,9 @@ export interface Snapshot {
   income: IncomeSettings | null;
   payslips: Payslip[];
   bills: Bill[];
+  steps?: StepDay[];
+  goals?: SavingsGoal[];
+  noSpend?: Day[];
 }
 
 export interface Backend {
@@ -41,6 +44,13 @@ export interface Backend {
   insertBill(b: Bill): Promise<void>;
   updateBill(id: string, changes: Partial<Bill>): Promise<void>;
   deleteBill(id: string): Promise<void>;
+  setSteps(s: StepDay): Promise<void>;
+  insertGoal(g: SavingsGoal): Promise<void>;
+  updateGoal(id: string, changes: Partial<SavingsGoal>): Promise<void>;
+  deleteGoal(id: string): Promise<void>;
+  setNoSpend(day: Day, on: boolean): Promise<void>;
+  /** The private code the iPhone Shortcut uses to send steps. `fresh` makes a new one. */
+  stepLink(fresh: boolean): Promise<string | null>;
   /** Saves a QR screenshot privately and returns where it's stored. */
   uploadQr(taskId: string, file: File): Promise<string>;
   /** A short-lived link to show a stored QR screenshot. */
@@ -78,6 +88,22 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     return {
       bills: bills.error ? [] : (bills.data as (Bill & { user_id?: string })[]).map(({ user_id: _u, ...b }) => ({ ...b, amount: Number(b.amount) })),
       waiting: waiting.error ? [] : (waiting.data as Task[]),
+    };
+  };
+  // Steps, savings goals and no-spend days (update 9). Missing tables just mean empty lists.
+  const loadHealthMoney = async (now: Day): Promise<{ steps: StepDay[]; goals: SavingsGoal[]; noSpend: Day[] }> => {
+    const [steps, goals, ns] = await Promise.all([
+      sb.from('steps').select('day, count, source').gte('day', addDays(now, -120)).order('day'),
+      sb.from('savings_goals').select('id, name, target, months, account_id, sort').order('sort'),
+      sb.from('no_spend_days').select('day').gte('day', addDays(now, -120)),
+    ]);
+    const net = (e: { message: string } | null) => e && /fetch|network|load failed/i.test(e.message);
+    const err = steps.error ?? goals.error ?? ns.error;
+    if (net(err)) throw new Error(err!.message);
+    return {
+      steps: steps.error ? [] : (steps.data as StepDay[]).map((s) => ({ ...s, count: Number(s.count) })),
+      goals: goals.error ? [] : (goals.data as SavingsGoal[]).map((g) => ({ ...g, target: g.target === null ? null : Number(g.target) })),
+      noSpend: ns.error ? [] : (ns.data as { day: Day }[]).map((x) => x.day),
     };
   };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
@@ -154,6 +180,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         balances: check<(Balance & { user_id?: string })[]>(balances).map(({ user_id: _u, ...b }) => ({ ...b, amount: Number(b.amount) })),
         weights: check<Weight[]>(weights).map((w) => ({ ...w, lb: Number(w.lb) })),
         ...(await loadIncome()),
+        ...(await loadHealthMoney(now)),
       };
     },
     async insertTask(t) {
@@ -210,6 +237,30 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     },
     async deleteBill(id) {
       check(await sb.from('bills').delete().eq('id', id));
+    },
+    async setSteps(s) {
+      check(await sb.from('steps').upsert({ day: s.day, count: s.count, source: 'manual', updated_at: new Date().toISOString() }, { onConflict: 'user_id,day' }));
+    },
+    async insertGoal(g) {
+      check(await sb.from('savings_goals').insert(g));
+    },
+    async updateGoal(id, changes) {
+      check(await sb.from('savings_goals').update(changes).eq('id', id));
+    },
+    async deleteGoal(id) {
+      check(await sb.from('savings_goals').delete().eq('id', id));
+    },
+    async setNoSpend(day, on) {
+      if (on) check(await sb.from('no_spend_days').upsert({ day }, { onConflict: 'user_id,day', ignoreDuplicates: true }));
+      else check(await sb.from('no_spend_days').delete().eq('day', day));
+    },
+    async stepLink(fresh) {
+      if (!fresh) {
+        const res = await sb.from('step_links').select('token').maybeSingle();
+        const row = check<{ token: string } | null>(res);
+        if (row) return row.token;
+      }
+      return check<string>(await sb.rpc('new_step_link'));
     },
     async uploadQr(taskId, file) {
       const { data } = await sb.auth.getUser();
@@ -334,11 +385,16 @@ export function demoBackend(): Backend {
         { id: 'b3', name: 'Spotify', amount: 11.99, frequency: 'monthly', due_day: 18, due_month: null, kind: 'subscription', active: true },
         { id: 'b4', name: 'Gym', amount: 8.5, frequency: 'weekly', due_day: 0, due_month: null, kind: 'subscription', active: true },
       ],
+      steps: [9200, 21400, 17800, 22100, 12600, 20300].map((count, i) => ({ day: addDays(now, i - 6), count })),
+      goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
+      noSpend: [addDays(now, -2), addDays(now, -4)],
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
     setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
+    setSteps: noop, insertGoal: noop, updateGoal: noop, deleteGoal: noop, setNoSpend: noop,
+    stepLink: async () => 'demo0000000000000000000000000000demo',
     uploadQr: async (taskId, file) => {
       const path = `demo/${taskId}-${Date.now()}`;
       qrFiles.set(path, URL.createObjectURL(file));

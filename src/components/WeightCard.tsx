@@ -26,6 +26,12 @@ export default function WeightCard() {
     setOpen(false);
   };
 
+  const avgOf = (from: number, to: number) => {
+    const xs = log.filter((w) => { const n = daysBetween(w.day, now); return n >= from && n <= to; }).map((w) => w.lb);
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  };
+  const thisWeek = avgOf(0, 6);
+  const lastWeek = avgOf(7, 13);
   const change = latest && prev ? latest.lb - prev.lb : null;
   const pct = latest && first && goal !== null && first.lb > goal ? Math.max(0, Math.min(100, Math.round(((first.lb - latest.lb) / (first.lb - goal)) * 100))) : 0;
   const lastLabel = latest ? (latest.day === now ? 'Logged today' : `Last logged ${daysBetween(latest.day, now) === 1 ? 'yesterday' : shortDate(latest.day)}`) : 'Not logged yet';
@@ -52,6 +58,13 @@ export default function WeightCard() {
         </div>
       ) : (
         <p className="note">Log a weigh-in to start your trend.</p>
+      )}
+      {thisWeek !== null && (
+        <p className="note">
+          7-day average {fix(thisWeek)} lb
+          {lastWeek !== null && ` · ${thisWeek <= lastWeek ? '▼' : '▲'} ${fix(Math.abs(thisWeek - lastWeek))} on the week before`}.
+          {' '}Daily ups and downs are mostly water. The average is what counts.
+        </p>
       )}
       {goal !== null && latest && (
         <div className="goal-line">

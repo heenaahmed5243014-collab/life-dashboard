@@ -27,7 +27,7 @@ const monthEnd = (key: string) => {
  * An account's balance in a month: that month's figure, or the latest one before it,
  * plus any daily interest since the day that figure was typed in (up to today, or the month's end).
  */
-function balanceAt(a: Account, month: string, balances: Balance[]): number | null {
+export function balanceAt(a: Account, month: string, balances: Balance[]): number | null {
   const b = balances.filter((x) => x.account_id === a.id && x.month <= month).sort((p, q) => q.month.localeCompare(p.month))[0];
   if (!b) return null;
   const rate = !a.is_debt && a.daily_growth ? a.daily_growth : 0;

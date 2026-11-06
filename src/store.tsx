@@ -3,8 +3,9 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, Subcategory, Task, Weight } from './types';
-import { today } from './dates';
+import type { Account, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
+import { stepSize } from './steps';
+import { addDays, today, type Day } from './dates';
 import { useToast } from './toast';
 
 const nowIso = () => new Date().toISOString();
@@ -38,6 +39,16 @@ interface Store extends Snapshot {
   addBill(b: Omit<Bill, 'id' | 'active'>): Bill;
   updateBill(id: string, changes: Partial<Bill>): void;
   deleteBill(id: string): void;
+  steps: StepDay[];
+  goals: SavingsGoal[];
+  noSpend: Day[];
+  /** Saves the day's steps and ticks the steps routine's chunks to match. */
+  setSteps(day: Day, count: number): void;
+  addGoal(g: Omit<SavingsGoal, 'id' | 'sort'>): SavingsGoal;
+  updateGoal(id: string, changes: Partial<SavingsGoal>): void;
+  deleteGoal(id: string): void;
+  toggleNoSpend(day: Day): void;
+  stepLink(fresh: boolean): Promise<string | null>;
   uploadQr(task: Task, file: File): Promise<void>;
   removeQr(task: Task): void;
   qrUrl(path: string): Promise<string>;
@@ -123,6 +134,9 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
     const inbox = data.domains.find((d) => d.is_inbox) ?? data.domains[0] ?? FALLBACK;
     const api: Store = {
       ...data,
+      steps: data.steps ?? [],
+      goals: data.goals ?? [],
+      noSpend: data.noSpend ?? [],
       inbox,
       domain: (id) => byId.get(id) ?? FALLBACK,
       addTask(fields) {
@@ -137,8 +151,25 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       },
       updateTask(id, changes) {
         const c = { ...changes, touched_at: nowIso() };
+        const before = data.tasks.find((t) => t.id === id);
         setData((d) => d && { ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...c } : t)) });
         save(backend.updateTask(id, c));
+        if (!before) return;
+        // Job applications: sending one adds a "follow up" a week later (undone if you reopen it).
+        const sub = data.subcategories.find((x) => x.id === before.subcategory_id);
+        const isApplication = sub?.name.trim().toLowerCase() === 'applications' && before.kind === 'task' && !/^follow up/i.test(before.title);
+        if (!isApplication) return;
+        const followTitle = `Follow up: ${before.title}`;
+        if (changes.status === 'done' && before.status === 'open') {
+          const exists = data.tasks.some((t) => t.title === followTitle && t.status === 'open');
+          if (!exists) {
+            api.addTask({ title: followTitle, domain_id: before.domain_id, subcategory_id: before.subcategory_id, due: addDays(today(), 7), minutes: 10, step: 'Send a short, friendly check-in email' });
+            toast({ message: 'Nice. A follow-up is on your list for next week.' });
+          }
+        } else if (changes.status === 'open' && before.status === 'done') {
+          const f = data.tasks.find((t) => t.title === followTitle && t.status === 'open' && Date.now() - Date.parse(t.created_at) < 3600_000);
+          if (f) api.updateTask(f.id, { status: 'not_doing', closed_at: nowIso() });
+        }
       },
       addRoutine(fields) {
         const r: Routine = { id: crypto.randomUUID(), time_of_day: 'day', active: true, created_at: nowIso(), chunks: 1, chunk_label: null, ...fields };
@@ -243,6 +274,37 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         setData((d) => d && { ...d, bills: (d.bills ?? []).filter((b) => b.id !== id) });
         save(backend.deleteBill(id));
       },
+      setSteps(day, count) {
+        const s: StepDay = { day, count, source: 'manual' };
+        setData((d) => d && { ...d, steps: [...(d.steps ?? []).filter((x) => x.day !== day), s].sort((a, b) => a.day.localeCompare(b.day)) });
+        save(backend.setSteps(s));
+        for (const r of data.routines.filter((x) => /steps/i.test(x.title))) {
+          const done = Math.min(r.chunks, Math.floor(count / stepSize(r)));
+          if (done > api.tickCount(r.id, day)) api.setTickCount(r.id, day, done);
+        }
+      },
+      addGoal(fields) {
+        const g: SavingsGoal = { id: crypto.randomUUID(), sort: (data.goals ?? []).length + 1, ...fields };
+        setData((d) => d && { ...d, goals: [...(d.goals ?? []), g] });
+        save(backend.insertGoal(g));
+        return g;
+      },
+      updateGoal(id, changes) {
+        setData((d) => d && { ...d, goals: (d.goals ?? []).map((g) => (g.id === id ? { ...g, ...changes } : g)) });
+        save(backend.updateGoal(id, changes));
+      },
+      deleteGoal(id) {
+        setData((d) => d && { ...d, goals: (d.goals ?? []).filter((g) => g.id !== id) });
+        save(backend.deleteGoal(id));
+      },
+      toggleNoSpend(day) {
+        const on = !(data.noSpend ?? []).includes(day);
+        setData((d) => d && { ...d, noSpend: on ? [...(d.noSpend ?? []), day] : (d.noSpend ?? []).filter((x) => x !== day) });
+        save(backend.setNoSpend(day, on));
+      },
+      stepLink(fresh) {
+        return backend.stepLink(fresh);
+      },
       async uploadQr(task, file) {
         const old = task.qr_path;
         const path = await backend.uploadQr(task.id, file);
@@ -261,7 +323,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       reload,
     };
     return api;
-  }, [data, backend, save, reload]);
+  }, [data, backend, save, reload, toast]);
 
   if (loadError && !data) {
     return (

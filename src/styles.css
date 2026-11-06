@@ -813,3 +813,37 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .refund-row .row-body { flex: 1; min-width: 0; }
 .refund-row .row-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .refund-input { max-width: 160px; }
+
+/* Focus mode, 15 minutes, weekly progress */
+.focus-switch { margin-bottom: 12px; }
+.focus-switch .seg { min-height: 38px; }
+.quick-win-btn { margin-top: 10px; width: 100%; }
+.center-note { text-align: center; margin: 18px 8px; }
+.week-progress { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.week-progress li { display: flex; align-items: center; gap: 8px; }
+.wp-name { font-weight: 600; min-width: 92px; }
+.wp-n { color: var(--muted); font-size: 0.92rem; }
+
+/* Steps */
+.week-bars { display: flex; gap: 5px; align-items: flex-end; height: 52px; }
+.week-bars .wb { width: 14px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+.week-bars .wb i { width: 100%; border-radius: 4px; background: #E7C3D3; display: block; max-height: 38px; }
+.week-bars .wb.hit i { background: var(--sage, #3E7A64); }
+.week-bars .wb b { font-size: 10px; font-weight: 600; color: var(--muted); }
+.week-bars .wb.now b { color: var(--accent); }
+.steps-setup .stack { gap: 12px; }
+.copy-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.copy-row .eyebrow { grid-column: 1 / -1; }
+.copy-value { font-size: 12px; word-break: break-all; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; user-select: all; -webkit-user-select: all; }
+.steps-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; line-height: 1.45; }
+.steps-list ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+/* Savings goals and no-spend days */
+.goal-card { width: 100%; text-align: left; font: inherit; color: var(--ink); display: flex; flex-direction: column; gap: 8px; }
+.ns-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.ns-day { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font: inherit; color: var(--ink); padding: 6px 0; }
+.ns-day span { font-size: 11px; color: var(--muted); font-weight: 600; }
+.ns-day b { font-size: 15px; }
+.ns-day.on { background: var(--sage-soft); border-color: var(--sage, #3E7A64); color: var(--sage-text); }
+.ns-day.is-today { box-shadow: inset 0 0 0 2px var(--accent-edge); }
+.ns-day:disabled { opacity: 0.4; }

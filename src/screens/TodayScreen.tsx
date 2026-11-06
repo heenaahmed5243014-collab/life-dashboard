@@ -17,6 +17,12 @@ import { routineStats } from '../routines';
 import ChunkTicks from '../components/ChunkTicks';
 import MoneyCard from '../components/MoneyCard';
 import WeightCard from '../components/WeightCard';
+import StepsCard from '../components/StepsCard';
+import QuickWin from '../components/QuickWin';
+import WeekProgress from '../components/WeekProgress';
+
+const FOCUS_KEY = 'ld:focus';
+const readFocus = () => { try { return localStorage.getItem(FOCUS_KEY) === '1'; } catch { return false; } };
 
 const NAME = 'Heena';
 const CAP = 7; // lines shown in the lists before "Show more"
@@ -175,6 +181,11 @@ function TodayBody() {
   const plan = buildDay(store.tasks, store.routines, store.ticks, now);
   const [expanded, setExpanded] = useState(false);
   const [skip, setSkip] = useState(0);
+  const [focus, setFocusState] = useState(readFocus);
+  const setFocus = (on: boolean) => {
+    setFocusState(on);
+    try { localStorage.setItem(FOCUS_KEY, on ? '1' : '0'); } catch { /* ignore */ }
+  };
 
   let budget = expanded ? Infinity : CAP;
   const take = (list: Task[]) => {
@@ -202,14 +213,40 @@ function TodayBody() {
     toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
   };
 
+  const nowTime = `${String(new Date().getHours()).padStart(2, '0')}:00`;
+  const comingUp = plan.timed.filter((t) => (t.due_time ?? '') >= nowTime).slice(0, 2);
+
+  const top = (
+    <div className="card hero">
+      <div className="between"><span className="eyebrow">Top 3 today</span><span className="count">{data.top.length}/3</span></div>
+      {data.top.length
+        ? <div className="list in-card">{data.top.map((t) => <ItemRow key={t.id} task={t} />)}</div>
+        : <p className="empty-note">Nothing due today. Tap + to add the next thing on your mind.</p>}
+      <QuickWin />
+    </div>
+  );
+  const modeSwitch = (
+    <div className="segmented focus-switch" role="radiogroup" aria-label="How much to show">
+      <button type="button" role="radio" aria-checked={!focus} className={focus ? 'seg' : 'seg on'} onClick={() => setFocus(false)}>Everything</button>
+      <button type="button" role="radio" aria-checked={focus} className={focus ? 'seg on' : 'seg'} onClick={() => setFocus(true)}>Focus</button>
+    </div>
+  );
+
+  if (focus) {
+    return (
+      <>
+        {modeSwitch}
+        {top}
+        {comingUp.length > 0 && <ListSection title="Coming up" tasks={comingUp} />}
+        <p className="note center-note">Focus mode: everything else is hidden, not gone. Switch to Everything when you’re ready.</p>
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="card hero">
-        <div className="between"><span className="eyebrow">Top 3 today</span><span className="count">{data.top.length}/3</span></div>
-        {data.top.length
-          ? <div className="list in-card">{data.top.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-          : <p className="empty-note">Nothing due today. Tap + to add the next thing on your mind.</p>}
-      </div>
+      {modeSwitch}
+      {top}
 
       {slip.length > 0 && (
         <div className="card slip">
@@ -293,7 +330,9 @@ function TodayBody() {
         )}
       </div>
 
+      <WeekProgress />
       <MoneyCard />
+      <StepsCard />
       <WeightCard />
 
       <div className="calm">{evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>

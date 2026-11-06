@@ -7,6 +7,8 @@ import Nav from '../components/Nav';
 import { DaysPicker } from '../components/Fields';
 import { useToast } from '../toast';
 import BillsSection, { scheduleText } from '../components/BillsSection';
+import SavingsGoals from '../components/SavingsGoals';
+import NoSpendCard from '../components/NoSpendCard';
 import { billsDue, payPeriod, spendingMoney } from '../bills';
 
 const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -183,7 +185,11 @@ export default function IncomeScreen() {
           )}
         </section>
 
+        <NoSpendCard />
+
         <BillsSection />
+
+        <SavingsGoals />
 
         <section className="section">
           <div className="between"><h2 className="h2">Payslips</h2><span className="count">{payslips.length}</span></div>
