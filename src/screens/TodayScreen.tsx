@@ -1,6 +1,6 @@
 // Today, in the Brain Planner's format: greeting + pills, Top 3 card, Slipping,
 // Routine checklist, the lists, the hourly plan, "Do this next", and a calm send-off.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { buildDay, buildToday } from '../today';
 import { addDays, daysBetween, dueLabel, shortDate, longDate, parseDay, toDay, today, weekday, WEEKDAY_SHORT, type Day } from '../dates';
@@ -38,12 +38,15 @@ const readFocus = () => { try { return localStorage.getItem(FOCUS_KEY) === '1'; 
 const NAME = 'Heena';
 const CAP = 7; // lines shown in the lists before "Show more"
 const DAY_KEY = 'ld:todayDay';
+/** How far ahead the date strip and month view go. */
+const RANGE = 31;
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const TIME_LABEL = { commute: 'Commute', day: 'Daytime', evening: 'Evening' } as const;
 
 function readDay(now: Day): Day {
   try {
     const d = sessionStorage.getItem(DAY_KEY);
-    return d && d >= now && d <= addDays(now, 6) ? d : now;
+    return d && d >= now && d <= addDays(now, RANGE - 1) ? d : now;
   } catch {
     return now;
   }
@@ -80,7 +83,7 @@ export default function TodayScreen() {
     try { sessionStorage.setItem(DAY_KEY, d); } catch { /* ignore */ }
   };
   const isToday = day === now;
-  const week = Array.from({ length: 7 }, (_, i) => addDays(now, i));
+  const week = Array.from({ length: RANGE }, (_, i) => addDays(now, i));
   const plan = buildDay(store.tasks, store.routines, store.ticks, day);
   const hour = new Date().getHours();
 
@@ -153,33 +156,89 @@ function PlanSection({ day, isToday, items, tray }: { day: Day; isToday: boolean
 
 function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day; now: Day; onPick: (d: Day) => void }) {
   const store = useStore();
+  const [month, setMonth] = useState(false);
+  const strip = useRef<HTMLDivElement>(null);
   const counts = new Map<Day, number>();
   for (const t of store.tasks) {
     if (t.status !== 'open' || !t.due || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
     const d = t.due < now ? now : t.due;
     counts.set(d, (counts.get(d) ?? 0) + 1);
   }
+  const last = days[days.length - 1];
+  const sel = parseDay(selected);
+
+  // Keep the chosen day in view when it changes (e.g. picked from the month view).
+  useEffect(() => {
+    const el = strip.current?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (el && strip.current) strip.current.scrollTo({ left: Math.max(0, el.offsetLeft - strip.current.clientWidth / 2 + el.clientWidth / 2), behavior: 'smooth' });
+  }, [selected, month]);
+
+  // Month view: whole weeks (Mon–Sun) from this week to the end of the range.
+  const firstMon = addDays(now, -weekday(now));
+  const weeks = Math.ceil((daysBetween(firstMon, last) + 1) / 7);
+  const grid = Array.from({ length: weeks * 7 }, (_, i) => addDays(firstMon, i));
+
   return (
-    <div className="day-strip" role="radiogroup" aria-label="Choose a day">
-      {days.map((d) => {
-        const n = counts.get(d) ?? 0;
-        const on = d === selected;
-        return (
-          <button
-            key={d}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            aria-label={`${longDate(d)}${n ? `, ${n} due` : ''}`}
-            className={`day-pill${on ? ' on' : ''}${d === now ? ' is-today' : ''}`}
-            onClick={() => onPick(d)}
-          >
-            <span className="day-pill-name">{d === now ? 'Today' : WEEKDAY_SHORT[weekday(d)]}</span>
-            <span className="day-pill-num">{parseDay(d).getDate()}</span>
-            <span className={n ? 'day-pill-dot' : 'day-pill-dot is-none'} aria-hidden="true" />
-          </button>
-        );
-      })}
+    <div className="day-nav">
+      <div className="between day-nav-head">
+        <span className="day-nav-month">
+          {month
+            ? (() => {
+                const a = parseDay(now), b = parseDay(last);
+                return a.getMonth() === b.getMonth() ? `${MONTHS[a.getMonth()]} ${a.getFullYear()}` : `${MONTHS[a.getMonth()]} – ${MONTHS[b.getMonth()]} ${b.getFullYear()}`;
+              })()
+            : `${MONTHS[sel.getMonth()]} ${sel.getFullYear()}`}
+        </span>
+        <button type="button" className="link-btn" aria-expanded={month} onClick={() => setMonth(!month)}>{month ? 'Show strip' : 'Month'}</button>
+      </div>
+      {month ? (
+        <div className="month-grid" role="grid" aria-label="Next month">
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((w, i) => <span key={i} className="month-wd" aria-hidden="true">{w}</span>)}
+          {grid.map((d) => {
+            const n = counts.get(d) ?? 0;
+            const inRange = d >= now && d <= last;
+            const on = d === selected;
+            const date = parseDay(d).getDate();
+            return (
+              <button
+                key={d}
+                type="button"
+                disabled={!inRange}
+                aria-pressed={on}
+                aria-label={`${longDate(d)}${n ? `, ${n} due` : ''}`}
+                className={`month-day${on ? ' on' : ''}${d === now ? ' is-today' : ''}`}
+                onClick={() => { onPick(d); setMonth(false); }}
+              >
+                <span className="month-num">{date === 1 ? `1 ${MONTHS[parseDay(d).getMonth()].slice(0, 3)}` : date}</span>
+                <span className={n ? 'day-pill-dot' : 'day-pill-dot is-none'} aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="day-strip" ref={strip} role="radiogroup" aria-label="Choose a day">
+          {days.map((d) => {
+            const n = counts.get(d) ?? 0;
+            const on = d === selected;
+            const date = parseDay(d).getDate();
+            return (
+              <button
+                key={d}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`${longDate(d)}${n ? `, ${n} due` : ''}`}
+                className={`day-pill${on ? ' on' : ''}${d === now ? ' is-today' : ''}${date === 1 ? ' month-start' : ''}`}
+                onClick={() => onPick(d)}
+              >
+                <span className="day-pill-name">{d === now ? 'Today' : date === 1 ? MONTHS[parseDay(d).getMonth()].slice(0, 3) : WEEKDAY_SHORT[weekday(d)]}</span>
+                <span className="day-pill-num">{date}</span>
+                <span className={n ? 'day-pill-dot' : 'day-pill-dot is-none'} aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
