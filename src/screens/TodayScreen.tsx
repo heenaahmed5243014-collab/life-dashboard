@@ -24,6 +24,7 @@ import MirrorCard from '../components/MirrorCard';
 import { dueFollowUps } from '../components/OutreachTab';
 import { WorkModeButton } from '../components/WorkModeBar';
 import { useWorkMode } from '../workmode';
+import { resetDoneToday } from './ResetScreen';
 
 /** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
 function dayPill(title: string): { text: string; cls: string } {
@@ -366,10 +367,21 @@ function TodayBody() {
     </div>
   );
 
+  // Evening reset prompt: from 6pm until it's done for the day.
+  const left = store.tasks.filter((t) => t.status === 'open' && t.kind === 'task' && ((t.due && t.due <= now) || t.starred)).length;
+  const resetCard = evening && !resetDoneToday() ? (
+    <div className="card reset-prompt">
+      <div className="between"><span className="eyebrow">Evening reset · 2 minutes</span>{left > 0 && <span className="count">{left} left</span>}</div>
+      <p className="note">{left ? 'Decide what happens to what’s left, then pick tomorrow’s Top 3.' : 'Nothing left over. Just pick tomorrow’s Top 3.'}</p>
+      <div className="row"><button type="button" className="btn primary small" onClick={() => go('/reset')}>Start</button></div>
+    </div>
+  ) : null;
+
   if (focus) {
     return (
       <>
         {modeSwitch}
+        {resetCard}
         {top}
         {comingUp.length > 0 && <ListSection title="Coming up" tasks={comingUp} />}
         <p className="note center-note">Focus mode: everything else is hidden, not gone. Switch to Everything when you’re ready.</p>
@@ -380,6 +392,7 @@ function TodayBody() {
   return (
     <>
       {modeSwitch}
+      {resetCard}
       {top}
 
       {slip.length + follows.length > 0 && (

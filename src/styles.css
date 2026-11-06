@@ -960,3 +960,18 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .clear-link { margin: 22px auto 0; display: block; }
 .clear-card { border-color: #B3261E; }
 .btn.danger { background: #B3261E; border-color: #B3261E; color: #fff; }
+
+/* Evening reset */
+.reset-prompt { background: var(--violet-soft); border: none; }
+.reset-prompt .eyebrow { color: var(--violet); }
+.reset-page { gap: 14px; }
+.reset-card { gap: 12px; }
+.reset-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.reset-actions .btn { min-height: 48px; justify-content: center; }
+.reset-pick { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.pick-row { display: flex; align-items: center; gap: 12px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; text-align: left; font: inherit; color: var(--ink); min-height: 56px; }
+.pick-row.on { border-color: var(--accent); background: var(--accent-soft); }
+.pick-star { font-size: 1.3rem; color: var(--accent); width: 22px; text-align: center; }
+.pick-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reset-top { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.reset-pick input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.011; border: none; background: transparent; color: transparent; cursor: pointer; }

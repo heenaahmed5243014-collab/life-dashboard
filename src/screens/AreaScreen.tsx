@@ -15,8 +15,11 @@ import ProjectsTab from '../components/ProjectsTab';
 import OutreachTab from '../components/OutreachTab';
 
 /** Areas that get the Brain Planner's Projects and Outreach tabs. */
-const PROJECT_AREAS = ['Made in Heaven Visuals'];
 type Tab = 'overview' | 'projects' | 'outreach';
+const AREA_TABS: Record<string, Tab[]> = {
+  'Made in Heaven Visuals': ['overview', 'projects', 'outreach'],
+  'Job search': ['overview', 'outreach'],
+};
 
 const SHOW = 5;
 const openKey = (areaId: string) => `ld:area-open:${areaId}`;
@@ -52,7 +55,9 @@ export default function AreaScreen({ id, tab: startTab }: { id: string; tab?: st
   };
 
   const cfg = areaConfig(d);
-  const hasTabs = PROJECT_AREAS.includes(d.name);
+  const tabs = AREA_TABS[d.name] ?? null;
+  const hasTabs = Boolean(tabs);
+  const hasProjectsTab = Boolean(tabs?.includes('projects'));
   const followsDue = store.leads.filter((l) => l.domain_id === d.id && l.follow_up && l.follow_up <= today() && !['won', 'no', 'todo'].includes(l.stage)).length;
   const subs = store.subcategoriesOf(d.id);
   const open = store.tasks.filter((t) => t.status === 'open' && t.domain_id === d.id).sort(byDue);
@@ -130,7 +135,7 @@ export default function AreaScreen({ id, tab: startTab }: { id: string; tab?: st
 
         {hasTabs && (
           <div className="segmented area-tabs" role="tablist" aria-label={`${d.name} sections`}>
-            {(['overview', 'projects', 'outreach'] as Tab[]).map((t) => (
+            {tabs!.map((t) => (
               <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'seg on' : 'seg'} onClick={() => setTab(t)}>
                 {t === 'overview' ? 'Overview' : t === 'projects' ? 'Projects' : 'Outreach'}
                 {t === 'outreach' && followsDue > 0 && <span className="seg-dot" aria-label={`${followsDue} follow-ups due`}>{followsDue}</span>}
@@ -139,7 +144,7 @@ export default function AreaScreen({ id, tab: startTab }: { id: string; tab?: st
           </div>
         )}
 
-        {hasTabs && tab === 'projects' && <ProjectsTab area={d} canPause={store.affirmReady !== false} />}
+        {hasProjectsTab && tab === 'projects' && <ProjectsTab area={d} canPause={store.affirmReady !== false} />}
         {hasTabs && tab === 'outreach' && <OutreachTab area={d} ready={store.affirmReady !== false} />}
         {(!hasTabs || tab === 'overview') && (<>
 
@@ -176,7 +181,7 @@ export default function AreaScreen({ id, tab: startTab }: { id: string; tab?: st
             );
           })}
 
-          {projects.length > 0 && hasTabs && (
+          {projects.length > 0 && hasProjectsTab && (
             <div className="fold">
               <button type="button" className="fold-head" onClick={() => setTab('projects')}>
                 <span className="fold-name">{cfg.projectsLabel}</span>
@@ -185,7 +190,7 @@ export default function AreaScreen({ id, tab: startTab }: { id: string; tab?: st
               </button>
             </div>
           )}
-          {projects.length > 0 && !hasTabs && (
+          {projects.length > 0 && !hasProjectsTab && (
             <Fold id="projects" title={cfg.projectsLabel} count={projects.length} isOpen={opened.includes('projects')} onToggle={toggle}>
               <div className="stack">{projects.map(projectCard)}</div>
               {cfg.stages && <p className="muted small stage-key">Stages: {cfg.stages.join(' → ')}</p>}

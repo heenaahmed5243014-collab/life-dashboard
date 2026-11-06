@@ -10,6 +10,7 @@ export type Route =
   | { name: 'returns' }
   | { name: 'income' }
   | { name: 'steps' }
+  | { name: 'reset' }
   | { name: 'area'; id: string; tab?: string }
   | { name: 'account' }
   | { name: 'item'; id: string }
@@ -23,6 +24,7 @@ function parse(hash: string): Route {
   if (page === 'areas') return { name: 'areas' };
   if (page === 'returns') return { name: 'returns' };
   if (page === 'steps') return { name: 'steps' };
+  if (page === 'reset') return { name: 'reset' };
   if (page === 'income' || page === 'money') return { name: 'income' };
   if (page === 'area' && arg) return { name: 'area', id: arg, tab: sub };
   if (page === 'item' && arg) return { name: 'item', id: arg };

@@ -13,6 +13,7 @@ import AreasScreen from './screens/AreasScreen';
 import AreaScreen from './screens/AreaScreen';
 import ReturnsScreen from './screens/ReturnsScreen';
 import StepsScreen from './screens/StepsScreen';
+import ResetScreen from './screens/ResetScreen';
 import IncomeScreen from './screens/IncomeScreen';
 import AccountScreen from './screens/AccountScreen';
 import NotConnected from './screens/NotConnected';
@@ -59,6 +60,7 @@ function Page() {
     case 'returns': return <ReturnsScreen />;
     case 'income': return <IncomeScreen />;
     case 'steps': return <StepsScreen />;
+    case 'reset': return <ResetScreen />;
     case 'item': return <ItemScreen key={route.id} id={route.id} />;
     case 'routine': return <RoutineScreen key={route.id} id={route.id} />;
   }
