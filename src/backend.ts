@@ -324,6 +324,7 @@ export function demoBackend(): Backend {
     { ...routine('Gym', 'Home', [0, 2, 4], 'day'), created_at: longAgo },
     { ...routine('20k steps', 'Home', [0, 1, 2, 3, 4, 5, 6], 'commute'), created_at: longAgo, chunks: 2, chunk_label: '10k' },
     { ...routine('Evening reset', 'Home', [0, 1, 2, 3, 4, 5, 6], 'evening'), created_at: longAgo },
+    { ...routine('Mirror work (2 min)', 'Home', [0, 1, 2, 3, 4], 'day'), created_at: longAgo },
     { ...routine('Chase applications', 'Job search', [6], 'day'), created_at: longAgo },
   ];
   // Some made-up history so streaks show: each routine done on its last few due days.

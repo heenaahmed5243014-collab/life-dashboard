@@ -20,6 +20,16 @@ import WeightCard from '../components/WeightCard';
 import StepsCard from '../components/StepsCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
+import MirrorCard from '../components/MirrorCard';
+
+/** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
+function dayPill(title: string): { text: string; cls: string } {
+  if (/gym/i.test(title)) return { text: 'Gym morning', cls: 'p-sage' };
+  if (/mirror/i.test(title)) return { text: 'Mirror work', cls: 'p-violet' };
+  if (/fun night/i.test(title)) return { text: 'Fun night tonight 🎉', cls: 'p-pink' };
+  return { text: title, cls: '' };
+}
+const PILL_ORDER = [/gym/i, /mirror/i, /fun night/i];
 
 const FOCUS_KEY = 'ld:focus';
 const readFocus = () => { try { return localStorage.getItem(FOCUS_KEY) === '1'; } catch { return false; } };
@@ -75,7 +85,9 @@ export default function TodayScreen() {
   const title = isToday
     ? `${hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening'}, ${NAME}`
     : day === addDays(now, 1) ? 'Tomorrow' : longDate(day).split(' ')[0];
-  const pills = plan.routines.slice(0, 3).map((r) => r.routine.title);
+  const special = plan.routines.filter((r) => PILL_ORDER.some((re) => re.test(r.routine.title)))
+    .sort((a, b) => PILL_ORDER.findIndex((re) => re.test(a.routine.title)) - PILL_ORDER.findIndex((re) => re.test(b.routine.title)));
+  const pills = special.map((r) => dayPill(r.routine.title));
 
   return (
     <>
@@ -87,8 +99,7 @@ export default function TodayScreen() {
           </div>
           <p className="sub">{longDate(day)}</p>
           <div className="pills">
-            {pills.length ? pills.map((p, i) => <span key={p + i} className={`pill ${['p-sage', 'p-violet', 'p-pink'][i % 3]}`}>{p}</span>) : <span className="pill">Easy day</span>}
-            {plan.routines.length > 3 && <span className="pill">+{plan.routines.length - 3} more</span>}
+            {pills.length ? pills.map((p, i) => <span key={p.text + i} className={`pill ${p.cls}`}>{p.text}</span>) : <span className="pill">Easy day</span>}
           </div>
         </header>
 
@@ -213,6 +224,35 @@ function TodayBody() {
     toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
   };
 
+  // "Pick for me": star the next most sensible things until there are 3.
+  const topIds = new Set(data.top.map((t) => t.id));
+  const AREA_ORDER = ['returns', 'quick admin'];
+  const pickable = store.tasks
+    .filter((t) => t.status === 'open' && t.kind === 'task' && !topIds.has(t.id) && t.domain_id !== store.inbox.id)
+    .sort((a, b) => {
+      const g = (t: Task) => {
+        const sub = store.subcategories.find((x) => x.id === t.subcategory_id)?.name.trim().toLowerCase() ?? '';
+        const i = AREA_ORDER.indexOf(sub);
+        return i < 0 ? AREA_ORDER.length : i;
+      };
+      return (a.due ?? '9999').localeCompare(b.due ?? '9999') || g(a) - g(b) || (a.minutes ?? 30) - (b.minutes ?? 30);
+    });
+  const pickForMe = () => {
+    const chosen = pickable.slice(0, 3 - data.top.length);
+    chosen.forEach((t) => store.updateTask(t.id, { starred: true }));
+    toast({ message: `Picked ${chosen.length}: ${chosen.map((t) => t.title).join(', ')}`, undo: () => chosen.forEach((t) => store.updateTask(t.id, { starred: false })) });
+  };
+  const [todo, setTodo] = useState('');
+  const home = store.domains.find((d) => d.name === 'Personal & home') ?? store.domains.find((d) => !d.is_inbox) ?? store.inbox;
+  const addTodo = () => {
+    const title = todo.trim();
+    if (!title) return;
+    store.addTask({ title, domain_id: home.id, due: now });
+    setTodo('');
+  };
+  const mirror = data.routines.some(({ routine }) => /mirror/i.test(routine.title));
+  const funNight = data.routines.some(({ routine }) => /fun night/i.test(routine.title));
+
   const nowTime = `${String(new Date().getHours()).padStart(2, '0')}:00`;
   const comingUp = plan.timed.filter((t) => (t.due_time ?? '') >= nowTime).slice(0, 2);
 
@@ -221,7 +261,10 @@ function TodayBody() {
       <div className="between"><span className="eyebrow">Top 3 today</span><span className="count">{data.top.length}/3</span></div>
       {data.top.length
         ? <div className="list in-card">{data.top.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-        : <p className="empty-note">Nothing due today. Tap + to add the next thing on your mind.</p>}
+        : <p className="empty-note">Nothing picked yet. Star things on your lists, or let me pick.</p>}
+      {data.top.length < 3 && pickable.length > 0 && (
+        <div className="row"><button type="button" className="btn small" onClick={pickForMe}>Pick for me</button></div>
+      )}
       <QuickWin />
     </div>
   );
@@ -310,10 +353,18 @@ function TodayBody() {
         </section>
       )}
 
-      {also.length > 0 && <ListSection title="Also due today" tasks={also} />}
-      {soon.length > 0 && <ListSection title="Next 3 days" tasks={soon} />}
-      {inbox.length > 0 && <ListSection title="Inbox · needs an area" tasks={inbox} />}
-      {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
+      {mirror && <MirrorCard day={now} />}
+
+      <section className="section">
+        <div className="between"><h2 className="h2">Today’s to-dos</h2><span className="count">{also.length}</span></div>
+        <p className="note">Little one-off jobs. Anything unfinished moves to tomorrow by itself.</p>
+        {also.length > 0 ? <div className="list">{also.map((t) => <ItemRow key={t.id} task={t} />)}</div> : <p className="muted small empty-line">Nothing here yet.</p>}
+        <form className="add-sub todo-add" onSubmit={(e) => { e.preventDefault(); addTodo(); }}>
+          <label className="visually-hidden" htmlFor="todo-in">Add a to-do for today</label>
+          <input id="todo-in" className="step-input" value={todo} placeholder="e.g. Pick up parcel" autoComplete="off" onChange={(e) => setTodo(e.target.value)} />
+          <button type="submit" className="btn primary">Add</button>
+        </form>
+      </section>
 
       <PlanSection day={now} isToday items={plan.timed} tray={[...data.top, ...data.also].filter((t) => !t.due_time && t.kind !== 'project')} />
 
@@ -330,12 +381,20 @@ function TodayBody() {
         )}
       </div>
 
+      {(soon.length > 0 || inbox.length > 0) && (
+        <>
+          {soon.length > 0 && <ListSection title="Next 3 days" tasks={soon} />}
+          {inbox.length > 0 && <ListSection title="Inbox · needs an area" tasks={inbox} />}
+        </>
+      )}
+      {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
+
       <WeekProgress />
       <MoneyCard />
       <StepsCard />
       <WeightCard />
 
-      <div className="calm">{evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
+      <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
     </>
   );
 }
