@@ -10,6 +10,7 @@ import { shortDate, today, addDays } from '../dates';
 import { useToast } from '../toast';
 
 const SNOOZE_KEY = 'ld:balance-snooze';
+const OPEN_KEY = 'ld:balance-open';
 const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** When an account last got a real number (typed, uploaded), as a day. */
@@ -29,6 +30,11 @@ export default function BalancePrompt() {
   const toast = useToast();
   const now = today();
   const [snoozed, setSnoozed] = useState(() => { try { return (localStorage.getItem(SNOOZE_KEY) ?? '') > now; } catch { return false; } });
+  const [open, setOpenState] = useState(() => { try { return localStorage.getItem(OPEN_KEY) !== '0'; } catch { return true; } });
+  const setOpen = (v: boolean) => {
+    setOpenState(v);
+    try { localStorage.setItem(OPEN_KEY, v ? '1' : '0'); } catch { /* fine */ }
+  };
   const since = payPeriod(store.payslips, now).last;
   const due = balancesDue(store.accounts, store.balances, since);
   if (snoozed || due.length === 0) return null;
@@ -39,13 +45,23 @@ export default function BalancePrompt() {
   };
 
   return (
-    <section className="card balance-prompt" aria-label="Balance check">
-      <div className="between"><span className="eyebrow">Balance check · 1 minute</span><span className="count">{due.length} to do</span></div>
-      <p className="note">It’s been payday, so your net worth needs fresh numbers. Screenshot each balance in your banking app, or type it.</p>
-      <ul className="bp-list">
-        {due.map((a) => <BalanceRow key={a.id} a={a} onSaved={(left) => left === 0 && toast({ message: 'Net worth is up to date 🎉' })} remaining={due.length} />)}
-      </ul>
-      <button type="button" className="link-btn quiet" onClick={snooze}>Not now</button>
+    <section className={`card balance-prompt${open ? '' : ' closed'}`} aria-label="Balance check">
+      <button type="button" className="bp-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="eyebrow">Balance check{open ? ' · 1 minute' : ''}</span>
+        <span className="bp-head-side">
+          <span className="count">{due.length} to do</span>
+          <span className="bp-chev" aria-hidden="true">›</span>
+        </span>
+      </button>
+      {open && (
+        <>
+          <p className="note">It’s been payday, so your net worth needs fresh numbers. Screenshot each balance in your banking app, or type it.</p>
+          <ul className="bp-list">
+            {due.map((a) => <BalanceRow key={a.id} a={a} onSaved={(left) => left === 0 && toast({ message: 'Net worth is up to date 🎉' })} remaining={due.length} />)}
+          </ul>
+          <button type="button" className="link-btn quiet" onClick={snooze}>Not now</button>
+        </>
+      )}
     </section>
   );
 }
