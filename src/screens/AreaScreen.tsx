@@ -1,5 +1,5 @@
-// One area, organised by its sub-categories (e.g. Personal & home: Returns, Quick admin…).
-// Projects, loose tasks, routines, ideas, notes and goals that aren't in a sub-category follow.
+// One area, kept calm: the next 3 things first, then each group folded to one line.
+// Tap a group to open it. Ideas, notes and goals live in "Someday" at the bottom.
 import { useState, type ReactNode } from 'react';
 import { useStore } from '../store';
 import { allReturns, areaConfig, groupOf, isFinalStage } from '../areas';
@@ -12,10 +12,18 @@ import ItemRow, { whenText } from '../components/ItemRow';
 import { openQuickAdd } from '../components/QuickAdd';
 import { Chevron, Plus } from '../icons';
 
+const SHOW = 5;
+const openKey = (areaId: string) => `ld:area-open:${areaId}`;
+const readOpen = (areaId: string): string[] => {
+  try { return JSON.parse(sessionStorage.getItem(openKey(areaId)) ?? '[]') as string[]; } catch { return []; }
+};
+
 export default function AreaScreen({ id }: { id: string }) {
   const store = useStore();
-  const [adding, setAdding] = useState(false);
+  const [opened, setOpened] = useState<string[]>(() => readOpen(id));
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [all, setAll] = useState<string[]>([]);
   const d = store.domains.find((x) => x.id === id);
   if (!d) {
     return (
@@ -25,22 +33,32 @@ export default function AreaScreen({ id }: { id: string }) {
       </>
     );
   }
+
+  const toggle = (key: string) => {
+    const next = opened.includes(key) ? opened.filter((k) => k !== key) : [...opened, key];
+    setOpened(next);
+    try { sessionStorage.setItem(openKey(id), JSON.stringify(next)); } catch { /* ignore */ }
+  };
+
   const cfg = areaConfig(d);
   const subs = store.subcategoriesOf(d.id);
   const open = store.tasks.filter((t) => t.status === 'open' && t.domain_id === d.id).sort(byDue);
   const group = (t: Task) => groupOf(t, subs);
-  const topLevel = open.filter((t) => !t.project_id); // tasks inside a project show on the project
-  const inSub = (x: Subcategory) => topLevel.filter((t) => group(t)?.id === x.id);
+  const topLevel = open.filter((t) => !t.project_id);
+  const someday = (t: Task) => t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal';
+  const inSub = (x: Subcategory) => topLevel.filter((t) => group(t)?.id === x.id && !someday(t));
   const unfiled = topLevel.filter((t) => !group(t));
   const projects = unfiled.filter((t) => t.kind === 'project' && !isFinalStage(t.stage));
   const finished = open.filter((t) => t.kind === 'project' && isFinalStage(t.stage));
   const loose = unfiled.filter((t) => t.kind === 'task');
-  const ideas = unfiled.filter((t) => t.kind === 'idea');
-  const notes = unfiled.filter((t) => t.kind === 'note');
-  const goals = unfiled.filter((t) => t.kind === 'goal');
+  const later = topLevel.filter(someday);
   const routines = store.routines.filter((r) => r.domain_id === d.id);
-  const tasksIn = (p: Task) => store.tasks.filter((t) => t.project_id === p.id && t.status === 'open').sort(byDue);
+  const returnsSub = subs.find((x) => x.name.trim().toLowerCase() === 'returns');
+  const nextUp = open.filter((t) => t.kind === 'task' && !(returnsSub && group(t)?.id === returnsSub.id)).slice(0, 3);
+  const nextIds = new Set(nextUp.map((t) => t.id));
+  const todo = topLevel.filter((t) => t.kind === 'task' || t.kind === 'project').length;
 
+  const tasksIn = (p: Task) => store.tasks.filter((t) => t.project_id === p.id && t.status === 'open').sort(byDue);
   const projectCard = (p: Task) => {
     const inside = tasksIn(p);
     const next = inside[0];
@@ -57,23 +75,35 @@ export default function AreaScreen({ id }: { id: string }) {
       </button>
     );
   };
+  const items = (key: string, list: Task[]) => {
+    const rest = list.filter((t) => !nextIds.has(t.id));
+    const shown = all.includes(key) ? rest : rest.slice(0, SHOW);
+    return (
+      <>
+        {shown.some((t) => t.kind === 'project') && <div className="stack">{shown.filter((t) => t.kind === 'project').map(projectCard)}</div>}
+        {shown.some((t) => t.kind !== 'project') && (
+          <div className={`list${shown.every(someday) ? ' soft' : ''}`}>{shown.filter((t) => t.kind !== 'project').map((t) => <ItemRow key={t.id} task={t} />)}</div>
+        )}
+        {rest.length < list.length && <p className="note">{list.length - rest.length} more shown in Next up above.</p>}
+        {rest.length > shown.length && <button type="button" className="link-btn" onClick={() => setAll([...all, key])}>Show all {rest.length}</button>}
+      </>
+    );
+  };
 
   const subMenu = (x: Subcategory) => {
     const choice = window.prompt(`Rename “${x.name}”, or clear the name to delete it.\n(Items in it stay in ${d.short_name}.)`, x.name);
     if (choice === null) return;
     const name = choice.trim();
     if (!name) {
-      if (window.confirm(`Delete the sub-category “${x.name}”? Its items stay in ${d.short_name}.`)) store.removeSubcategory(x.id);
+      if (window.confirm(`Delete the group “${x.name}”? Its items stay in ${d.short_name}.`)) store.removeSubcategory(x.id);
     } else if (name !== x.name) {
       store.updateSubcategory(x.id, { name });
     }
   };
-
   const saveSub = () => {
     const name = draft.trim();
     if (name && !subs.some((x) => x.name.toLowerCase() === name.toLowerCase())) store.addSubcategory(d.id, name);
     setDraft('');
-    setAdding(false);
   };
 
   return (
@@ -82,112 +112,90 @@ export default function AreaScreen({ id }: { id: string }) {
       <main className="page page-form area-page">
         <header className="page-head">
           <h1 className="h1 area-h1"><span className="dot big" style={{ background: d.color }} />{d.name}</h1>
-          {subs.length > 0 && (
-            <div className="pills">
-              {subs.map((x) => <span key={x.id} className="pill">{x.name} · {inSub(x).length}</span>)}
-            </div>
-          )}
+          <p className="sub">{todo === 0 ? 'All clear here.' : `${todo} thing${todo === 1 ? '' : 's'} to do. Just start with the first one.`}</p>
         </header>
 
-        {projects.length > 0 && (
-          <Block title={cfg.projectsLabel} count={projects.length}>
-            <div className="stack">{projects.map(projectCard)}</div>
-            {cfg.stages && <p className="muted small stage-key">Stages: {cfg.stages.join(' → ')}</p>}
-          </Block>
+        {nextUp.length > 0 && (
+          <section className="card hero">
+            <span className="eyebrow">Next up</span>
+            <div className="list in-card">{nextUp.map((t) => <ItemRow key={t.id} task={t} />)}</div>
+          </section>
         )}
 
-        {subs.map((x) => {
-          const list = inSub(x);
-          const isReturns = x.name.trim().toLowerCase() === 'returns';
-          const ret = isReturns ? allReturns(store.tasks.filter((t) => t.domain_id === d.id), subs) : [];
-          return (
-            <section key={x.id} className="section sub-section">
-              <div className="between">
-                <h2 className="h2">{x.name}</h2>
-                <span className="sub-actions">
-                  <span className="count">{list.filter((t) => t.kind !== 'goal').length} left</span>
-                  <button type="button" className="icon-btn small" aria-label={`Rename or delete ${x.name}`} onClick={() => subMenu(x)}>⋯</button>
-                </span>
-              </div>
-              {x.note && <p className="note">{x.note}</p>}
-              {isReturns ? (
-                <button type="button" className="returns-link" onClick={() => go('/returns')}>
-                  <span>
-                    <span className="returns-link-title">Open Returns</span>
-                    <span className="returns-link-sub">{ret.length} to drop off · {ret.filter((t) => t.qr_path).length} QR codes ready</span>
-                  </span>
-                  <Chevron />
-                </button>
-              ) : list.length > 0 ? (
-                <>
-                  {list.filter((t) => t.kind === 'project').length > 0 && <div className="stack">{list.filter((t) => t.kind === 'project').map(projectCard)}</div>}
-                  {list.filter((t) => t.kind !== 'project').length > 0 && (
-                    <div className={`list${list.every((t) => t.kind === 'goal' || t.kind === 'idea') ? ' soft' : ''}`}>
-                      {list.filter((t) => t.kind !== 'project').map((t) => <ItemRow key={t.id} task={t} />)}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="muted small empty-line">Nothing here yet.</p>
-              )}
-              {!isReturns && (
-                <button type="button" className="link-btn small-add" onClick={() => openQuickAdd({ domainId: d.id, subcategoryId: x.id })}>
-                  + Add to {x.name}
-                </button>
-              )}
-            </section>
-          );
-        })}
+        <div className="folds">
+          {subs.map((x) => {
+            const isReturns = x === returnsSub;
+            if (isReturns) {
+              const ret = allReturns(store.tasks.filter((t) => t.domain_id === d.id), subs);
+              return (
+                <div key={x.id} className="fold">
+                  <button type="button" className="fold-head" onClick={() => (editing ? subMenu(x) : go('/returns'))}>
+                    <span className="fold-name">{x.name}</span>
+                    <span className="row-meta">{ret.length ? `${ret.length} to drop off · ${ret.filter((t) => t.qr_path).length} QR ready` : 'None waiting'}</span>
+                    {editing ? <span className="fold-edit">Rename</span> : <Chevron />}
+                  </button>
+                </div>
+              );
+            }
+            const list = inSub(x);
+            return (
+              <Fold key={x.id} id={x.id} title={x.name} count={list.length} isOpen={opened.includes(x.id)} onToggle={toggle} onEdit={editing ? () => subMenu(x) : undefined}
+                hint={list[0] && !nextIds.has(list[0].id) ? `Next: ${list[0].title}` : list.length ? '' : 'Empty'}>
+                {x.note && <p className="note">{x.note}</p>}
+                {list.length ? items(x.id, list) : <p className="muted small empty-line">Nothing here yet.</p>}
+                <button type="button" className="link-btn small-add" onClick={() => openQuickAdd({ domainId: d.id, subcategoryId: x.id })}>+ Add to {x.name}</button>
+              </Fold>
+            );
+          })}
 
-        {adding ? (
-          <div className="add-sub">
-            <label className="visually-hidden" htmlFor="new-sub">New sub-category name</label>
-            <input id="new-sub" className="step-input" autoFocus value={draft} placeholder="e.g. Paperwork" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveSub()} />
-            <button type="button" className="btn primary" onClick={saveSub}>Add</button>
+          {projects.length > 0 && (
+            <Fold id="projects" title={cfg.projectsLabel} count={projects.length} isOpen={opened.includes('projects')} onToggle={toggle}>
+              <div className="stack">{projects.map(projectCard)}</div>
+              {cfg.stages && <p className="muted small stage-key">Stages: {cfg.stages.join(' → ')}</p>}
+            </Fold>
+          )}
+
+          {loose.length > 0 && (
+            <Fold id="other" title={subs.length ? 'Other tasks' : 'Tasks'} count={loose.length} isOpen={opened.includes('other')} onToggle={toggle}>
+              {items('other', loose)}
+            </Fold>
+          )}
+
+          {routines.length > 0 && (
+            <Fold id="routines" title="Routines" count={routines.length} isOpen={opened.includes('routines')} onToggle={toggle}>
+              <div className="list">
+                {routines.map((r) => (
+                  <button key={r.id} type="button" className="plain-row" onClick={() => go(`/routine/${r.id}`)}>
+                    <span className="row-title">{r.title}</span>
+                    <span className="row-meta">{daysLabel(r.days)}{r.chunks > 1 ? ` · ${r.chunks} chunks` : ''}</span>
+                    <Chevron />
+                  </button>
+                ))}
+              </div>
+            </Fold>
+          )}
+
+          {(later.length > 0 || finished.length > 0) && (
+            <Fold id="someday" title="Someday" count={later.length + finished.length} isOpen={opened.includes('someday')} onToggle={toggle} hint="Ideas, notes, goals. No pressure.">
+              {later.length > 0 && items('someday', later)}
+              {finished.length > 0 && (<><h3 className="h3">Finished</h3><div className="stack">{finished.map(projectCard)}</div></>)}
+            </Fold>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="card stack">
+            <span className="eyebrow">Edit groups</span>
+            <p className="note">Tap a group above to rename or delete it. Items in a deleted group stay in {d.short_name}.</p>
+            <div className="add-sub">
+              <label className="visually-hidden" htmlFor="new-sub">New group name</label>
+              <input id="new-sub" className="step-input" value={draft} placeholder="New group, e.g. Paperwork" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveSub()} />
+              <button type="button" className="btn primary" onClick={saveSub}>Add</button>
+            </div>
+            <button type="button" className="btn small" onClick={() => setEditing(false)}>Done editing</button>
           </div>
         ) : (
-          <button type="button" className="btn small dashed" onClick={() => setAdding(true)}>+ Add sub-category</button>
-        )}
-
-        {loose.length > 0 && (
-          <Block title={subs.length ? 'Other tasks' : 'Tasks'} count={loose.length}>
-            <div className="list">{loose.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-          </Block>
-        )}
-
-        {routines.length > 0 && (
-          <Block title="Routines" count={routines.length}>
-            <div className="list">
-              {routines.map((r) => (
-                <button key={r.id} type="button" className="plain-row" onClick={() => go(`/routine/${r.id}`)}>
-                  <span className="row-title">{r.title}</span>
-                  <span className="row-meta">{daysLabel(r.days)}{r.chunks > 1 ? ` · ${r.chunks} chunks` : ''}</span>
-                  <Chevron />
-                </button>
-              ))}
-            </div>
-          </Block>
-        )}
-
-        {ideas.length > 0 && (
-          <Block title="Ideas">
-            <div className="list soft">{ideas.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-          </Block>
-        )}
-        {notes.length > 0 && (
-          <Block title="Notes">
-            <div className="list soft">{notes.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-          </Block>
-        )}
-        {goals.length > 0 && (
-          <Block title="Life goals">
-            <div className="list soft">{goals.map((t) => <ItemRow key={t.id} task={t} />)}</div>
-          </Block>
-        )}
-        {finished.length > 0 && (
-          <Block title="Finished">
-            <div className="stack">{finished.map(projectCard)}</div>
-          </Block>
+          <button type="button" className="link-btn quiet edit-groups" onClick={() => setEditing(true)}>Edit groups</button>
         )}
       </main>
       <button type="button" className="fab fab-low" aria-label={`Add to ${d.short_name}`} onClick={() => openQuickAdd({ domainId: d.id })}><Plus /></button>
@@ -195,14 +203,17 @@ export default function AreaScreen({ id }: { id: string }) {
   );
 }
 
-function Block({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
+function Fold({ id, title, count, hint, isOpen, onToggle, onEdit, children }: {
+  id: string; title: string; count: number; hint?: string; isOpen: boolean; onToggle: (id: string) => void; onEdit?: () => void; children: ReactNode;
+}) {
   return (
-    <section className="section">
-      <div className="between">
-        <h2 className="h2">{title}</h2>
-        {count !== undefined && <span className="count">{count}</span>}
-      </div>
-      {children}
-    </section>
+    <div className={`fold${isOpen && !onEdit ? ' open' : ''}`}>
+      <button type="button" className="fold-head" aria-expanded={isOpen} onClick={() => (onEdit ? onEdit() : onToggle(id))}>
+        <span className="fold-name">{title}</span>
+        <span className="row-meta">{count ? `${count}` : ''}{hint ? `${count ? ' · ' : ''}${hint}` : ''}</span>
+        {onEdit ? <span className="fold-edit">Rename</span> : <span className="fold-chev" aria-hidden="true"><Chevron /></span>}
+      </button>
+      {isOpen && !onEdit && <div className="fold-body">{children}</div>}
+    </div>
   );
 }

@@ -2,9 +2,11 @@
 // - Timed tasks sit in their hour.
 // - Tasks without a time wait in the "To place" tray: drag one onto an hour,
 //   or tap it and then tap "Place here" (easier on a phone).
-// - Planned tasks can be moved (drag with a mouse, or tap Move) or sent back to the tray.
+// - On a phone: press and hold any task for a moment, then drag it to a time (drops on :00 or :30).
+//   A quick swipe still scrolls the page.
+// - Planned tasks can also be moved by tapping Move, or sent back to the tray.
 // - Tapping an empty hour adds something new at that time.
-import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import React, { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import type { Task } from '../types';
 import { hhmm, reminderAt, type Day } from '../dates';
 import { useStore } from '../store';
@@ -30,9 +32,11 @@ interface Drag {
   startX: number;
   startY: number;
   active: boolean;
-  hour: number | null;
+  slot: string | null; // "14:30"
   title: string;
 }
+
+const HOLD_MS = 280;
 
 export default function Planner({ day, isToday, items, tray = [] }: { day: Day; isToday: boolean; items: Task[]; tray?: Task[] }) {
   const store = useStore();
@@ -60,10 +64,10 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
   const all = [...items, ...tray];
   const byId = (id: string) => all.find((t) => t.id === id);
 
-  const place = (id: string | null, h: number) => {
+  const place = (id: string | null, h: number | string) => {
     const t = id ? byId(id) : null;
     if (!t) return;
-    const time = label(h);
+    const time = typeof h === 'number' ? label(h) : h;
     store.updateTask(t.id, { due: day, due_time: time, remind_at: t.remind_at ? reminderAt(day, time) : null });
     setSelected(null);
     toast({ message: `Planned for ${time}`, undo: () => store.updateTask(t.id, { due: t.due, due_time: t.due_time, remind_at: t.remind_at }) });
@@ -79,46 +83,107 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
     toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
   };
 
-  // ---- Dragging (pointer events work for mouse, pen and touch) ----
-  const hourAt = (x: number, y: number): number | null => {
+  // ---- Dragging ----
+  // The time under a point: the hour row, and :30 if it's in the lower half of that row.
+  const slotAt = (x: number, y: number): string | null => {
     const el = document.elementFromPoint(x, y)?.closest('[data-hour]');
-    return el ? Number(el.getAttribute('data-hour')) : null;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const h = Number(el.getAttribute('data-hour'));
+    return `${pad(h)}:${y - r.top > r.height / 2 ? '30' : '00'}`;
   };
-  const startDrag = (e: RPointerEvent, t: Task) => {
-    if (e.button !== 0) return;
-    const d: Drag = { id: t.id, x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, active: false, hour: null, title: t.title };
+  const moveTo = (x: number, y: number) => {
+    const cur = dragRef.current;
+    if (!cur) return;
+    if (y < 90) window.scrollBy(0, -16);
+    else if (y > innerHeight - 150) window.scrollBy(0, 16);
+    const next = { ...cur, active: true, x, y, slot: slotAt(x, y) };
+    dragRef.current = next;
+    setDrag(next);
+  };
+  const finish = () => {
+    const cur = dragRef.current;
+    dragRef.current = null;
+    setDrag(null);
+    if (cur?.active) {
+      justDragged.current = true;
+      setTimeout(() => (justDragged.current = false), 350);
+      const moved = Math.hypot(cur.x - cur.startX, cur.y - cur.startY) > 12;
+      if (cur.slot && moved) place(cur.id, cur.slot);
+    }
+  };
+
+  // Mouse or pen: drag once it moves a little.
+  const startMouseDrag = (e: RPointerEvent, t: Task) => {
+    if (e.pointerType === 'touch' || e.button !== 0) return;
+    dragRef.current = { id: t.id, x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, active: false, slot: null, title: t.title };
     setSelected(null);
-    dragRef.current = d;
     const move = (ev: PointerEvent) => {
       const cur = dragRef.current;
       if (!cur) return;
-      const far = Math.hypot(ev.clientX - cur.startX, ev.clientY - cur.startY) > 8;
-      if (!cur.active && !far) return;
+      if (!cur.active && Math.hypot(ev.clientX - cur.startX, ev.clientY - cur.startY) < 8) return;
       ev.preventDefault();
-      // Scroll the page when dragging near the top or bottom edge
-      if (ev.clientY < 90) window.scrollBy(0, -14);
-      else if (ev.clientY > innerHeight - 140) window.scrollBy(0, 14);
-      const next = { ...cur, active: true, x: ev.clientX, y: ev.clientY, hour: hourAt(ev.clientX, ev.clientY) };
-      dragRef.current = next;
-      setDrag(next);
+      moveTo(ev.clientX, ev.clientY);
     };
     const up = () => {
-      const cur = dragRef.current;
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', up);
       removeEventListener('pointercancel', up);
-      dragRef.current = null;
-      setDrag(null);
-      if (cur?.active) {
-        justDragged.current = true;
-        setTimeout(() => (justDragged.current = false), 50);
-        if (cur.hour !== null) place(cur.id, cur.hour);
-      }
+      finish();
     };
     addEventListener('pointermove', move, { passive: false });
     addEventListener('pointerup', up);
     addEventListener('pointercancel', up);
   };
+
+  // Finger: press and hold to pick up, so normal swipes keep scrolling.
+  const startTouchDrag = (e: React.TouchEvent, t: Task) => {
+    if (e.touches.length !== 1) return;
+    const p0 = e.touches[0];
+    dragRef.current = { id: t.id, x: p0.clientX, y: p0.clientY, startX: p0.clientX, startY: p0.clientY, active: false, slot: null, title: t.title };
+    const timer = window.setTimeout(() => {
+      const cur = dragRef.current;
+      if (!cur) return;
+      setSelected(null);
+      try { navigator.vibrate?.(12); } catch { /* not supported */ }
+      moveTo(cur.x, cur.y);
+    }, HOLD_MS);
+    const move = (ev: TouchEvent) => {
+      const cur = dragRef.current;
+      const p = ev.touches[0];
+      if (!cur || !p) return;
+      if (!cur.active) {
+        // Moved before the hold finished: it's a scroll, let it be.
+        if (Math.hypot(p.clientX - cur.startX, p.clientY - cur.startY) > 10) cleanup(true);
+        else dragRef.current = { ...cur, x: p.clientX, y: p.clientY };
+        return;
+      }
+      ev.preventDefault(); // stop the page scrolling while dragging
+      moveTo(p.clientX, p.clientY);
+    };
+    const end = (ev: TouchEvent) => {
+      if (dragRef.current?.active) ev.preventDefault(); // no tap after a drop
+      cleanup(false);
+    };
+    const cleanup = (cancel: boolean) => {
+      window.clearTimeout(timer);
+      removeEventListener('touchmove', move);
+      removeEventListener('touchend', end);
+      removeEventListener('touchcancel', end);
+      if (cancel) {
+        dragRef.current = null;
+        setDrag(null);
+      } else finish();
+    };
+    addEventListener('touchmove', move, { passive: false });
+    addEventListener('touchend', end, { passive: false });
+    addEventListener('touchcancel', end, { passive: false });
+  };
+  const dragProps = (t: Task) => ({
+    onPointerDown: (e: RPointerEvent) => startMouseDrag(e, t),
+    onTouchStart: (e: React.TouchEvent) => startTouchDrag(e, t),
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+  });
 
   // ---- Layout ----
   const byHour = new Map<number, Task[]>();
@@ -148,7 +213,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
         <div className="tray" aria-label="Tasks to place">
           <div className="between">
             <span className="eyebrow">To place · {tray.length}</span>
-            <span className="note">Drag onto an hour, or tap then tap an hour</span>
+            <span className="note">Hold and drag to a time, or tap then tap an hour</span>
           </div>
           <div className="tray-chips">
             {tray.map((t) => {
@@ -159,7 +224,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                   type="button"
                   className={on ? 'tray-chip on' : 'tray-chip'}
                   aria-pressed={on}
-                  onPointerDown={(e) => startDrag(e, t)}
+                  {...dragProps(t)}
                   onClick={() => !justDragged.current && setSelected(on ? null : t.id)}
                 >
                   <span className="tray-title">{t.title}</span>
@@ -184,10 +249,12 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
         {Array.from({ length: last - first + 1 }, (_, i) => first + i).map((h) => {
           const list = byHour.get(h) ?? [];
           const past = isToday && h < nowHour;
-          const hovered = drag?.active && drag.hour === h;
+          const hovered = drag?.active && drag.slot?.slice(0, 2) === pad(h);
+          const half = hovered && drag.slot?.endsWith('30');
           return (
-            <div key={h} role="listitem" data-hour={h} className={`hour${past ? ' past' : ''}${list.length ? ' has-items' : ''}${hovered ? ' hovered' : ''}`}>
+            <div key={h} role="listitem" data-hour={h} className={`hour${past ? ' past' : ''}${list.length ? ' has-items' : ''}${hovered ? ' hovered' : ''}${half ? ' half' : ''}`}>
               <span className="hour-label">{label(h)}</span>
+              {hovered && <span className="drop-line" aria-hidden="true"><span>{drag.slot}</span></span>}
               <div className="hour-slot">
                 {isToday && h === nowHour && (
                   <div className="now-line" style={{ top: `${(nowMin / 60) * 100}%` }} aria-label={`Now, ${pad(nowHour)}:${pad(nowMin)}`} role="img" />
@@ -203,7 +270,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                       <button
                         type="button"
                         className="slot-body"
-                        onPointerDown={(e) => e.pointerType === 'mouse' && startDrag(e, t)}
+                        {...dragProps(t)}
                         onClick={() => !justDragged.current && go(`/item/${t.id}`)}
                       >
                         <span className="slot-title">{t.title}</span>
@@ -238,7 +305,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
       {drag?.active && (
         <div className="drag-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden="true">
           {drag.title}
-          {drag.hour !== null && <span> → {label(drag.hour)}</span>}
+          {drag.slot !== null && <span> → {drag.slot}</span>}
         </div>
       )}
     </div>
