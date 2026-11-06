@@ -36,7 +36,7 @@ export default function ReturnsScreen() {
   };
 
   const dueTag = (t: Task) => {
-    if (!t.due) return { text: 'No return-by date', cls: 'tag t-amber' };
+    if (!t.due) return { text: 'Add return-by date', cls: 'tag t-amber' };
     const n = daysBetween(now, t.due);
     if (n < 0) return { text: `Was due ${shortDate(t.due)}`, cls: 'tag t-amber' };
     if (n === 0) return { text: 'Return by today', cls: 'tag t-amber' };
@@ -74,13 +74,24 @@ export default function ReturnsScreen() {
                 <button type="button" className="tick" onClick={() => dropOff(t)} aria-label={`Mark ${t.title} dropped off`}>
                   <span className="box"><Check size={16} /></span>
                 </button>
-                <button type="button" className="row-body" onClick={() => go(`/item/${t.id}`)}>
-                  <span className="row-title">{t.title}</span>
+                <div className="return-body">
+                  <button type="button" className="row-body" onClick={() => go(`/item/${t.id}`)}>
+                    <span className="row-title">{t.title}</span>
+                  </button>
                   <span className="meta">
-                    <span className={due.cls}>{due.text}</span>
+                    <label className={`${due.cls} due-pick`}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
+                      {due.text}
+                      <input
+                        type="date"
+                        aria-label={`Return-by date for ${t.title}`}
+                        value={t.due ?? ''}
+                        onChange={(e) => store.updateTask(t.id, { due: e.target.value || null })}
+                      />
+                    </label>
                     {t.drop_off && <span className="tag t-violet">{t.drop_off}</span>}
                   </span>
-                </button>
+                </div>
               </div>
               {t.qr_path ? (
                 <div className="qr-row">

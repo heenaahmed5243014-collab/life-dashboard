@@ -213,7 +213,14 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     }
   };
 
-  const quickDates: { label: string; day: Day }[] = [
+  const isReturnsGroup = Boolean(subId && store.subcategories.find((x) => x.id === subId)?.name.trim().toLowerCase() === 'returns');
+  const quickDates: { label: string; day: Day }[] = isReturnsGroup
+    ? [
+        { label: 'In 14 days', day: addDays(now, 14) },
+        { label: 'In 28 days', day: addDays(now, 28) },
+        { label: 'In 30 days', day: addDays(now, 30) },
+      ]
+    : [
     { label: 'Today', day: now },
     { label: 'Tomorrow', day: addDays(now, 1) },
     { label: 'Sat', day: nextSaturday(now) },
@@ -318,7 +325,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                   <DaysPicker value={days} onChange={setDays} />
                 </Row>
               ) : kind !== 'idea' && kind !== 'goal' && (
-                <Row label="Date">
+                <Row label={isReturnsGroup ? 'Return by' : 'Date'}>
                   <div className="qa-row" aria-label="Date, time and reminder">
                     {quickDates.map((q) => (
                       <button key={q.label} type="button" className={due === q.day ? 'chip on' : 'chip'} aria-pressed={due === q.day} onClick={() => setDue(due === q.day ? null : q.day)}>

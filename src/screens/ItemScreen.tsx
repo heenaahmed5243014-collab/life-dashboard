@@ -106,6 +106,10 @@ function ItemDetail({ task }: { task: Task }) {
 
         {isReturnItem && (
           <>
+            <FieldBlock label="Return by">
+              <DatePicker forReturn value={task.due} onChange={(due) => save({ due })} />
+              {!task.due && <p className="note">Check the order email or receipt for the last day. Most shops give 14 to 30 days.</p>}
+            </FieldBlock>
             <FieldBlock label="Drop-off">
               <div className="chips" role="radiogroup" aria-label="Drop-off">
                 {DROP_OFFS.map((o) => (
@@ -160,7 +164,7 @@ function ItemDetail({ task }: { task: Task }) {
           />
         </FieldBlock>
 
-        {task.kind !== 'idea' && task.kind !== 'goal' && (
+        {task.kind !== 'idea' && task.kind !== 'goal' && !isReturnItem && (
           <FieldBlock label="When">
             <DatePicker
               value={task.due}

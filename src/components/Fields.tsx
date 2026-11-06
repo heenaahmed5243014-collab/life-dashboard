@@ -42,15 +42,23 @@ function nextSaturday(now: Day): Day {
   return addDays(now, d === 5 ? 7 : (5 - d + 7) % 7);
 }
 
-export function DatePicker({ value, onChange }: { value: Day | null; onChange: (d: Day | null) => void }) {
+export function DatePicker({ value, onChange, forReturn = false }: { value: Day | null; onChange: (d: Day | null) => void; forReturn?: boolean }) {
   const now = today();
-  const quick: { label: string; day: Day | null }[] = [
-    { label: 'Today', day: now },
-    { label: 'Tomorrow', day: addDays(now, 1) },
-    { label: 'Saturday', day: nextSaturday(now) },
-    { label: 'Next week', day: addDays(now, 7) },
-    { label: 'No date', day: null },
-  ];
+  const quick: { label: string; day: Day | null }[] = forReturn
+    ? [
+        { label: 'In 7 days', day: addDays(now, 7) },
+        { label: 'In 14 days', day: addDays(now, 14) },
+        { label: 'In 28 days', day: addDays(now, 28) },
+        { label: 'In 30 days', day: addDays(now, 30) },
+        { label: 'No date', day: null },
+      ]
+    : [
+        { label: 'Today', day: now },
+        { label: 'Tomorrow', day: addDays(now, 1) },
+        { label: 'Saturday', day: nextSaturday(now) },
+        { label: 'Next week', day: addDays(now, 7) },
+        { label: 'No date', day: null },
+      ];
   const matched = quick.some((q) => q.day === value);
   return (
     <div className="date-picker">
