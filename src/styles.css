@@ -770,3 +770,8 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
   padding: calc(6px + env(safe-area-inset-top)) 12px 6px; background: var(--ink); color: var(--bg); font-size: 0.8rem; font-weight: 600; text-align: center;
 }
 .sync-banner.syncing { background: var(--violet); color: #fff; }
+.money-row { flex-wrap: wrap; }
+.rate-row { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-right: 44px; margin-top: -4px; }
+.money-input.small { min-height: 34px; }
+.money-input.small input { width: 64px; font-size: 15px; }
+.mini-figures .tag { max-width: 100%; }

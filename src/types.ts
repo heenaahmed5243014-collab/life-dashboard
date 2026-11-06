@@ -71,12 +71,14 @@ export interface Account {
   is_debt: boolean;
   active: boolean;
   sort: number;
+  daily_growth?: number; // e.g. 2.02 for a Cash ISA earning £2.02 a day
 }
 
 export interface Balance {
   account_id: string;
   month: Day; // first of the month
   amount: number;
+  recorded_on?: Day | null; // the day it was typed in; interest counts from here
 }
 
 export interface Weight {

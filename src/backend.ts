@@ -94,8 +94,8 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         sb.from('routines').select('*').eq('active', true).order('created_at'),
         sb.from('routine_ticks').select('routine_id, day, count').gte('day', addDays(now, -TICK_HISTORY_DAYS)).limit(5000),
         sb.from('subcategories').select('id, domain_id, name, note, sort').order('sort'),
-        sb.from('accounts').select('id, name, is_debt, active, sort').order('sort'),
-        sb.from('balances').select('account_id, month, amount').gte('month', addDays(now, -260)),
+        sb.from('accounts').select('*').order('sort'),
+        sb.from('balances').select('*').gte('month', addDays(now, -260)),
         sb.from('weights').select('day, lb').gte('day', addDays(now, -180)).order('day'),
       ]);
       return {
@@ -104,8 +104,8 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         routines: check<Routine[]>(routines),
         ticks: check<Tick[]>(ticks),
         subcategories: check<Subcategory[]>(subcategories),
-        accounts: check<Account[]>(accounts),
-        balances: check<Balance[]>(balances).map((b) => ({ ...b, amount: Number(b.amount) })),
+        accounts: check<Account[]>(accounts).map((a) => ({ ...a, daily_growth: Number(a.daily_growth ?? 0) })),
+        balances: check<(Balance & { user_id?: string })[]>(balances).map(({ user_id: _u, ...b }) => ({ ...b, amount: Number(b.amount) })),
         weights: check<Weight[]>(weights).map((w) => ({ ...w, lb: Number(w.lb) })),
       };
     },
@@ -246,7 +246,7 @@ export function demoBackend(): Backend {
   // Example money and weight history
   const accounts: Account[] = [
     { id: 'a1', name: 'Current account', is_debt: false, active: true, sort: 1 },
-    { id: 'a2', name: 'Savings', is_debt: false, active: true, sort: 2 },
+    { id: 'a2', name: 'Cash ISA', is_debt: false, active: true, sort: 2, daily_growth: 2.02 },
     { id: 'a3', name: 'Credit card', is_debt: true, active: true, sort: 3 },
   ];
   const monthStart = (n: number) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
