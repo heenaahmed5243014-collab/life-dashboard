@@ -30,7 +30,7 @@ export default function QuickWin() {
 
   const done = (x: Task) => {
     store.updateTask(x.id, { status: 'done', closed_at: new Date().toISOString(), starred: false });
-    toast({ message: cheer(), undo: () => store.updateTask(x.id, { status: 'open', closed_at: null }) });
+    if (!x.repeat) toast({ message: cheer(), undo: () => store.updateTask(x.id, { status: 'open', closed_at: null }) });
   };
 
   return (

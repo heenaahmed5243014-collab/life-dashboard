@@ -10,7 +10,7 @@ export function whenText(t: Task): string {
   if (t.kind === 'idea') return 'Idea';
   if (t.kind === 'goal') return 'Life goal';
   const time = hhmm(t.due_time);
-  if (t.due) return dueLabel(t.due) + (time ? ` ${time}` : '');
+  if (t.due) return dueLabel(t.due) + (time ? ` ${time}` : '') + (t.repeat ? ' ↻' : '');
   if (t.kind === 'note') return 'Note';
   return t.kind === 'project' ? 'Project' : 'No date';
 }
@@ -35,6 +35,7 @@ export default function ItemRow({ task, big = false, tag }: { task: Task; big?: 
   const store = useStore();
   const toast = useToast();
   const d = store.domain(task.domain_id);
+  const steps = task.kind === 'task' ? store.tasks.filter((x) => x.project_id === task.id && x.status !== 'not_doing') : [];
   const done = task.status === 'done';
   const canStar = task.status === 'open' && (task.kind === 'task' || task.kind === 'project');
 
@@ -44,7 +45,7 @@ export default function ItemRow({ task, big = false, tag }: { task: Task; big?: 
       return;
     }
     store.updateTask(task.id, { status: 'done', closed_at: new Date().toISOString(), starred: false });
-    toast({ message: cheer(), undo: () => store.updateTask(task.id, { status: 'open', closed_at: null, starred: task.starred }) });
+    if (!task.repeat) toast({ message: cheer(), undo: () => store.updateTask(task.id, { status: 'open', closed_at: null, starred: task.starred }) });
   };
 
   const star = () => {
@@ -69,6 +70,7 @@ export default function ItemRow({ task, big = false, tag }: { task: Task; big?: 
           <span className="dot" style={{ background: d.color }} />
           {d.short_name}{tag ? '' : ` · ${whenText(task)}`}
           {task.remind_at && task.status === 'open' && <Bell />}
+          {steps.length > 0 && <span className="tag">{steps.filter((x) => x.status === 'done').length}/{steps.length} steps</span>}
         </span>
         {hasEffort && !done && <span className="meta"><EffortTags task={task} /></span>}
       </button>

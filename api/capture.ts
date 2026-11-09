@@ -38,6 +38,7 @@ export interface CaptureResult {
   follow_up_date: string | null;
   group: string | null;
   refund_amount: number | null;
+  repeat: 'week' | '2weeks' | '4weeks' | 'month' | null;
 }
 
 const json = (status: number, body: unknown) =>
@@ -59,7 +60,7 @@ function schema(domains: string[], groups: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date', 'group', 'refund_amount'],
+    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date', 'group', 'refund_amount', 'repeat'],
     properties: {
       title: { type: 'string', description: 'Short, clear wording that starts with a verb where it makes sense. No date/time words.' },
       kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea', 'goal'] },
@@ -79,6 +80,7 @@ function schema(domains: string[], groups: string[]) {
         ? { ...orNull({ type: 'string', enum: groups }), description: 'The group inside the chosen area, written exactly as listed, or null' }
         : { type: 'null' },
       refund_amount: { ...orNull({ type: 'number' }), description: 'For a return or refund: the money coming back in pounds, else null' },
+      repeat: { ...orNull({ type: 'string', enum: ['week', '2weeks', '4weeks', 'month'] }), description: 'For a repeating event or appointment, how often. Else null.' },
     },
   };
 }
@@ -87,6 +89,7 @@ const SYSTEM = `You sort quick notes for a personal to-do app. The user types on
 
 Decide:
 - title: rewrite it as a short, clean item. Fix spelling and capitals. Remove filler like "remind me to", "I need to", and remove date and time words (they go in their own fields). Keep names and details.
+- Repeating events: something that happens on a set day, usually at a set time, again and again ("swimming every Thursday 8pm", "therapy every 4 weeks on Tuesday", "team call every other Monday 10am", "rent on the 1st every month") is kind "task" with date = the NEXT time it happens (today if it's later today), time if given, and repeat = "week", "2weeks" (every other week / fortnightly), "4weeks" or "month". Habits with no set time ("drink water every day", "gym mon wed fri") stay routines. Everything else: repeat null.
 - kind: "project" for something with an end point that will hold several tasks: one job application, or one client shoot. "task" for one-off things to do. "routine" for things that repeat (e.g. "gym mon wed fri", "every evening tidy up"). "note" for information to keep that isn't an action (e.g. "Sam's door code is 4512"). "idea" for side-business or someday thoughts (events, photo booth, head spa, "maybe I could...") unless the user clearly says it's a to-do. "goal" for life goals that aren't to-dos (a target weight, "learn to swim", "travel to Japan").
 - minutes, energy and first_step (tasks and projects only; null otherwise): the user has ADHD, so make starting easy. minutes: a realistic estimate (5, 10, 15, 20, 30, 45, 60, 90...). energy: "low" for quick admin that needs little focus, "high" for deep work like editing or writing, otherwise "mid". first_step: one tiny, concrete action that takes under 2 minutes, e.g. "Open the order email and tap Return".
 - domain: the best match from the list. Hints: job applications, interviews, recruiters, CVs -> job search. Photo or video shoots, clients, galleries, editing, social posts for clients -> Made in Heaven Visuals. Business ideas like events, photo booth, head spa -> side ideas. Gym, home, shopping, returns, health, family, admin -> personal & home. If it is genuinely unclear, use "Inbox".

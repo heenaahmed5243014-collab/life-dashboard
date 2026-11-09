@@ -38,11 +38,14 @@ export interface Task {
   dropped_off_on?: Day | null;
   refund_received_on?: Day | null;
   paused?: boolean; // projects: on hold, not finished
+  repeat?: Repeat | null; // repeating events
   notes: string;
   created_at: string;
   touched_at: string;
   closed_at: string | null;
 }
+
+export type Repeat = 'week' | '2weeks' | '4weeks' | 'month';
 
 export interface Routine {
   id: string;
@@ -53,6 +56,8 @@ export interface Routine {
   active: boolean;
   chunks: number; // e.g. 2 for steps in 10k chunks
   chunk_label: string | null; // e.g. "10k"
+  session_types?: string[] | null; // gym: Legs, Arms, Cardio...
+  session_plan?: (string | null)[] | null; // planned session per weekday, Monday first
   created_at: string;
 }
 
@@ -60,6 +65,7 @@ export interface Tick {
   routine_id: string;
   day: Day;
   count: number; // how many chunks are done that day
+  session?: string | null; // gym: what was trained, e.g. "Legs"
 }
 
 export interface Subcategory {
@@ -77,6 +83,7 @@ export interface Account {
   active: boolean;
   sort: number;
   daily_growth?: number; // e.g. 2.02 for a Cash ISA earning £2.02 a day
+  aer?: number | null; // interest rate %, e.g. 4.5: daily interest then follows the balance
 }
 
 export interface Balance {

@@ -44,7 +44,7 @@ export default function ResetScreen() {
   const done = (t: Task) => {
     store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString(), starred: false });
     setTally((x) => ({ ...x, done: x.done + 1 }));
-    toast({ message: cheer() });
+    if (!t.repeat) toast({ message: cheer() });
     nextCard();
   };
   const drop = (t: Task) => {

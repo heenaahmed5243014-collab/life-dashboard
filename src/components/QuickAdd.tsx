@@ -4,6 +4,8 @@
 // Type or speak, then either:
 //  - set the Area yourself and Save (free, instant, no AI), or
 //  - leave Area empty and Save: Claude tidies the wording and files it.
+import { REPEATS, REPEAT_LABEL } from '../repeat';
+import type { Repeat } from '../types';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useStore } from '../store';
 import type { TaskKind } from '../types';
@@ -75,6 +77,8 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
   const [text, setText] = useState('');
   const [domainId, setDomainIdState] = useState<string | null>(options.domainId ?? null);
   const [subId, setSubId] = useState<string | null>(options.subcategoryId ?? null);
+  const [repeat, setRepeat] = useState<Repeat | null>(null);
+  const [newWhat, setNewWhat] = useState<'area' | 'group' | null>(null);
   const setDomainId = (id: string | null) => {
     setDomainIdState(id);
     if (id !== domainId) setSubId(null);
@@ -126,6 +130,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     setKindPicked(Boolean(options.kind));
     setDomainIdState(options.domainId ?? null);
     setSubId(options.subcategoryId ?? null);
+    setRepeat(null);
     setJustSaved(savedIds);
     areaRow.current?.scrollTo({ left: 0 });
     input.current?.focus();
@@ -143,7 +148,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
       return reset([r.id]);
     }
     const t = hhmm(time || null);
-    const date = kind === 'idea' || kind === 'goal' ? null : due ?? (remind || t ? now : null);
+    const date = kind === 'idea' || kind === 'goal' ? null : due ?? (remind || t || repeat ? now : null);
     const stages = areaConfig(store.domain(domain)).stages;
     const task = store.addTask({
       title,
@@ -154,6 +159,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
       due: date,
       due_time: date ? t : null,
       remind_at: remind && date ? reminderAt(date, t) : null,
+      ...(date && repeat ? { repeat } : {}),
     });
     toast({ message: note ?? `Saved to ${store.domain(domain).short_name}` });
     reset([task.id]);
@@ -171,6 +177,7 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
       if (due) result.date = due;
       if (time) result.time = time;
       if (remind) result.reminder = true;
+      if (repeat) result.repeat = repeat;
       const recs = toRecords(result, store.domains, store.inbox, store.subcategories);
       const ids: string[] = [];
       let first = '';
@@ -301,9 +308,14 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                       {d.short_name}
                     </button>
                   ))}
+                  {newWhat === 'area' ? (
+                    <NewChip label="New area name" onDone={(name) => { if (name) { const d = store.addDomain(name); setDomainId(d.id); setSubId(null); toast({ message: `${name} area added` }); } setNewWhat(null); }} />
+                  ) : (
+                    <button type="button" className="chip chip-new" onClick={() => setNewWhat('area')}>+ New area</button>
+                  )}
                 </div>
               </Row>
-              {domainId && store.subcategoriesOf(domainId).length > 0 && (
+              {domainId && (
                 <Row label="Group">
                   <div className="qa-row" role="radiogroup" aria-label="Sub-category">
                     {store.subcategoriesOf(domainId).map((x) => (
@@ -311,6 +323,17 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                         {x.name}
                       </button>
                     ))}
+                    {newWhat === 'group' ? (
+                      <NewChip label="New group name" onDone={(name) => {
+                        if (name) {
+                          const existing = store.subcategoriesOf(domainId).find((x) => x.name.toLowerCase() === name.toLowerCase());
+                          setSubId((existing ?? store.addSubcategory(domainId, name)).id);
+                        }
+                        setNewWhat(null);
+                      }} />
+                    ) : (
+                      <button type="button" className="chip chip-new" onClick={() => setNewWhat('group')}>+ New group</button>
+                    )}
                   </div>
                 </Row>
               )}
@@ -346,6 +369,13 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                     <button type="button" className={remind ? 'chip on' : 'chip'} aria-pressed={remind} onClick={() => setRemind(!remind)}>
                       <Bell /> Remind
                     </button>
+                  </div>
+                  <div className="qa-row repeat-row" aria-label="Repeat">
+                    {REPEATS.map((r) => (
+                      <button key={r} type="button" className={repeat === r ? 'chip on' : 'chip'} aria-pressed={repeat === r} onClick={() => setRepeat(repeat === r ? null : r)}>
+                        ↻ {REPEAT_LABEL[r]}
+                      </button>
+                    ))}
                   </div>
                 </Row>
               )}
@@ -397,5 +427,28 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
         </div>
       </div>
     </div>
+  );
+}
+
+/** A chip that turns into a small text box for naming a new area or group. Enter or ✓ saves, Esc cancels. */
+function NewChip({ label, onDone }: { label: string; onDone: (name: string | null) => void }) {
+  const [v, setV] = useState('');
+  return (
+    <span className="chip chip-edit">
+      <input
+        autoFocus
+        aria-label={label}
+        placeholder={label}
+        value={v}
+        maxLength={40}
+        onChange={(e) => setV(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onDone(v.trim() || null); }
+          if (e.key === 'Escape') { e.stopPropagation(); onDone(null); }
+        }}
+      />
+      <button type="button" aria-label="Save" onClick={() => onDone(v.trim() || null)}>✓</button>
+      <button type="button" aria-label="Cancel" onClick={() => onDone(null)}>×</button>
+    </span>
   );
 }

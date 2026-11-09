@@ -6,6 +6,7 @@ import { back } from '../router';
 import { useToast } from '../toast';
 import Header from '../components/Header';
 import { DaysPicker, DomainPicker, FieldBlock, Segmented } from '../components/Fields';
+import { DEFAULT_SESSIONS, SessionSettings } from '../components/GymSessions';
 import ChunkTicks from '../components/ChunkTicks';
 
 export default function RoutineScreen({ id }: { id: string }) {
@@ -82,6 +83,17 @@ function RoutineDetail({ routine }: { routine: Routine }) {
             </label>
           )}
           {routine.chunks > 1 && <p className="note">Your streak counts a day once all {routine.chunks} are ticked.</p>}
+        </FieldBlock>
+
+        <FieldBlock label="Session types (e.g. gym)">
+          {routine.session_types?.length ? (
+            <SessionSettings routine={routine} />
+          ) : (
+            <>
+              <p className="note">Track what each session was, like Legs, Arms or Cardio.</p>
+              <button type="button" className="btn small" onClick={() => save({ session_types: DEFAULT_SESSIONS })}>Turn on session types</button>
+            </>
+          )}
         </FieldBlock>
 
         <FieldBlock label="Time of day">

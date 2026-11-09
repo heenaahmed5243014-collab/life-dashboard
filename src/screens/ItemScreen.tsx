@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import SubTasks from '../components/SubTasks';
+import { REPEATS, REPEAT_LABEL } from '../repeat';
 import { useStore } from '../store';
 import type { Energy, Task, TaskKind } from '../types';
 import { addDays, dueLabel, hhmm, reminderAt, today } from '../dates';
@@ -39,6 +41,8 @@ function ItemDetail({ task }: { task: Task }) {
   useEffect(() => setNotes(task.notes), [task.notes]);
 
   const projects = store.tasks.filter((p) => p.kind === 'project' && p.status === 'open' && p.id !== task.id && p.domain_id === task.domain_id);
+  const parent = task.project_id ? store.tasks.find((t) => t.id === task.project_id) : undefined;
+  const parentIsTask = parent?.kind === 'task';
   const children = task.kind === 'project' ? store.tasks.filter((c) => c.project_id === task.id && c.status === 'open') : [];
 
   const save = (changes: Partial<Task>) => store.updateTask(task.id, changes);
@@ -51,7 +55,7 @@ function ItemDetail({ task }: { task: Task }) {
 
   const close = (status: 'done' | 'not_doing') => {
     save({ status, closed_at: new Date().toISOString(), starred: false });
-    toast({ message: status === 'done' ? cheer() : 'Let go. It’s off your list.', undo: () => save(before) });
+    if (!(status === 'done' && task.repeat)) toast({ message: status === 'done' ? cheer() : 'Let go. It’s off your list.', undo: () => save(before) });
     back();
   };
 
@@ -217,7 +221,25 @@ function ItemDetail({ task }: { task: Task }) {
           </FieldBlock>
         )}
 
-        {task.kind === 'task' && projects.length > 0 && (
+        {task.due && task.kind !== 'idea' && task.kind !== 'goal' && !isReturnItem && (
+              <FieldBlock label="Repeat">
+                <div className="chips repeat-row" role="radiogroup" aria-label="Repeat">
+                  <button type="button" role="radio" aria-checked={!task.repeat} className={!task.repeat ? 'chip on' : 'chip'} onClick={() => save({ repeat: null })}>Doesn’t repeat</button>
+                  {REPEATS.map((r) => (
+                    <button key={r} type="button" role="radio" aria-checked={task.repeat === r} className={task.repeat === r ? 'chip on' : 'chip'} onClick={() => save({ repeat: r })}>↻ {REPEAT_LABEL[r]}</button>
+                  ))}
+                </div>
+                {task.repeat && <p className="note">Ticking it done moves it to the next date. Future dates show in your calendar.</p>}
+              </FieldBlock>
+        )}
+
+        {task.kind === 'task' && !parentIsTask && (
+          <FieldBlock label="Steps">
+            <SubTasks task={task} />
+          </FieldBlock>
+        )}
+
+        {task.kind === 'task' && projects.length > 0 && !parentIsTask && (
           <FieldBlock label="Part of a project">
             <select className="select" aria-label="Project" value={task.project_id ?? ''} onChange={(e) => save({ project_id: e.target.value || null })}>
               <option value="">None</option>
@@ -301,7 +323,7 @@ function ItemDetail({ task }: { task: Task }) {
         </FieldBlock>
 
         {task.project_id && (
-          <button type="button" className="link-btn" onClick={() => go(`/item/${task.project_id}`)}>Open the project</button>
+          <button type="button" className="link-btn" onClick={() => go(`/item/${task.project_id}`)}>{parentIsTask ? `Back to “${parent?.title ?? 'the main task'}”` : 'Open the project'}</button>
         )}
       </main>
 

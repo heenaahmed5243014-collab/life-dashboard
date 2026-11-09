@@ -9,6 +9,7 @@ import { useToast } from '../toast';
 import BillsSection, { scheduleText } from '../components/BillsSection';
 import SavingsGoals from '../components/SavingsGoals';
 import NoSpendCard from '../components/NoSpendCard';
+import PassiveIncome from '../components/PassiveIncome';
 import { billsDue, payPeriod, spendingMoney } from '../bills';
 
 const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -184,6 +185,8 @@ export default function IncomeScreen() {
             </>
           )}
         </section>
+
+        <PassiveIncome />
 
         {store.healthReady !== false && <NoSpendCard />}
 

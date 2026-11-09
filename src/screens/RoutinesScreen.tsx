@@ -1,5 +1,8 @@
 // Matches the "Routines" design: one card per routine, streak, week grid, tick button.
+import { useState } from 'react';
 import { useStore } from '../store';
+import MonthSummary from '../components/MonthSummary';
+import { hasSessions, SessionPicker } from '../components/GymSessions';
 import { routineStats } from '../routines';
 import ChunkTicks from '../components/ChunkTicks';
 import { daysLabel, longDate, today, WEEKDAY_LETTER } from '../dates';
@@ -11,6 +14,7 @@ import { Check, Plus } from '../icons';
 export default function RoutinesScreen() {
   const store = useStore();
   const now = today();
+  const [tab, setTab] = useState<'week' | 'month'>('week');
 
   return (
     <>
@@ -19,6 +23,14 @@ export default function RoutinesScreen() {
           <h1 className="h1">Routines</h1>
           <p className="muted lead">Streaks only count the days a routine is due. A missed day just starts a new run.</p>
         </header>
+
+        <div className="segmented area-tabs" role="tablist" aria-label="View">
+          <button type="button" role="tab" aria-selected={tab === 'week'} className={tab === 'week' ? 'seg on' : 'seg'} onClick={() => setTab('week')}>This week</button>
+          <button type="button" role="tab" aria-selected={tab === 'month'} className={tab === 'month' ? 'seg on' : 'seg'} onClick={() => setTab('month')}>Monthly summary</button>
+        </div>
+
+        {tab === 'month' && <MonthSummary />}
+        {tab === 'week' && (<>
 
         {store.routines.length === 0 && (
           <section className="empty">
@@ -73,9 +85,11 @@ export default function RoutinesScreen() {
               ) : (
                 <p className="not-today">Not due today{s.nextDue ? ` · next ${s.nextDue === 'tomorrow' ? 'tomorrow' : `on ${s.nextDue}`}` : ''}</p>
               )}
+              {s.dueToday && hasSessions(r) && <SessionPicker routine={r} day={now} />}
             </article>
           );
         })}
+        </>)}
       </main>
 
       <button type="button" className="fab" aria-label="Add a routine" onClick={() => openQuickAdd({ kind: 'routine' })}>

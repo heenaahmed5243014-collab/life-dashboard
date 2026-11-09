@@ -5,6 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Backend, Snapshot } from './backend';
 import type { Account, Affirmation, Lead, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
+import { nextDue, REPEAT_LABEL } from './repeat';
+import { reminderAt, hhmm, shortDate } from './dates';
 import { addDays, today, type Day } from './dates';
 import { useToast } from './toast';
 import { useWorkMode } from './workmode';
@@ -23,11 +25,15 @@ interface Store extends Snapshot {
   updateRoutine(id: string, changes: Partial<Routine>): void;
   /** How many chunks of a routine are done on a day (0 if none). */
   tickCount(routineId: string, day: string): number;
-  setTickCount(routineId: string, day: string, count: number): void;
+  setTickCount(routineId: string, day: string, count: number, session?: string | null): void;
+  /** Gym: tick the day as done and record what was trained. */
+  setSession(routineId: string, day: string, session: string | null): void;
+  sessionOf(routineId: string, day: string): string | null;
   /** For one-chunk routines: tick or untick the whole day. */
   toggleTick(routineId: string, day: string): void;
   subcategoriesOf(domainId: string): Subcategory[];
   addSubcategory(domainId: string, name: string): Subcategory;
+  addDomain(name: string): Domain;
   updateSubcategory(id: string, changes: Partial<Subcategory>): void;
   removeSubcategory(id: string): void;
   addAccount(name: string, isDebt: boolean): Account;
@@ -147,7 +153,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       : null;
     const view: Snapshot = shown
       ? (() => {
-          const routines = data.routines.filter((r) => shown.has(r.domain_id));
+          const routines = data.routines.filter((r) => shown.has(r.domain_id) || /steps/i.test(r.title));
           const rIds = new Set(routines.map((r) => r.id));
           return {
             ...data,
@@ -180,8 +186,15 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         return t;
       },
       updateTask(id, changes) {
-        const c = { ...changes, touched_at: nowIso() };
         const before = data.tasks.find((t) => t.id === id);
+        // Repeating event done: roll it on to its next date instead of closing it.
+        if (before?.repeat && before.due && changes.status === 'done' && before.status === 'open') {
+          const next = nextDue(before.due, before.repeat, today());
+          const time = hhmm(before.due_time);
+          changes = { due: next, starred: false, remind_at: before.remind_at ? reminderAt(next, time) : null };
+          toast({ message: `Done. Next one ${shortDate(next)} (${REPEAT_LABEL[before.repeat].toLowerCase()})` });
+        }
+        const c = { ...changes, touched_at: nowIso() };
         setData((d) => d && { ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...c } : t)) });
         save(backend.updateTask(id, c));
         if (!before) return;
@@ -217,15 +230,24 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       tickCount(routineId, day) {
         return data.ticks.find((t) => t.routine_id === routineId && t.day === day)?.count ?? 0;
       },
-      setTickCount(routineId, day, count) {
+      setTickCount(routineId, day, count, session) {
+        const prev = data.ticks.find((t) => t.routine_id === routineId && t.day === day);
+        const keep = session !== undefined ? session : prev?.session ?? null;
         setData((d) => d && {
           ...d,
           ticks: [
             ...d.ticks.filter((t) => !(t.routine_id === routineId && t.day === day)),
-            ...(count > 0 ? [{ routine_id: routineId, day, count }] : []),
+            ...(count > 0 ? [{ routine_id: routineId, day, count, session: keep }] : []),
           ],
         });
-        save(backend.setTick(routineId, day, count));
+        save(backend.setTick(routineId, day, count, session));
+      },
+      setSession(routineId, day, session) {
+        const r = data.routines.find((x) => x.id === routineId);
+        api.setTickCount(routineId, day, r?.chunks ?? 1, session);
+      },
+      sessionOf(routineId, day) {
+        return data.ticks.find((t) => t.routine_id === routineId && t.day === day)?.session ?? null;
       },
       toggleTick(routineId, day) {
         const r = data.routines.find((x) => x.id === routineId);
@@ -235,6 +257,16 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       },
       subcategoriesOf(domainId) {
         return data.subcategories.filter((x) => x.domain_id === domainId).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+      },
+      addDomain(name) {
+        const palette = ['#2F7F8F', '#8A5A9E', '#B5651D', '#4F7A28', '#A23B5A', '#3F5BA9'];
+        const used = new Set(data.domains.map((d) => d.color.toLowerCase()));
+        const color = palette.find((c) => !used.has(c.toLowerCase())) ?? palette[data.domains.length % palette.length];
+        const clean = name.trim().slice(0, 40);
+        const d: Domain = { id: crypto.randomUUID(), name: clean, short_name: clean.length > 14 ? clean.split(/\s+/)[0].slice(0, 14) : clean, color, is_inbox: false, sort: Math.max(0, ...data.domains.map((x) => x.sort)) + 1 };
+        setData((x) => x && { ...x, domains: [...x.domains, d] });
+        save(backend.insertDomain(d));
+        return d;
       },
       addSubcategory(domainId, name) {
         const sort = Math.max(0, ...data.subcategories.filter((x) => x.domain_id === domainId).map((x) => x.sort)) + 1;

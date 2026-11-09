@@ -8,7 +8,7 @@ import type { Day } from './dates';
 /** Changes that can wait in the queue (QR uploads need a connection, so they aren't here). */
 const QUEUEABLE = [
   'insertTask', 'updateTask', 'insertRoutine', 'updateRoutine', 'setTick',
-  'insertSubcategory', 'updateSubcategory', 'deleteSubcategory',
+  'insertDomain', 'insertSubcategory', 'updateSubcategory', 'deleteSubcategory',
   'insertAccount', 'updateAccount', 'setBalance', 'setWeight', 'removeQr',
   'setIncome', 'addPayslip', 'deletePayslip', 'insertBill', 'updateBill', 'deleteBill',
   'setSteps', 'insertGoal', 'updateGoal', 'deleteGoal', 'setNoSpend',

@@ -36,7 +36,9 @@ export interface Backend {
   insertRoutine(r: Routine): Promise<void>;
   updateRoutine(id: string, changes: Partial<Routine>): Promise<void>;
   /** count 0 removes the tick for that day. */
-  setTick(routineId: string, day: Day, count: number): Promise<void>;
+  /** session: gym only, what was trained (e.g. "Legs"). Left out when not given. */
+  setTick(routineId: string, day: Day, count: number, session?: string | null): Promise<void>;
+  insertDomain(d: Domain): Promise<void>;
   insertSubcategory(s: Subcategory): Promise<void>;
   updateSubcategory(id: string, changes: Partial<Subcategory>): Promise<void>;
   deleteSubcategory(id: string): Promise<void>;
@@ -181,7 +183,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         sb.from('tasks').select('*').eq('status', 'open'),
         sb.from('tasks').select('*').neq('status', 'open').gte('closed_at', since),
         sb.from('routines').select('*').eq('active', true).order('created_at'),
-        sb.from('routine_ticks').select('routine_id, day, count').gte('day', addDays(now, -TICK_HISTORY_DAYS)).limit(5000),
+        sb.from('routine_ticks').select('*').gte('day', addDays(now, -TICK_HISTORY_DAYS)).limit(5000),
         sb.from('subcategories').select('id, domain_id, name, note, sort').order('sort'),
         sb.from('accounts').select('*').order('sort'),
         sb.from('balances').select('*').gte('month', addDays(now, -260)),
@@ -199,7 +201,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         bills: extras.bills,
         tasks,
         routines: check<Routine[]>(routines),
-        ticks: check<Tick[]>(ticks),
+        ticks: check<(Tick & { user_id?: string; created_at?: string })[]>(ticks).map(({ user_id: _u, created_at: _c, ...t }) => t),
         subcategories: check<Subcategory[]>(subcategories),
         accounts: check<Account[]>(accounts).map((a) => ({ ...a, daily_growth: Number(a.daily_growth ?? 0) })),
         balances: check<(Balance & { user_id?: string })[]>(balances).map(({ user_id: _u, ...b }) => ({ ...b, amount: Number(b.amount) })),
@@ -221,9 +223,12 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     async updateRoutine(id, changes) {
       check(await sb.from('routines').update(changes).eq('id', id));
     },
-    async setTick(routineId, day, count) {
+    async setTick(routineId, day, count, session) {
       if (count <= 0) check(await sb.from('routine_ticks').delete().eq('routine_id', routineId).eq('day', day));
-      else check(await sb.from('routine_ticks').upsert({ routine_id: routineId, day, count }, { onConflict: 'routine_id,day' }));
+      else check(await sb.from('routine_ticks').upsert({ routine_id: routineId, day, count, ...(session !== undefined ? { session } : {}) }, { onConflict: 'routine_id,day' }));
+    },
+    async insertDomain(d) {
+      check(await sb.from('domains').insert(d));
     },
     async insertSubcategory(x) {
       check(await sb.from('subcategories').insert(x));
@@ -362,7 +367,7 @@ export function demoBackend(): Backend {
   });
   const longAgo = new Date(Date.now() - 60 * 86400000).toISOString();
   const routines = [
-    { ...routine('Gym', 'Home', [0, 2, 4], 'day'), created_at: longAgo },
+    { ...routine('Gym', 'Home', [0, 2, 4], 'day'), created_at: longAgo, session_types: ['Legs', 'Arms', 'Back', 'Core', 'Cardio', 'Full body'], session_plan: ['Legs', null, 'Arms', null, 'Cardio', null, null] },
     { ...routine('20k steps', 'Home', [0, 1, 2, 3, 4, 5, 6], 'commute'), created_at: longAgo, chunks: 2, chunk_label: '10k' },
     { ...routine('Evening reset', 'Home', [0, 1, 2, 3, 4, 5, 6], 'evening'), created_at: longAgo },
     { ...routine('Mirror work (2 min)', 'Home', [0, 1, 2, 3, 4], 'day'), created_at: longAgo },
@@ -446,7 +451,7 @@ export function demoBackend(): Backend {
       affirmReady: true,
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
-    insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
+    insertDomain: noop, insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
     setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
     insertAffirmation: noop, deleteAffirmation: noop, insertLead: noop, updateLead: noop, deleteLead: noop,

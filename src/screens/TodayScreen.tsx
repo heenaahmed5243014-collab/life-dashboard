@@ -1,5 +1,6 @@
 // Today, in the Brain Planner's format: greeting + pills, Top 3 card, Slipping,
 // Routine checklist, the lists, the hourly plan, "Do this next", and a calm send-off.
+import { stepOnce } from '../repeat';
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { buildDay, buildToday } from '../today';
@@ -21,7 +22,8 @@ import StepsCard from '../components/StepsCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
 import MirrorCard from '../components/MirrorCard';
-import BalancePrompt from '../components/BalancePrompt';
+import { hasSessions, plannedSession, SessionPicker } from '../components/GymSessions';
+import { useBalanceCheckDue } from '../components/BalancePrompt';
 import { dueFollowUps } from '../components/OutreachTab';
 import { WorkModeButton } from '../components/WorkModeBar';
 import { useWorkMode } from '../workmode';
@@ -98,7 +100,11 @@ export default function TodayScreen() {
     : day === addDays(now, 1) ? 'Tomorrow' : longDate(day).split(' ')[0];
   const special = plan.routines.filter((r) => PILL_ORDER.some((re) => re.test(r.routine.title)))
     .sort((a, b) => PILL_ORDER.findIndex((re) => re.test(a.routine.title)) - PILL_ORDER.findIndex((re) => re.test(b.routine.title)));
-  const pills = special.map((r) => dayPill(r.routine.title));
+  const pills = special.map((r) => {
+    const p = dayPill(r.routine.title);
+    const planned = plannedSession(r.routine, day);
+    return planned && /gym/i.test(r.routine.title) ? { ...p, text: `${p.text} · ${planned}` } : p;
+  });
 
   return (
     <>
@@ -174,6 +180,8 @@ function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day;
     if (t.status !== 'open' || !t.due || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
     const d = t.due < now ? now : t.due;
     counts.set(d, (counts.get(d) ?? 0) + 1);
+    // Repeating events: count their next few dates too
+    if (t.repeat) for (let x = stepOnce(t.due, t.repeat), i = 0; i < 20 && x <= addDays(now, 400); x = stepOnce(x, t.repeat), i++) counts.set(x, (counts.get(x) ?? 0) + 1);
   }
 
   // Keep the chosen day in view when it changes (e.g. picked from the month view).
@@ -286,6 +294,7 @@ function TodayBody() {
   const [skip, setSkip] = useState(0);
   const [focus, setFocusState] = useState(readFocus);
   const work = useWorkMode();
+  const balanceDue = useBalanceCheckDue();
   const setFocus = (on: boolean) => {
     setFocusState(on);
     try { localStorage.setItem(FOCUS_KEY, on ? '1' : '0'); } catch { /* ignore */ }
@@ -314,7 +323,7 @@ function TodayBody() {
   };
   const doneNext = (t: Task) => {
     store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString(), starred: false });
-    toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
+    if (!t.repeat) toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
   };
 
   // "Pick for me": star the next most sensible things until there are 3.
@@ -431,7 +440,7 @@ function TodayBody() {
         </div>
       )}
 
-      {!work.active && <BalancePrompt />}
+      {!work.active && balanceDue && <MoneyCard />}
 
       {data.routines.length > 0 && (
         <section className="section">
@@ -450,7 +459,8 @@ function TodayBody() {
                       aria-pressed={done}
                       aria-label={`${done ? 'Untick' : 'Tick'} ${routine.title}`}
                       onClick={() => {
-                        store.toggleTick(routine.id, now);
+                        if (!done && hasSessions(routine)) store.setSession(routine.id, now, plannedSession(routine, now));
+                        else store.toggleTick(routine.id, now);
                         if (!done) toast({ message: cheer() });
                       }}
                     >
@@ -469,6 +479,7 @@ function TodayBody() {
                     </span>
                   </button>
                   {chunked && <ChunkTicks routine={routine} day={now} />}
+                  {hasSessions(routine) && <SessionPicker routine={routine} day={now} />}
                 </li>
               );
             })}
@@ -513,13 +524,9 @@ function TodayBody() {
       {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
 
       <WeekProgress />
-      {!work.active && (
-        <>
-          <MoneyCard />
-          {store.healthReady !== false && <StepsCard />}
-          <WeightCard />
-        </>
-      )}
+      {!work.active && !balanceDue && <MoneyCard />}
+      {store.healthReady !== false && <StepsCard />}
+      {!work.active && <WeightCard />}
 
       <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
     </>

@@ -1,6 +1,7 @@
 // Works out what the Today screen shows. Pure logic, no screen code.
 import type { Routine, Task, Tick } from './types';
 import { addDays, weekday, type Day } from './dates';
+import { occursOn } from './repeat';
 
 export interface TodayRoutine {
   routine: Routine;
@@ -65,7 +66,9 @@ export interface DayPlan {
 
 /** What a single day looks like in the planner (any day, today included). */
 export function buildDay(tasks: Task[], routines: Routine[], ticks: Tick[], day: Day): DayPlan {
-  const open = tasks.filter((t) => t.status === 'open' && t.kind !== 'idea' && t.kind !== 'note' && t.kind !== 'goal' && t.due === day);
+  const live = tasks.filter((t) => t.status === 'open' && t.kind !== 'idea' && t.kind !== 'note' && t.kind !== 'goal');
+  // Repeating events also show on their later dates (the item itself sits on its next date).
+  const open = [...live.filter((t) => t.due === day), ...live.filter((t) => occursOn(t, day)).map((t) => ({ ...t, due: day }))];
   const dow = weekday(day);
   const counts = new Map(ticks.filter((t) => t.day === day).map((t) => [t.routine_id, t.count ?? 1] as const));
   return {

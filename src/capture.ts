@@ -23,6 +23,7 @@ export interface CaptureResult {
   follow_up_date: string | null;
   group?: string | null;
   refund_amount?: number | null;
+  repeat?: 'week' | '2weeks' | '4weeks' | 'month' | null;
 }
 
 export type CaptureError = 'not_configured' | 'bad_key' | 'no_credit' | 'offline' | 'failed';
@@ -144,6 +145,7 @@ export function toRecords(r: CaptureResult, domains: Domain[], inbox: Domain, su
       due_time: date ? time : null,
       remind_at: r.reminder && date ? reminderAt(date, time) : null,
       subcategory_id: group?.id ?? null,
+      ...(r.repeat && date ? { repeat: r.repeat } : {}),
       ...(r.kind === 'task' && refund !== null ? { refund_amount: refund } : {}),
     },
   }];

@@ -80,7 +80,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
 
   const done = (t: Task) => {
     store.updateTask(t.id, { status: 'done', closed_at: new Date().toISOString(), starred: false });
-    toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
+    if (!t.repeat) toast({ message: cheer(), undo: () => store.updateTask(t.id, { status: 'open', closed_at: null }) });
   };
 
   // ---- Dragging ----

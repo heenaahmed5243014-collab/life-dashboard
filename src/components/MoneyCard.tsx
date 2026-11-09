@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { daysBetween, today } from '../dates';
 import { useStore } from '../store';
 import type { Account, Balance } from '../types';
+import BalancePrompt from './BalancePrompt';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -27,10 +28,20 @@ const monthEnd = (key: string) => {
  * An account's balance in a month: that month's figure, or the latest one before it,
  * plus any daily interest since the day that figure was typed in (up to today, or the month's end).
  */
+/**
+ * Daily interest for an account. With an interest rate (AER %) it follows the last real balance,
+ * so each balance check resets it and it can't snowball. Otherwise the fixed £/day you set.
+ */
+export function dailyInterest(a: Account, base: number): number {
+  if (a.is_debt) return 0;
+  if (a.aer && a.aer > 0) return (base * a.aer) / 100 / 365;
+  return a.daily_growth ?? 0;
+}
+
 export function balanceAt(a: Account, month: string, balances: Balance[]): number | null {
   const b = balances.filter((x) => x.account_id === a.id && x.month <= month).sort((p, q) => q.month.localeCompare(p.month))[0];
   if (!b) return null;
-  const rate = !a.is_debt && a.daily_growth ? a.daily_growth : 0;
+  const rate = dailyInterest(a, b.amount);
   if (!rate) return b.amount;
   const from = b.recorded_on ?? b.month;
   const until = month === monthKey(new Date()) ? today() : monthEnd(month);
@@ -42,7 +53,7 @@ function interestNow(accounts: Account[], balances: Balance[]): number {
   const m = monthKey(new Date());
   return accounts.reduce((sum, a) => {
     const b = balances.filter((x) => x.account_id === a.id && x.month <= m).sort((p, q) => q.month.localeCompare(p.month))[0];
-    return b && !a.is_debt && a.daily_growth ? sum + (balanceAt(a, m, balances)! - b.amount) : sum;
+    return b && !a.is_debt && (a.daily_growth || a.aer) ? sum + (balanceAt(a, m, balances)! - b.amount) : sum;
   }, 0);
 }
 
@@ -83,7 +94,7 @@ export default function MoneyCard() {
     for (const a of accounts) {
       const v = balanceAt(a, thisMonth, store.balances);
       d[a.id] = v === null ? '' : String(Math.round(v * 100) / 100);
-      r[a.id] = a.daily_growth ? String(a.daily_growth) : '';
+      r[a.id] = a.aer ? String(a.aer) : '';
     }
     setDraft(d);
     setRates(r);
@@ -100,8 +111,9 @@ export default function MoneyCard() {
     }
     for (const a of accounts) {
       if (a.is_debt) continue;
-      const rate = Number((rates[a.id] ?? '').replace(/[£,\s]/g, '') || 0);
-      if (Number.isFinite(rate) && rate >= 0 && rate !== (a.daily_growth ?? 0)) store.updateAccount(a.id, { daily_growth: Math.round(rate * 100) / 100 });
+      const raw = (rates[a.id] ?? '').replace(/[%,\s]/g, '');
+      const aer = raw === '' ? null : Number(raw);
+      if (aer === null ? a.aer : Number.isFinite(aer) && aer >= 0 && aer < 30 && aer !== (a.aer ?? null)) store.updateAccount(a.id, { aer: aer === null ? null : Math.round(aer * 100) / 100 });
     }
     setEditing(false);
   };
@@ -141,6 +153,8 @@ export default function MoneyCard() {
         </div>
       )}
 
+      {!editing && accounts.length > 0 && <BalancePrompt />}
+
       {editing && (
         <div className="mini-edit">
           {accounts.map((a) => (
@@ -154,10 +168,13 @@ export default function MoneyCard() {
               <button type="button" className="slot-x" aria-label={`Remove ${a.name}`} onClick={() => store.updateAccount(a.id, { active: false })}>×</button>
               {!a.is_debt && (
                 <label className="rate-row">
-                  <span className="note">Interest per day (optional)</span>
+                  <span className="note">
+                    Interest rate, AER (optional)
+                    {!rates[a.id] && a.daily_growth ? ` · now a fixed £${a.daily_growth.toFixed(2)} a day` : ''}
+                  </span>
                   <span className="money-input small">
-                    <span aria-hidden="true">£</span>
-                    <input inputMode="decimal" aria-label={`${a.name} interest per day`} placeholder="0.00" value={rates[a.id] ?? ''} onChange={(e) => setRates({ ...rates, [a.id]: e.target.value })} />
+                    <input inputMode="decimal" aria-label={`${a.name} interest rate`} placeholder="0.00" value={rates[a.id] ?? ''} onChange={(e) => setRates({ ...rates, [a.id]: e.target.value })} />
+                    <span aria-hidden="true">%</span>
                   </span>
                 </label>
               )}

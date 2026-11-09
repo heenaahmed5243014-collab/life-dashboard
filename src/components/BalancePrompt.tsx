@@ -1,6 +1,6 @@
-// "Balance check": around payday each month, asks for each account's balance.
-// Upload a screenshot of it (Claude reads just the number) or type it. Accounts that grow by
-// themselves (Cash ISA with daily interest) aren't asked for.
+// Balance check (part of the Net worth card): around payday each month, asks for each account's
+// balance. Upload a screenshot (Claude reads just the number) or type it. Savings that earn
+// interest are included too, so the interest estimate is reset to the real balance each month.
 import { useRef, useState } from 'react';
 import { useStore } from '../store';
 import type { Account } from '../types';
@@ -22,7 +22,16 @@ export function lastUpdated(a: Account, balances: { account_id: string; month: s
 }
 
 export function balancesDue(accounts: Account[], balances: Parameters<typeof lastUpdated>[1], since: string): Account[] {
-  return accounts.filter((a) => a.active && !(a.daily_growth && !a.is_debt) && ((lastUpdated(a, balances)?.day ?? '0000') < since));
+  return accounts.filter((a) => a.active && (lastUpdated(a, balances)?.day ?? '0000') < since);
+}
+
+/** Is a balance check due right now (and not snoozed)? */
+export function useBalanceCheckDue(): boolean {
+  const store = useStore();
+  const now = today();
+  let snoozed = false;
+  try { snoozed = (localStorage.getItem(SNOOZE_KEY) ?? '') > now; } catch { /* fine */ }
+  return !snoozed && balancesDue(store.accounts, store.balances, payPeriod(store.payslips, now).last).length > 0;
 }
 
 export default function BalancePrompt() {
@@ -45,7 +54,7 @@ export default function BalancePrompt() {
   };
 
   return (
-    <section className={`card balance-prompt${open ? '' : ' closed'}`} aria-label="Balance check">
+    <section className={`balance-prompt${open ? '' : ' closed'}`} aria-label="Balance check">
       <button type="button" className="bp-head" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="eyebrow">Balance check{open ? ' · 1 minute' : ''}</span>
         <span className="bp-head-side">
@@ -55,7 +64,7 @@ export default function BalancePrompt() {
       </button>
       {open && (
         <>
-          <p className="note">It’s been payday, so your net worth needs fresh numbers. Screenshot each balance in your banking app, or type it.</p>
+          <p className="note">It’s been payday, so update each balance: screenshot it in your banking app, or type it. Net worth updates as you go.</p>
           <ul className="bp-list">
             {due.map((a) => <BalanceRow key={a.id} a={a} onSaved={(left) => left === 0 && toast({ message: 'Net worth is up to date 🎉' })} remaining={due.length} />)}
           </ul>
