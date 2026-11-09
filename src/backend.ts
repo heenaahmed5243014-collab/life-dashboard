@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -26,6 +26,9 @@ export interface Snapshot {
   affirmations?: Affirmation[];
   /** True once database update 12 (repeat, gym sessions, interest rate, emoji) has been run. */
   db12?: boolean;
+  rewards?: WeightReward[];
+  /** False until database update 13 (weight rewards) has been run. */
+  rewardsReady?: boolean;
   /** False until database update 10 has been run. */
   affirmReady?: boolean;
   leads?: Lead[];
@@ -66,6 +69,9 @@ export interface Backend {
   insertLead(l: Lead): Promise<void>;
   updateLead(id: string, changes: Partial<Lead>): Promise<void>;
   deleteLead(id: string): Promise<void>;
+  insertReward(r: WeightReward): Promise<void>;
+  updateReward(id: string, changes: Partial<WeightReward>): Promise<void>;
+  deleteReward(id: string): Promise<void>;
   /** Saves a QR screenshot privately and returns where it's stored. */
   uploadQr(taskId: string, file: File): Promise<string>;
   /** A short-lived link to show a stored QR screenshot. */
@@ -134,6 +140,14 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       return { affirmations: [], affirmReady: false, leads: [] };
     }
     return { affirmations: res.data as Affirmation[], affirmReady: true, leads: leads.data as Lead[] };
+  };
+  const loadRewards = async (): Promise<{ rewards: WeightReward[]; rewardsReady: boolean }> => {
+    const res = await sb.from('weight_rewards').select('id, kg, target_lb, title, emoji, unlocked_on, claimed_on').order('kg');
+    if (res.error) {
+      if (/fetch|network|load failed/i.test(res.error.message)) throw new Error(res.error.message);
+      return { rewards: [], rewardsReady: false };
+    }
+    return { rewards: (res.data as WeightReward[]).map((r) => ({ ...r, kg: Number(r.kg), target_lb: Number(r.target_lb) })), rewardsReady: true };
   };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
@@ -212,6 +226,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         ...(await loadIncome()),
         ...(await loadHealthMoney(now)),
         ...(await loadAffirmations()),
+        ...(await loadRewards()),
       };
     },
     async insertTask(t) {
@@ -301,6 +316,15 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     },
     async deleteAffirmation(id) {
       check(await sb.from('affirmations').delete().eq('id', id));
+    },
+    async insertReward(r) {
+      check(await sb.from('weight_rewards').insert(r));
+    },
+    async updateReward(id, changes) {
+      check(await sb.from('weight_rewards').update(changes).eq('id', id));
+    },
+    async deleteReward(id) {
+      check(await sb.from('weight_rewards').delete().eq('id', id));
     },
     async insertLead(l) {
       check(await sb.from('leads').insert(l));
@@ -453,12 +477,14 @@ export function demoBackend(): Backend {
       affirmations: [],
       affirmReady: true,
       db12: true,
+      rewardsReady: true,
+      rewards: [{ id: 'wr1', kg: 2, target_lb: 129.8, title: 'Spa day', emoji: '💆', unlocked_on: null, claimed_on: null }, { id: 'wr2', kg: 4, target_lb: 125.4, title: 'Weekend in Lisbon', emoji: '✈️', unlocked_on: null, claimed_on: null }],
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertDomain: noop, insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
     setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
-    insertAffirmation: noop, deleteAffirmation: noop, insertLead: noop, updateLead: noop, deleteLead: noop,
+    insertAffirmation: noop, deleteAffirmation: noop, insertLead: noop, updateLead: noop, deleteLead: noop, insertReward: noop, updateReward: noop, deleteReward: noop,
     setSteps: noop, insertGoal: noop, updateGoal: noop, deleteGoal: noop, setNoSpend: noop,
     stepLink: async () => 'demo0000000000000000000000000000demo',
     uploadQr: async (taskId, file) => {

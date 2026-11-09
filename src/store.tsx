@@ -3,9 +3,10 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Affirmation, Lead, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Lead, WeightReward, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { nextDue, REPEAT_LABEL } from './repeat';
+import { milestones } from './weightRewards';
 import { reminderAt, hhmm, shortDate } from './dates';
 import { addDays, today, type Day } from './dates';
 import { useToast } from './toast';
@@ -69,6 +70,10 @@ interface Store extends Snapshot {
   addAffirmation(text: string): Affirmation;
   deleteAffirmation(id: string): void;
   leads: Lead[];
+  rewards: WeightReward[];
+  addReward(r: Omit<WeightReward, 'id' | 'unlocked_on' | 'claimed_on'>): WeightReward;
+  updateReward(id: string, changes: Partial<WeightReward>): void;
+  deleteReward(id: string): void;
   addLead(l: Omit<Lead, 'id'>): Lead;
   updateLead(id: string, changes: Partial<Lead>): void;
   deleteLead(id: string): void;
@@ -182,6 +187,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       noSpend: data.noSpend ?? [],
       affirmations: data.affirmations ?? [],
       leads: view.leads ?? [],
+      rewards: data.rewards ?? [],
       inbox,
       domain: (id) => byId.get(id) ?? FALLBACK,
       addTask(fields) {
@@ -315,8 +321,13 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         save(backend.setBalance(b));
       },
       setWeight(w) {
-        setData((d) => d && { ...d, weights: [...d.weights.filter((x) => x.day !== w.day), w].sort((a, b) => a.day.localeCompare(b.day)) });
+        const weights = [...data.weights.filter((x) => x.day !== w.day), w].sort((a, b) => a.day.localeCompare(b.day));
+        setData((d) => d && { ...d, weights });
         save(backend.setWeight(w));
+        // Did this weigh-in unlock a reward?
+        const won = milestones(weights, data.rewards ?? [], data.tasks, today()).filter((m) => m.reached && m.reward && !m.reward.unlocked_on);
+        for (const m of won) api.updateReward(m.reward!.id, { unlocked_on: today() });
+        if (won.length) toast({ message: `🎉 Reward unlocked: ${won.map((m) => `${m.reward!.emoji ?? ''} ${m.reward!.title}`).join(', ')}!` });
       },
       setIncome(i) {
         setData((d) => d && { ...d, income: i });
@@ -382,6 +393,20 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       deleteAffirmation(id) {
         setData((d) => d && { ...d, affirmations: (d.affirmations ?? []).filter((x) => x.id !== id) });
         save(backend.deleteAffirmation(id));
+      },
+      addReward(fields) {
+        const r: WeightReward = { id: crypto.randomUUID(), unlocked_on: null, claimed_on: null, ...fields };
+        setData((d) => d && { ...d, rewards: [...(d.rewards ?? []), r].sort((a, b) => a.kg - b.kg) });
+        save(backend.insertReward(r));
+        return r;
+      },
+      updateReward(id, changes) {
+        setData((d) => d && { ...d, rewards: (d.rewards ?? []).map((x) => (x.id === id ? { ...x, ...changes } : x)) });
+        save(backend.updateReward(id, changes));
+      },
+      deleteReward(id) {
+        setData((d) => d && { ...d, rewards: (d.rewards ?? []).filter((x) => x.id !== id) });
+        save(backend.deleteReward(id));
       },
       addLead(fields) {
         const l: Lead = { id: crypto.randomUUID(), ...fields };

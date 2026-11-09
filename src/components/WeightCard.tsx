@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { daysBetween, shortDate, today } from '../dates';
+import { milestones } from '../weightRewards';
+import { go } from '../router';
 
 const fix = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
 
@@ -72,6 +74,22 @@ export default function WeightCard() {
           <div className="bar"><i style={{ width: `${latest.lb > goal ? pct : 100}%` }} /></div>
         </div>
       )}
+      {(() => {
+        const ms = milestones(store.weights, store.rewards, store.tasks, now);
+        const unclaimed = ms.find((m) => m.reached && m.reward && !m.reward.claimed_on);
+        const nextR = ms.find((m) => !m.reached && m.reward);
+        if (!ms.length) return null;
+        return (
+          <button type="button" className={`wr-line${unclaimed ? ' won' : ''}`} onClick={() => go('/rewards')}>
+            {unclaimed
+              ? <>🎉 You unlocked <b>{unclaimed.reward!.emoji} {unclaimed.reward!.title}</b>. Tap to mark it enjoyed</>
+              : nextR
+                ? <>🎁 Next reward at {nextR.lb.toFixed(1)} lb: <b>{nextR.reward!.emoji} {nextR.reward!.title}</b>{latest ? ` · ${Math.max(0, latest.lb - nextR.lb).toFixed(1)} lb to go` : ''}</>
+                : <>🎁 Add rewards for each kilogram you lose</>}
+            <span aria-hidden="true"> ›</span>
+          </button>
+        );
+      })()}
       {open && (
         <label className="money-row">
           <span className="money-name">Today’s weight</span>

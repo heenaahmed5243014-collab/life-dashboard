@@ -14,6 +14,7 @@ import AreaScreen from './screens/AreaScreen';
 import ReturnsScreen from './screens/ReturnsScreen';
 import StepsScreen from './screens/StepsScreen';
 import ResetScreen from './screens/ResetScreen';
+import WeightRewardsScreen from './screens/WeightRewardsScreen';
 import IncomeScreen from './screens/IncomeScreen';
 import AccountScreen from './screens/AccountScreen';
 import NotConnected from './screens/NotConnected';
@@ -49,7 +50,7 @@ function Screens() {
 function Page() {
   const route = useRoute();
   const work = useWorkMode();
-  if (work.active && (route.name === 'income' || route.name === 'returns' || route.name === 'steps')) return <HiddenScreen />;
+  if (work.active && (route.name === 'income' || route.name === 'returns' || route.name === 'steps' || route.name === 'rewards')) return <HiddenScreen />;
   switch (route.name) {
     case 'today': return <TodayScreen />;
     case 'tasks': return <TasksScreen />;
@@ -61,6 +62,7 @@ function Page() {
     case 'income': return <IncomeScreen />;
     case 'steps': return <StepsScreen />;
     case 'reset': return <ResetScreen />;
+    case 'rewards': return <WeightRewardsScreen />;
     case 'item': return <ItemScreen key={route.id} id={route.id} />;
     case 'routine': return <RoutineScreen key={route.id} id={route.id} />;
   }

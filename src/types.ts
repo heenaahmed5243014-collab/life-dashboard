@@ -176,3 +176,14 @@ export interface Lead {
   created_at?: string;
   updated_at?: string;
 }
+
+/** A reward for reaching a weight milestone (kilograms lost). */
+export interface WeightReward {
+  id: string;
+  kg: number;
+  target_lb: number;
+  title: string;
+  emoji: string | null;
+  unlocked_on: Day | null;
+  claimed_on: Day | null;
+}
