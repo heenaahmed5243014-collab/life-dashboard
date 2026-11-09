@@ -1,5 +1,5 @@
 -- Life Dashboard: update 12.
--- Gym session types, repeating events, and interest rates for savings (passive income).
+-- Gym session types, repeating events, interest rates for savings (passive income) and task emojis.
 -- Paste into Supabase > SQL Editor > New query, then press Run. Safe to run more than once.
 
 -- 1. Gym: what each session was (Legs, Arms, Cardio...), and the plan for each day of the week
@@ -14,3 +14,6 @@ alter table public.tasks add column if not exists repeat text check (repeat is n
 
 -- 3. Savings interest rate (AER %), so daily interest follows the real balance
 alter table public.accounts add column if not exists aer numeric(5, 2) check (aer is null or (aer >= 0 and aer < 30));
+
+-- 4. An emoji for each task (picked automatically; you can change it)
+alter table public.tasks add column if not exists icon text check (icon is null or length(icon) <= 16);

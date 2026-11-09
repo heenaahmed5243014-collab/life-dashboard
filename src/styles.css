@@ -1055,3 +1055,11 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .fab { z-index: 15; }
 .session-pick { box-sizing: border-box; min-width: 0; max-width: 100%; width: 100%; }
 .session-chips { min-width: 0; max-width: 100%; }
+
+/* Task emojis */
+.t-emoji { display: inline-block; margin-right: 6px; font-size: 1.05em; line-height: 1; }
+.emoji-pick { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.emoji-btn { aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-size: 1.3rem; display: grid; place-items: center; padding: 0; min-height: 40px; }
+.emoji-btn.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent-soft); }
+.emoji-btn:disabled { opacity: 0.55; }
+.emoji-btn:disabled.on { opacity: 1; }

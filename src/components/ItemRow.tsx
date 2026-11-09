@@ -1,4 +1,5 @@
 import type { Task } from '../types';
+import { taskEmoji } from '../emoji';
 import { useStore } from '../store';
 import { dueLabel, hhmm } from '../dates';
 import { go } from '../router';
@@ -65,7 +66,7 @@ export default function ItemRow({ task, big = false, tag }: { task: Task; big?: 
         <span className="box"><Check size={16} /></span>
       </button>
       <button type="button" className="row-body" onClick={() => go(`/item/${task.id}`)}>
-        <span className="row-title">{task.title}</span>
+        <span className="row-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(task, d.name)}</span>{task.title}</span>
         <span className="row-meta">
           <span className="dot" style={{ background: d.color }} />
           {d.short_name}{tag ? '' : ` · ${whenText(task)}`}

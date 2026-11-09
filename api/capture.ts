@@ -39,6 +39,7 @@ export interface CaptureResult {
   group: string | null;
   refund_amount: number | null;
   repeat: 'week' | '2weeks' | '4weeks' | 'month' | null;
+  emoji: string;
 }
 
 const json = (status: number, body: unknown) =>
@@ -60,7 +61,7 @@ function schema(domains: string[], groups: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date', 'group', 'refund_amount', 'repeat'],
+    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date', 'group', 'refund_amount', 'repeat', 'emoji'],
     properties: {
       title: { type: 'string', description: 'Short, clear wording that starts with a verb where it makes sense. No date/time words.' },
       kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea', 'goal'] },
@@ -80,6 +81,7 @@ function schema(domains: string[], groups: string[]) {
         ? { ...orNull({ type: 'string', enum: groups }), description: 'The group inside the chosen area, written exactly as listed, or null' }
         : { type: 'null' },
       refund_amount: { ...orNull({ type: 'number' }), description: 'For a return or refund: the money coming back in pounds, else null' },
+      emoji: { type: 'string', description: 'One emoji that fits the item, e.g. 📸 for a shoot, 🏊 for swimming, 📦 for a return' },
       repeat: { ...orNull({ type: 'string', enum: ['week', '2weeks', '4weeks', 'month'] }), description: 'For a repeating event or appointment, how often. Else null.' },
     },
   };

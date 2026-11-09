@@ -1,5 +1,6 @@
 // Today, in the Brain Planner's format: greeting + pills, Top 3 card, Slipping,
 // Routine checklist, the lists, the hourly plan, "Do this next", and a calm send-off.
+import { taskEmoji } from '../emoji';
 import { stepOnce } from '../repeat';
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
@@ -504,7 +505,7 @@ function TodayBody() {
 
       <div className="card">
         <span className="eyebrow">Do this next</span>
-        <div className="big">{next ? next.title : 'All clear. Go enjoy your evening 💗'}</div>
+        <div className="big">{next ? `${taskEmoji(next, store.domain(next.domain_id).name)} ${next.title}` : 'All clear. Go enjoy your evening 💗'}</div>
         {next?.step && <p className="first-step"><span className="tag t-pink">First step</span> {next.step}</p>}
         {next && <span className="meta"><span className="tag">{store.domain(next.domain_id).short_name} · {whenText(next)}</span><EffortTags task={next} /></span>}
         {next && (

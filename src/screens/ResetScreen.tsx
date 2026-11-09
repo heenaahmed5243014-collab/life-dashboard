@@ -1,5 +1,6 @@
 // Evening reset (2 minutes): go through what's left today one at a time
 // (done, tomorrow, another day, or drop it), then pick tomorrow's Top 3.
+import { taskEmoji } from '../emoji';
 import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import type { Task } from '../types';
@@ -92,7 +93,7 @@ export default function ResetScreen() {
             <p className="sub">What’s left from today. Decide each one; no guilt either way.</p>
             <article className="card hero reset-card">
               <span className="eyebrow">{store.domain(current.domain_id).short_name}{current.due ? ` · ${dueLabel(current.due, now)}` : ' · Top 3'}</span>
-              <div className="big">{current.title}</div>
+              <div className="big">{taskEmoji(current, store.domain(current.domain_id).name)} {current.title}</div>
               {current.step && <p className="first-step"><span className="tag t-pink">First step</span> {current.step}</p>}
               <div className="reset-actions">
                 <button type="button" className="btn primary" onClick={() => done(current)}>Done ✓</button>

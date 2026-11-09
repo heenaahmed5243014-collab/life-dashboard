@@ -6,6 +6,7 @@
 //   A quick swipe still scrolls the page.
 // - Planned tasks can also be moved by tapping Move, or sent back to the tray.
 // - Tapping an empty hour adds something new at that time.
+import { taskEmoji } from '../emoji';
 import React, { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import type { Task } from '../types';
 import { hhmm, reminderAt, type Day } from '../dates';
@@ -227,7 +228,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                   {...dragProps(t)}
                   onClick={() => !justDragged.current && setSelected(on ? null : t.id)}
                 >
-                  <span className="tray-title">{t.title}</span>
+                  <span className="tray-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(t, store.domain(t.domain_id).name)}</span>{t.title}</span>
                   <span className="row-meta">
                     <span className="dot" style={{ background: store.domain(t.domain_id).color }} />
                     {t.minutes ? minutesLabel(t.minutes) : 'No estimate'}
@@ -273,7 +274,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                         {...dragProps(t)}
                         onClick={() => !justDragged.current && go(`/item/${t.id}`)}
                       >
-                        <span className="slot-title">{t.title}</span>
+                        <span className="slot-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(t, d.name)}</span>{t.title}</span>
                         <span className="row-meta">
                           {range(t)} · {d.short_name}
                           {t.remind_at && <Bell />}

@@ -1,4 +1,5 @@
 // "I've got 15 minutes": suggests one small thing that fits, one at a time.
+import { taskEmoji } from '../emoji';
 import { useState } from 'react';
 import { useStore } from '../store';
 import type { Task } from '../types';
@@ -50,7 +51,7 @@ export default function QuickWin() {
             {t ? (
               <div className="card stack">
                 <span className="eyebrow">{store.domain(t.domain_id).short_name}{t.minutes ? ` · ${minutesLabel(t.minutes)}` : ''}</span>
-                <div className="big">{t.title}</div>
+                <div className="big">{taskEmoji(t, store.domain(t.domain_id).name)} {t.title}</div>
                 {t.step && <p className="first-step"><span className="tag t-pink">First step</span> {t.step}</p>}
                 <div className="row">
                   <button type="button" className="btn primary" onClick={() => done(t)}>Done ✓</button>

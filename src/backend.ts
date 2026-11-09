@@ -24,6 +24,8 @@ export interface Snapshot {
   /** False until database update 9 (steps, goals, no-spend days) has been run. */
   healthReady?: boolean;
   affirmations?: Affirmation[];
+  /** True once database update 12 (repeat, gym sessions, interest rate, emoji) has been run. */
+  db12?: boolean;
   /** False until database update 10 has been run. */
   affirmReady?: boolean;
   leads?: Lead[];
@@ -200,6 +202,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         domains,
         bills: extras.bills,
         tasks,
+        db12: loaded.length === 0 ? false : 'repeat' in loaded[0],
         routines: check<Routine[]>(routines),
         ticks: check<(Tick & { user_id?: string; created_at?: string })[]>(ticks).map(({ user_id: _u, created_at: _c, ...t }) => t),
         subcategories: check<Subcategory[]>(subcategories),
@@ -449,6 +452,7 @@ export function demoBackend(): Backend {
       ],
       affirmations: [],
       affirmReady: true,
+      db12: true,
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertDomain: noop, insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,

@@ -13,6 +13,15 @@ import { useWorkMode } from './workmode';
 
 const nowIso = () => new Date().toISOString();
 
+/** Fields that only exist after database update 12; left out until it's been run. */
+const strip = <T extends object>(o: T, ready: boolean | undefined, keys: string[]): T => {
+  if (ready) return o;
+  const c = { ...o } as Record<string, unknown>;
+  for (const k of keys) delete c[k];
+  return c as T;
+};
+const T12 = ['repeat', 'icon'];
+
 export type NewTask = Pick<Task, 'title' | 'domain_id'> & Partial<Task>;
 export type NewRoutine = Pick<Routine, 'title' | 'domain_id' | 'days'> & Partial<Routine>;
 
@@ -182,7 +191,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
           created_at: stamp, touched_at: stamp, closed_at: null, ...fields,
         };
         setData((d) => d && { ...d, tasks: [...d.tasks, t] });
-        save(backend.insertTask(t));
+        save(backend.insertTask(strip(t, data.db12, T12)));
         return t;
       },
       updateTask(id, changes) {
@@ -196,7 +205,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         }
         const c = { ...changes, touched_at: nowIso() };
         setData((d) => d && { ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...c } : t)) });
-        save(backend.updateTask(id, c));
+        if (Object.keys(strip(c, data.db12, T12)).length > 1 || data.db12) save(backend.updateTask(id, strip(c, data.db12, T12)));
         if (!before) return;
         // Job applications: sending one adds a "follow up" a week later (undone if you reopen it).
         const sub = data.subcategories.find((x) => x.id === before.subcategory_id);
@@ -225,7 +234,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
           ...d,
           routines: d.routines.map((r) => (r.id === id ? { ...r, ...changes } : r)).filter((r) => r.active),
         });
-        save(backend.updateRoutine(id, changes));
+        save(backend.updateRoutine(id, strip(changes, data.db12, ['session_types', 'session_plan'])));
       },
       tickCount(routineId, day) {
         return data.ticks.find((t) => t.routine_id === routineId && t.day === day)?.count ?? 0;
@@ -240,7 +249,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
             ...(count > 0 ? [{ routine_id: routineId, day, count, session: keep }] : []),
           ],
         });
-        save(backend.setTick(routineId, day, count, session));
+        save(backend.setTick(routineId, day, count, data.db12 ? session : undefined));
       },
       setSession(routineId, day, session) {
         const r = data.routines.find((x) => x.id === routineId);
@@ -296,7 +305,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       },
       updateAccount(id, changes) {
         setData((d) => d && { ...d, accounts: d.accounts.map((a) => (a.id === id ? { ...a, ...changes } : a)) });
-        save(backend.updateAccount(id, changes));
+        save(backend.updateAccount(id, strip(changes, data.db12, ['aer'])));
       },
       setBalance(b) {
         setData((d) => d && {

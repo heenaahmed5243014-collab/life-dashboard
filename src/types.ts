@@ -39,6 +39,7 @@ export interface Task {
   refund_received_on?: Day | null;
   paused?: boolean; // projects: on hold, not finished
   repeat?: Repeat | null; // repeating events
+  icon?: string | null; // chosen emoji (otherwise one is picked from the words)
   notes: string;
   created_at: string;
   touched_at: string;

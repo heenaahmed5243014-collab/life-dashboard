@@ -166,7 +166,7 @@ export default function MoneyCard() {
                 <input inputMode="decimal" aria-label={`${a.name} balance`} value={draft[a.id] ?? ''} placeholder="0" onChange={(e) => setDraft({ ...draft, [a.id]: e.target.value })} />
               </label>
               <button type="button" className="slot-x" aria-label={`Remove ${a.name}`} onClick={() => store.updateAccount(a.id, { active: false })}>×</button>
-              {!a.is_debt && (
+              {!a.is_debt && store.db12 && (
                 <label className="rate-row">
                   <span className="note">
                     Interest rate, AER (optional)

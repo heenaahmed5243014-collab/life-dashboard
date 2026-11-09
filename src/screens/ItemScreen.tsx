@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { EMOJI_CHOICES, taskEmoji } from '../emoji';
 import SubTasks from '../components/SubTasks';
 import { REPEATS, REPEAT_LABEL } from '../repeat';
 import { useStore } from '../store';
@@ -221,7 +222,7 @@ function ItemDetail({ task }: { task: Task }) {
           </FieldBlock>
         )}
 
-        {task.due && task.kind !== 'idea' && task.kind !== 'goal' && !isReturnItem && (
+        {store.db12 && task.due && task.kind !== 'idea' && task.kind !== 'goal' && !isReturnItem && (
               <FieldBlock label="Repeat">
                 <div className="chips repeat-row" role="radiogroup" aria-label="Repeat">
                   <button type="button" role="radio" aria-checked={!task.repeat} className={!task.repeat ? 'chip on' : 'chip'} onClick={() => save({ repeat: null })}>Doesn’t repeat</button>
@@ -232,6 +233,16 @@ function ItemDetail({ task }: { task: Task }) {
                 {task.repeat && <p className="note">Ticking it done moves it to the next date. Future dates show in your calendar.</p>}
               </FieldBlock>
         )}
+
+        <FieldBlock label="Emoji">
+          <div className="emoji-pick" role="radiogroup" aria-label="Emoji">
+            {EMOJI_CHOICES.map((e) => {
+              const on = (task.icon || taskEmoji(task, store.domain(task.domain_id).name)) === e;
+              return <button key={e} type="button" role="radio" aria-checked={on} className={on ? 'emoji-btn on' : 'emoji-btn'} disabled={!store.db12} onClick={() => save({ icon: e })}>{e}</button>;
+            })}
+          </div>
+          <p className="note">{!store.db12 ? 'Picked automatically from the words. Choosing your own needs database update 12.' : task.icon ? <button type="button" className="link-btn" onClick={() => save({ icon: null })}>Go back to automatic</button> : 'Picked automatically from the words. Tap one to choose your own.'}</p>
+        </FieldBlock>
 
         {task.kind === 'task' && !parentIsTask && (
           <FieldBlock label="Steps">

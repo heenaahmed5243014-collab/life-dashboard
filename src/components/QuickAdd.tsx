@@ -370,13 +370,13 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
                       <Bell /> Remind
                     </button>
                   </div>
-                  <div className="qa-row repeat-row" aria-label="Repeat">
+                  {store.db12 && <div className="qa-row repeat-row" aria-label="Repeat">
                     {REPEATS.map((r) => (
                       <button key={r} type="button" className={repeat === r ? 'chip on' : 'chip'} aria-pressed={repeat === r} onClick={() => setRepeat(repeat === r ? null : r)}>
                         ↻ {REPEAT_LABEL[r]}
                       </button>
                     ))}
-                  </div>
+                  </div>}
                 </Row>
               )}
             </div>

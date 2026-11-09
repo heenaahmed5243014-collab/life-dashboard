@@ -86,7 +86,9 @@ function RoutineDetail({ routine }: { routine: Routine }) {
         </FieldBlock>
 
         <FieldBlock label="Session types (e.g. gym)">
-          {routine.session_types?.length ? (
+          {!store.db12 ? (
+            <p className="note">Needs database update 12 first.</p>
+          ) : routine.session_types?.length ? (
             <SessionSettings routine={routine} />
           ) : (
             <>
