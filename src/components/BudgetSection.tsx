@@ -26,6 +26,7 @@ function billPic(name: string): { img?: string; emoji: string } {
   if (/spotify|music|apple music|airpods/.test(n)) return { img: '/img/airpods.png', emoji: '🎧' };
   if (/gym|fitness|puregym/.test(n)) return { img: '/img/gym.png', emoji: '🏋️‍♀️' };
   if (/rent|mortgage|landlord/.test(n)) return { img: '/img/rent.png', emoji: '🏠' };
+  if (/\bcar\b|fuel|petrol|diesel|\bmot\b|parking|congestion|ulez|car insurance|car finance|pcp|service plan/.test(n)) return { img: '/img/car.png', emoji: '🚗' };
   if (/travel|oyster|tfl|train|transport/.test(n)) return { img: '/img/transport.png', emoji: '🚇' };
   if (/phone|mobile|\bee\b|o2|vodafone|three|giffgaff|iphone/.test(n)) return { img: '/img/iphone.png', emoji: '📱' };
   const table: [RegExp, string][] = [[/phone|mobile|ee\b|o2|vodafone|three|giffgaff/, '📱'], [/gym|fitness|pure|puregym/, '🏋️‍♀️'], [/rent|mortgage|landlord/, '🏠'],
