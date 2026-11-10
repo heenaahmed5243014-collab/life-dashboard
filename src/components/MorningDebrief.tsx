@@ -5,7 +5,6 @@ import { buildDay } from '../today';
 import { longDate, today, addDays, daysBetween, hhmm, shortDate } from '../dates';
 import { PARTS, partOfHour, type PartKey } from '../dayparts';
 import { taskEmoji } from '../emoji';
-import { billsDue, spendingMoney } from '../bills';
 import { dueFollowUps } from './OutreachTab';
 import { allReturns } from '../areas';
 import { stepGoal, stepSummary } from '../steps';
@@ -15,7 +14,6 @@ import { useDebrief, markDebriefDone } from '../debrief';
 import { useWorkMode } from '../workmode';
 import { go } from '../router';
 
-const money = (n: number) => '£' + Math.round(n).toLocaleString('en-GB');
 
 interface Line { key: string; emoji: string; text: string; time?: string; onClick?: () => void }
 
@@ -43,18 +41,16 @@ export default function MorningDebrief({ onClose }: { onClose: () => void }) {
 
   // Heads-ups: things that are easy to forget
   const heads: Line[] = [];
+  // Money stays on the Money tab, not in the debrief.
   if (settings.headsUp) {
     for (const l of dueFollowUps(store.leads, now)) heads.push({ key: `f${l.id}`, emoji: '📨', text: `Follow up with ${l.name}`, onClick: () => go(`/area/${l.domain_id}/outreach`) });
     if (!work.active) {
       for (const t of allReturns(store.tasks, store.subcategories).filter((t) => t.due && daysBetween(now, t.due) <= 2)) heads.push({ key: `r${t.id}`, emoji: '📦', text: `${t.title} · return by ${t.due === now ? 'today' : shortDate(t.due!)}`, onClick: () => go('/returns') });
-      for (const t of store.tasks.filter((t) => t.refund_status === 'waiting' && t.dropped_off_on && daysBetween(t.dropped_off_on, now) >= 14)) heads.push({ key: `w${t.id}`, emoji: '💸', text: `Chase refund: ${t.title}` });
-      for (const { bill } of billsDue(store.bills ?? [], now, now)) heads.push({ key: `b${bill.id}`, emoji: '💳', text: `${bill.name} goes out today (£${bill.amount.toFixed(2)})` });
     }
     const overdue = store.tasks.filter((t) => t.status === 'open' && t.kind === 'task' && t.due && t.due < now).length;
     if (overdue) heads.push({ key: 'slip', emoji: '🐢', text: `${overdue} thing${overdue === 1 ? '' : 's'} carried over. Pick one, snooze the rest.` });
   }
 
-  const spend = settings.money && !work.active ? spendingMoney(store.bills ?? [], store.income, store.payslips, now) : null;
   const steps = settings.health ? stepSummary(store.steps, stepGoal(store.routines), now) : null;
   const yesterdaySteps = settings.health ? store.steps.find((s) => s.day === addDays(now, -1))?.count : undefined;
   const reward = settings.health && !work.active ? milestones(store.weights, store.rewards, store.tasks, now).find((m) => !m.reached && m.reward) : undefined;
@@ -106,9 +102,8 @@ export default function MorningDebrief({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
-      {(spend || steps || reward) && (
+      {(steps || reward) && (
         <div className="debrief-stats">
-          {spend && <span className="debrief-stat"><b>{money(Math.max(0, spend.perWeek))}</b><small>a week to spend · payday in {spend.daysToPayday}d</small></span>}
           {steps && <span className="debrief-stat"><b>{yesterdaySteps !== undefined ? yesterdaySteps.toLocaleString('en-GB') : (steps.goal / 1000) + 'k'}</b><small>{yesterdaySteps !== undefined ? 'steps yesterday' : 'steps to aim for'}{steps.streak > 1 ? ` · 🔥 ${steps.streak}` : ''}</small></span>}
           {reward && <span className="debrief-stat"><b>{reward.reward!.emoji} {reward.lb.toFixed(1)} lb</b><small>{reward.reward!.title}</small></span>}
         </div>

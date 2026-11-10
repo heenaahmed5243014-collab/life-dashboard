@@ -102,8 +102,7 @@ function DebriefSettings() {
         </select>
       </label>
       <DebriefNotification />
-      <Toggle on={d.headsUp} label="Heads-up: follow-ups, returns, refunds, bills" onChange={(v) => setDebrief({ headsUp: v })} />
-      <Toggle on={d.money} label="Money: spending money until payday" onChange={(v) => setDebrief({ money: v })} />
+      <Toggle on={d.headsUp} label="Heads-up: follow-ups, returns and anything carried over" onChange={(v) => setDebrief({ headsUp: v })} />
       <Toggle on={d.health} label="Health: steps and your next weight reward" onChange={(v) => setDebrief({ health: v })} />
       <span className="eyebrow">Live pill</span>
       <Toggle on={island.on} label="Show the live pill at the top (what’s now and next, with a countdown)" onChange={(v) => setIsland({ on: v })} />
