@@ -57,7 +57,7 @@ export function allReturns(tasks: Task[], subs: Subcategory[]): Task[] {
 const AREA_IMAGES: [RegExp, string][] = [
   [/made in heaven|photo|visual|shoot/i, '/img/areas/camera.png'],
   [/job|career|interview/i, '/img/areas/jobsearch.png'],
-  [/^work$|work\b/i, '/img/areas/desk.png'],
+  [/^work$|work\b/i, '/img/areas/work.png'],
   [/side|idea/i, '/img/areas/sketchbook.png'],
   [/personal|home/i, '/img/areas/home.png'],
   [/inbox/i, '/img/areas/inbox.png'],
