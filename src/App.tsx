@@ -21,6 +21,7 @@ import NotConnected from './screens/NotConnected';
 import { withOffline } from './offline';
 import SyncBanner from './components/SyncBanner';
 import WorkModeBar from './components/WorkModeBar';
+import DynamicIsland from './components/DynamicIsland';
 import HiddenScreen from './screens/HiddenScreen';
 import { useWorkMode } from './workmode';
 import type { Backend } from './backend';
@@ -41,6 +42,7 @@ function Screens() {
   return (
     <>
       <WorkModeBar />
+      <DynamicIsland />
       <Page />
       <QuickAddHost />
     </>

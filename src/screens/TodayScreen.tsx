@@ -1,6 +1,8 @@
 // Today, in the Brain Planner's format: greeting + pills, Top 3 card, Slipping,
 // Routine checklist, the lists, the hourly plan, "Do this next", and a calm send-off.
 import { taskEmoji } from '../emoji';
+import MorningDebrief from '../components/MorningDebrief';
+import { debriefDoneToday, openDebrief, useDebrief } from '../debrief';
 import { stepOnce } from '../repeat';
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
@@ -114,6 +116,7 @@ export default function TodayScreen() {
           <div className="page-head-row">
             <h1 className="h1">{title}</h1>
             <span className="head-btns">
+              <button type="button" className="icon-btn debrief-btn" aria-label="Open today’s debrief" title="Debrief" onClick={openDebrief}>☀️</button>
               <WorkModeButton />
               <button type="button" className="icon-btn" aria-label="Account" onClick={() => go('/account')}><Person /></button>
             </span>
@@ -296,6 +299,14 @@ function TodayBody() {
   const [focus, setFocusState] = useState(readFocus);
   const work = useWorkMode();
   const balanceDue = useBalanceCheckDue();
+  const debrief = useDebrief();
+  const [debriefOpen, setDebriefOpen] = useState(() => debrief.on && new Date().getHours() < debrief.untilHour && new Date().getHours() >= 4 && !debriefDoneToday(today()));
+  useEffect(() => {
+    const open = () => { setDebriefOpen(true); scrollTo({ top: 0, behavior: 'smooth' }); };
+    addEventListener('ld:open-debrief', open);
+    return () => removeEventListener('ld:open-debrief', open);
+  }, []);
+  const debriefCard = debriefOpen ? <MorningDebrief onClose={() => setDebriefOpen(false)} /> : null;
   const setFocus = (on: boolean) => {
     setFocusState(on);
     try { localStorage.setItem(FOCUS_KEY, on ? '1' : '0'); } catch { /* ignore */ }
@@ -391,6 +402,7 @@ function TodayBody() {
   if (focus) {
     return (
       <>
+        {debriefCard}
         {modeSwitch}
         {resetCard}
         {top}
@@ -402,6 +414,7 @@ function TodayBody() {
 
   return (
     <>
+      {debriefCard}
       {modeSwitch}
       {resetCard}
       {top}

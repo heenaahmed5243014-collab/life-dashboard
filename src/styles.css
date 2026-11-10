@@ -1082,3 +1082,77 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .wr-add { align-self: flex-start; }
 .wr-emojis { flex-wrap: wrap; }
 .wr-emojis .emoji-btn { width: 40px; min-height: 40px; }
+
+/* Morning / Afternoon / Evening in the plan */
+.part-head { display: flex; align-items: center; gap: 8px; width: 100%; background: var(--bg); border: none; border-top: 1px solid var(--line); padding: 10px 4px 8px; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.planner .part-head:first-child { border-top: none; }
+.part-emoji { font-size: 1.1rem; }
+.part-name { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 800; font-size: 1.02rem; }
+.part-meta { flex: 1; color: var(--muted); font-size: 0.82rem; }
+.part-head.now .part-name { color: var(--accent); }
+.part-head.now .part-meta { color: var(--accent); font-weight: 600; }
+.part-head.past { opacity: 0.6; }
+.part-chev { color: var(--muted); font-size: 1.2rem; transform: rotate(90deg); transition: transform 0.15s; }
+.part-head[aria-expanded="false"] .part-chev { transform: none; }
+@media (prefers-reduced-motion: reduce) { .part-chev { transition: none; } }
+
+/* Morning debrief */
+.debrief { border: 2px solid var(--accent); gap: 12px; background: linear-gradient(180deg, var(--accent-soft), var(--card) 140px); }
+.debrief-title { margin: 0; font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 800; font-size: 1.45rem; line-height: 1.1; }
+.debrief-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; color: var(--muted); }
+.debrief ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.debrief li { display: flex; gap: 8px; align-items: baseline; font-size: 0.95rem; }
+.debrief li button { background: none; border: none; padding: 0; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.debrief-time { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); min-width: 42px; }
+.debrief-parts { display: grid; gap: 8px; }
+.debrief-part { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.debrief-part.now { border-color: var(--accent); }
+.debrief-part.past { opacity: 0.55; }
+.debrief-part .note { margin: 4px 0 0; }
+.debrief-heads { background: var(--amber-soft, #FBEAD0); border-radius: 14px; padding: 10px 12px; }
+.debrief-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.debrief-stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+.debrief-stat b { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: 1.1rem; }
+.debrief-stat small { color: var(--muted); font-size: 0.74rem; line-height: 1.25; }
+.debrief-go { width: 100%; min-height: 48px; }
+.debrief-btn { font-size: 1.1rem; }
+
+/* Live pill, Dynamic Island style */
+.island-wrap { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 6px); z-index: 24; display: flex; justify-content: center; height: 46px; padding-top: 6px; pointer-events: none; }
+.island {
+  pointer-events: auto; background: #000; color: #fff; border-radius: 999px; min-height: 38px; max-width: min(320px, calc(100vw - 32px));
+  box-shadow: 0 6px 20px rgba(0,0,0,.25); cursor: pointer; overflow: hidden;
+  transition: max-width .35s cubic-bezier(.3,1.3,.5,1), border-radius .35s cubic-bezier(.3,1.3,.5,1), transform .2s;
+  -webkit-tap-highlight-color: transparent; align-self: flex-start;
+}
+.island:active { transform: scale(.97); }
+.island:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.island-compact { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 7px; height: 38px; box-sizing: border-box; }
+.island-emoji { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.12); display: grid; place-items: center; font-size: .95rem; flex: none; }
+.island-title { font-weight: 600; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 150px; }
+.island-time { font-variant-numeric: tabular-nums; font-weight: 700; font-size: .82rem; color: #7FD1AE; white-space: nowrap; margin-left: auto; }
+.island.live .island-time { color: #FF8DB9; }
+.island-ring { flex: none; }
+.island.open { border-radius: 30px; max-width: min(420px, calc(100vw - 20px)); width: 100%; cursor: default; }
+.island-expanded { padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px; animation: island-in .3s ease-out; }
+@keyframes island-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.island-row { display: flex; align-items: center; gap: 12px; }
+.island-big-emoji { width: 46px; height: 46px; border-radius: 14px; background: rgba(255,255,255,.12); display: grid; place-items: center; font-size: 1.5rem; flex: none; }
+.island-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.island-kicker { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.6); font-weight: 700; }
+.island-name { font-weight: 700; font-size: 1rem; line-height: 1.2; }
+.island-range { font-size: .8rem; color: rgba(255,255,255,.6); font-variant-numeric: tabular-nums; }
+.island-count { display: flex; flex-direction: column; align-items: flex-end; }
+.island-count b { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: 1.5rem; font-weight: 800; color: #7FD1AE; font-variant-numeric: tabular-nums; line-height: 1; }
+.island.live .island-count b { color: #FF8DB9; }
+.island-count small { font-size: .72rem; color: rgba(255,255,255,.6); }
+.island-bar { height: 6px; border-radius: 99px; background: rgba(255,255,255,.15); overflow: hidden; }
+.island-bar i { display: block; height: 100%; background: #7FD1AE; border-radius: 99px; }
+.island-bar i.live { background: #FF8DB9; }
+.island-step { margin: 0; font-size: .84rem; color: rgba(255,255,255,.75); }
+.island-actions { display: flex; gap: 8px; }
+.island-btn { flex: 1; min-height: 42px; border-radius: 99px; border: none; background: rgba(255,255,255,.14); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.island-btn.primary { background: #fff; color: #000; }
+.island-btn:focus-visible { outline: 3px solid #FF8DB9; outline-offset: 2px; }
+.island-after { margin: 0; font-size: .8rem; color: rgba(255,255,255,.6); }
+@media (prefers-reduced-motion: reduce) { .island, .island-expanded { transition: none; animation: none; } }

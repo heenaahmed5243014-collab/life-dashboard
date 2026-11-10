@@ -4,6 +4,8 @@ import { useStore } from '../store';
 import { today } from '../dates';
 import Header from '../components/Header';
 import { setWorkMode, toggleWorkMode, useWorkMode, readWorkMode } from '../workmode';
+import { setDebrief, useDebrief } from '../debrief';
+import { useIsland, setIsland } from '../island';
 
 export default function AccountScreen() {
   const store = useStore();
@@ -32,6 +34,7 @@ export default function AccountScreen() {
           <p>{supabase ? <>Signed in as <strong>{email ?? '…'}</strong>.</> : 'Demo mode. Nothing is saved.'}</p>
           <p className="muted small">Your list is saved online, so it’s the same on your phone and the desk PC.</p>
         </section>
+        <DebriefSettings />
         <WorkModeSettings />
         <button type="button" className="secondary" onClick={exportFile}>Download a copy (file)</button>
         {supabase && (
@@ -74,6 +77,34 @@ function WorkModeSettings() {
           <input type="time" className="time-input" aria-label="Work ends" value={w.end} onChange={(e) => setWorkMode({ end: e.target.value || '17:00' })} />
         </span>
       </label>
+    </section>
+  );
+}
+
+function DebriefSettings() {
+  const d = useDebrief();
+  const island = useIsland();
+  const Toggle = ({ on, label, onChange }: { on: boolean; label: string; onChange: (v: boolean) => void }) => (
+    <label className="check-line"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span>{label}</span></label>
+  );
+  return (
+    <section className="card stack" aria-label="Morning debrief">
+      <div className="between">
+        <span className="eyebrow">Morning debrief</span>
+        <button type="button" role="switch" aria-checked={d.on} className={`switch${d.on ? ' on' : ''}`} onClick={() => setDebrief({ on: !d.on })}><span className="visually-hidden">Morning debrief</span><i /></button>
+      </div>
+      <p className="note">Your day split into Morning, Afternoon and Evening, shown at the top of Today each morning until you tap Start my day. The ☀️ button on Today opens it any time.</p>
+      <label className="money-row">
+        <span className="money-name">Show it until</span>
+        <select className="select small-select" aria-label="Show the debrief until" value={d.untilHour} onChange={(e) => setDebrief({ untilHour: Number(e.target.value) })}>
+          {[10, 11, 12, 13, 14, 16, 18].map((h) => <option key={h} value={h}>{h <= 12 ? `${h}${h === 12 ? 'pm' : 'am'}` : `${h - 12}pm`}</option>)}
+        </select>
+      </label>
+      <Toggle on={d.headsUp} label="Heads-up: follow-ups, returns, refunds, bills" onChange={(v) => setDebrief({ headsUp: v })} />
+      <Toggle on={d.money} label="Money: spending money until payday" onChange={(v) => setDebrief({ money: v })} />
+      <Toggle on={d.health} label="Health: steps and your next weight reward" onChange={(v) => setDebrief({ health: v })} />
+      <span className="eyebrow">Live pill</span>
+      <Toggle on={island.on} label="Show the live pill at the top (what’s now and next, with a countdown)" onChange={(v) => setIsland({ on: v })} />
     </section>
   );
 }

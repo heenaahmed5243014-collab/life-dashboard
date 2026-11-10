@@ -7,6 +7,7 @@
 // - Planned tasks can also be moved by tapping Move, or sent back to the tray.
 // - Tapping an empty hour adds something new at that time.
 import { taskEmoji } from '../emoji';
+import { PART, partOfHour, type PartKey } from '../dayparts';
 import React, { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import type { Task } from '../types';
 import { hhmm, reminderAt, type Day } from '../dates';
@@ -46,6 +47,8 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
+  // Morning / Afternoon / Evening: tap a heading to fold it. On today, finished parts start folded.
+  const [folded, setFolded] = useState<Partial<Record<PartKey, boolean>>>({});
   const justDragged = useRef(false);
 
   useEffect(() => {
@@ -248,12 +251,30 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
 
       <div className={`planner${armed ? ' armed' : ''}${dragging ? ' dragging' : ''}`} role="list" aria-label="Hourly plan">
         {Array.from({ length: last - first + 1 }, (_, i) => first + i).map((h) => {
+          const part = partOfHour(h);
+          const P = PART[part];
+          const partHours = Array.from({ length: last - first + 1 }, (_, i) => first + i).filter((x) => partOfHour(x) === part);
+          const isFirstOfPart = partHours[0] === h;
+          const partCount = partHours.reduce((s, x) => s + (byHour.get(x)?.length ?? 0), 0);
+          const partPast = isToday && P.to <= nowHour;
+          const partNowHere = isToday && nowHour >= P.from && nowHour < P.to;
+          const isFolded = !dragging && !armed && (folded[part] ?? (partPast && partCount === 0));
+          const header = isFirstOfPart ? (
+            <button key={`part-${part}`} type="button" className={`part-head${partNowHere ? ' now' : ''}${partPast ? ' past' : ''}`} aria-expanded={!isFolded} onClick={() => setFolded({ ...folded, [part]: !isFolded })}>
+              <span className="part-emoji" aria-hidden="true">{P.emoji}</span>
+              <span className="part-name">{P.label}</span>
+              <span className="part-meta">{partNowHere ? 'Now · ' : ''}{partCount ? `${partCount} planned` : 'Free'}</span>
+              <span className="part-chev" aria-hidden="true">›</span>
+            </button>
+          ) : null;
+          if (isFolded) return header;
           const list = byHour.get(h) ?? [];
           const past = isToday && h < nowHour;
           const hovered = drag?.active && drag.slot?.slice(0, 2) === pad(h);
           const half = hovered && drag.slot?.endsWith('30');
           return (
-            <div key={h} role="listitem" data-hour={h} className={`hour${past ? ' past' : ''}${list.length ? ' has-items' : ''}${hovered ? ' hovered' : ''}${half ? ' half' : ''}`}>
+            <React.Fragment key={h}>{header}
+            <div role="listitem" data-hour={h} className={`hour${past ? ' past' : ''}${list.length ? ' has-items' : ''}${hovered ? ' hovered' : ''}${half ? ' half' : ''}`}>
               <span className="hour-label">{label(h)}</span>
               {hovered && <span className="drop-line" aria-hidden="true"><span>{drag.slot}</span></span>}
               <div className="hour-slot">
@@ -299,6 +320,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                 </button>
               </div>
             </div>
+            </React.Fragment>
           );
         })}
       </div>
