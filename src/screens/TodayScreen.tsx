@@ -22,7 +22,6 @@ import ChunkTicks from '../components/ChunkTicks';
 import MoneyCard from '../components/MoneyCard';
 import { PinGate, useMoneyMask } from '../pin';
 import WeightCard, { WeightHidden } from '../components/WeightCard';
-import MoveCard from '../components/MoveCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
 import MirrorCard from '../components/MirrorCard';
@@ -569,7 +568,6 @@ function TodayBody() {
     ) : null,
     week: <WeekProgress />,
     money: !work.active ? <PinGate compact label="Net worth"><MoneyCard /></PinGate> : null,
-    move: store.healthReady !== false ? <MoveCard /> : null,
     weight: !work.active ? (showWeight ? <WeightCard /> : <WeightHidden />) : null,
   };
   const summaries: Partial<Record<CardId, string>> = {

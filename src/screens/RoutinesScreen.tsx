@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import MonthSummary from '../components/MonthSummary';
+import MoveCard from '../components/MoveCard';
 import { hasSessions, SessionPicker } from '../components/GymSessions';
 import { routineStats } from '../routines';
 import ChunkTicks from '../components/ChunkTicks';
@@ -23,6 +24,8 @@ export default function RoutinesScreen() {
           <h1 className="h1">Routines</h1>
           <p className="muted lead">Streaks only count the days a routine is due. A missed day just starts a new run.</p>
         </header>
+
+        {store.healthReady !== false && <MoveCard />}
 
         <div className="segmented area-tabs" role="tablist" aria-label="View">
           <button type="button" role="tab" aria-selected={tab === 'week'} className={tab === 'week' ? 'seg on' : 'seg'} onClick={() => setTab('week')}>This week</button>
