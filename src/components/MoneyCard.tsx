@@ -5,6 +5,9 @@ import { daysBetween, today } from '../dates';
 import { useStore } from '../store';
 import type { Account, Balance } from '../types';
 import BalancePrompt from './BalancePrompt';
+import { EyeIcon, useMoneyHidden } from '../hide';
+
+const initials = (name: string) => name.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase() || '£';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -76,6 +79,8 @@ export default function MoneyCard() {
   const [rates, setRates] = useState<Record<string, string>>({});
   const [newName, setNewName] = useState('');
   const [newDebt, setNewDebt] = useState(false);
+  const [showAccounts, setShowAccounts] = useState(false);
+  const [hidden, toggleHidden] = useMoneyHidden();
   const accounts = store.accounts.filter((a) => a.active).sort((a, b) => a.sort - b.sort);
   const thisMonth = monthsBack(0);
 
@@ -83,8 +88,6 @@ export default function MoneyCard() {
   const last = totalAt(accounts, monthsBack(1), store.balances);
   const change = total !== null && last !== null ? total - last : null;
   const interest = interestNow(accounts, store.balances);
-  const trend = Array.from({ length: 6 }, (_, i) => monthsBack(5 - i)).map((m) => ({ m, v: totalAt(accounts, m, store.balances) }));
-  const max = Math.max(1, ...trend.map((t) => Math.max(t.v ?? 0, 0)));
   const updatedThisMonth = accounts.length > 0 && accounts.every((a) => store.balances.some((b) => b.account_id === a.id && b.month === thisMonth));
   const lastMonthUpdated = store.balances.map((b) => b.month).sort().pop();
 
@@ -126,32 +129,73 @@ export default function MoneyCard() {
     setNewDebt(false);
   };
 
+  const pct = change !== null && last ? (change / Math.abs(last)) * 100 : null;
+  const updatedText = updatedThisMonth ? `Updated for ${monthName(thisMonth)}` : lastMonthUpdated ? `Last updated ${monthName(lastMonthUpdated)}` : 'Not set up yet';
+  const monthlyInterest = accounts.reduce((sum, a) => {
+    const v = balanceAt(a, thisMonth, store.balances);
+    return v === null ? sum : sum + dailyInterest(a, v) * 30.4;
+  }, 0);
+
   return (
-    <section className="card mini-card" aria-label="Net worth">
-      <div className="between">
-        <span className="eyebrow">Net worth</span>
-        <span className="note">{updatedThisMonth ? `Updated for ${monthName(thisMonth)}` : lastMonthUpdated ? `Last updated ${monthName(lastMonthUpdated)}` : 'Not set up yet'}</span>
+    <section className="card nw-card" aria-label="Net worth">
+      <div className="nw-inner">
+        <div className="nw-top">
+          <span className="nw-titles">
+            <span className="nw-label">Net worth</span>
+            <b>{accounts.length ? `${accounts.length} account${accounts.length === 1 ? '' : 's'} · ${updatedText.replace(/^\w/, (c) => c.toLowerCase())}` : 'Not set up yet'}</b>
+          </span>
+          <button type="button" className="nw-eye" onClick={toggleHidden} aria-pressed={hidden} aria-label={hidden ? 'Show amounts' : 'Hide amounts'}><EyeIcon off={hidden} /></button>
+        </div>
+        {accounts.length === 0 && !editing ? (
+          <p className="note">Add your accounts once (current, savings, ISA, pension, credit card…). After that, a Balance check pops up on Today around payday: screenshot or type each balance.</p>
+        ) : (
+          <>
+            <span className="nw-big">{hidden ? '£••••' : total === null ? '—' : money(total)}</span>
+            <div className="nw-bottom">
+              <span className="nw-chips">
+                {accounts.slice(0, 3).map((a) => <span key={a.id} className="nw-chip" title={a.name}>{initials(a.name)}</span>)}
+                <button type="button" className="nw-chip add" aria-label="Add or change accounts" onClick={startEdit}>+</button>
+              </span>
+              {!hidden && pct !== null && Math.round(change!) !== 0 && (
+                <span className={`nw-change${change! < 0 ? ' down' : ''}`} title={`${money(Math.abs(change!))} since ${monthName(monthsBack(1))}`}>{change! > 0 ? '+' : '−'}{Math.abs(pct).toFixed(1)}%</span>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
-      {accounts.length === 0 && !editing ? (
-        <p className="note">Add your accounts once (current, savings, ISA, pension, credit card…). After that, a Balance check pops up on Today around payday: screenshot or type each balance.</p>
-      ) : (
-        <div className="mini-main">
-          <div className="mini-figures">
-            <span className="mini-big">{total === null ? '—' : money(total)}</span>
-            {change !== null && Math.round(change) !== 0 && (
-              <span className={`tag ${change > 0 ? 't-sage' : 't-amber'}`}>{change > 0 ? '▲' : '▼'} {money(Math.abs(change))} since {monthName(monthsBack(1))}</span>
-            )}
-            {change !== null && Math.round(change) === 0 && <span className="tag">Same as {monthName(monthsBack(1))}</span>}
-            {interest >= 0.01 && <span className="tag t-violet">Includes ~£{interest.toFixed(2)} interest since your last update</span>}
-          </div>
-          <div className="mini-trend" role="img" aria-label={`Net worth over the last six months${total !== null ? `, now ${money(total)}` : ''}`}>
-            {trend.map((t, i) => (
-              <span key={t.m} className={i === trend.length - 1 ? 'now' : ''} style={{ height: `${t.v === null ? 4 : Math.max(6, Math.round((Math.max(t.v, 0) / max) * 40))}px` }} />
-            ))}
-          </div>
+      {!editing && (
+        <div className="duo-btns">
+          <button type="button" className={`duo-btn${accounts.length && !updatedThisMonth ? ' hot' : ''}`} onClick={startEdit}>
+            <span className="duo-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3" /></svg></span>
+            {accounts.length ? (updatedThisMonth ? 'Update' : 'Check in') : 'Add accounts'}
+          </button>
+          <button type="button" className="duo-btn" onClick={() => setShowAccounts(!showAccounts)} aria-expanded={showAccounts} disabled={!accounts.length}>
+            <span className="duo-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
+            Accounts
+          </button>
         </div>
       )}
+
+      {!editing && showAccounts && (
+        <ul className="nw-list">
+          {accounts.map((a) => {
+            const v = balanceAt(a, thisMonth, store.balances);
+            const perMonth = v === null ? 0 : dailyInterest(a, v) * 30.4;
+            return (
+              <li key={a.id}>
+                <span className="nw-chip">{initials(a.name)}</span>
+                <span className="nw-acc">
+                  <b>{a.name}</b>
+                  <span className="note">{a.is_debt ? 'Owe' : a.aer ? `${a.aer}% AER` : 'Own'}{perMonth >= 0.5 && !hidden ? ` · +£${Math.round(perMonth)}/mo` : ''}</span>
+                </span>
+                <b className="nw-amt">{hidden ? '••••' : v === null ? '—' : (a.is_debt ? '−' : '') + money(v)}</b>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {!hidden && interest >= 0.01 && <p className="note">Includes ~£{interest.toFixed(2)} interest since your last update{monthlyInterest >= 0.5 ? ` · about £${Math.round(monthlyInterest)} a month` : ''}.</p>}
 
       {!editing && accounts.length > 0 && <BalancePrompt />}
 
@@ -191,18 +235,12 @@ export default function MoneyCard() {
         </div>
       )}
 
-      <div className="row">
-        {editing ? (
-          <>
-            <button type="button" className="btn primary small" onClick={save}>Save balances</button>
-            <button type="button" className="btn small" onClick={() => setEditing(false)}>Cancel</button>
-          </>
-        ) : (
-          <button type="button" className={`btn small${accounts.length && !updatedThisMonth ? ' primary' : ''}`} onClick={startEdit}>
-            {accounts.length ? (updatedThisMonth ? 'Update balances' : `Do the ${monthName(thisMonth)} check-in`) : 'Add accounts'}
-          </button>
-        )}
-      </div>
+      {editing && (
+        <div className="row">
+          <button type="button" className="btn primary small" onClick={save}>Save balances</button>
+          <button type="button" className="btn small" onClick={() => setEditing(false)}>Cancel</button>
+        </div>
+      )}
     </section>
   );
 }

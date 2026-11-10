@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { go } from '../router';
 import { useWorkMode } from '../workmode';
+import { openQuickAdd } from './QuickAdd';
 
 type Tab = 'today' | 'areas' | 'tasks' | 'routines' | 'income';
 
@@ -25,20 +26,28 @@ const TABS: { key: Tab; label: string; path: string }[] = [
 export default function Nav({ current }: { current: Tab }) {
   const work = useWorkMode();
   const tabs = work.active ? TABS.filter((t) => t.key !== 'income') : TABS;
+  const half = Math.floor(tabs.length / 2);
+  const link = (t: (typeof TABS)[number]) => (
+    <a
+      key={t.key}
+      href={'#' + t.path}
+      className={current === t.key ? 'tab on' : 'tab'}
+      aria-current={current === t.key ? 'page' : undefined}
+      onClick={(e) => { e.preventDefault(); go(t.path, true); }}
+    >
+      {ICONS[t.key]}
+      <span className="tab-label">{t.label}</span>
+    </a>
+  );
+  // Floating bar with the purple + in the middle. Screens with their own + (e.g. "Add a routine")
+  // place it exactly over this one, so the middle button always does the right thing.
   return (
     <nav className="nav" aria-label="Main">
-      {tabs.map((t) => (
-        <a
-          key={t.key}
-          href={'#' + t.path}
-          className={current === t.key ? 'tab on' : 'tab'}
-          aria-current={current === t.key ? 'page' : undefined}
-          onClick={(e) => { e.preventDefault(); go(t.path, true); }}
-        >
-          {ICONS[t.key]}
-          {t.label}
-        </a>
-      ))}
+      <span className="nav-half">{tabs.slice(0, half).map(link)}</span>
+      <button type="button" className="nav-plus" aria-label="Add something" onClick={() => openQuickAdd()}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+      <span className="nav-half">{tabs.slice(half).map(link)}</span>
     </nav>
   );
 }

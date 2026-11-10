@@ -8,9 +8,24 @@ import { budgetView, guessCategory, monthlyTotals, statusColour, type CategorySt
 import { billsDue } from '../bills';
 import { useToast } from '../toast';
 import StatementImport from './StatementImport';
+import { EyeIcon, useMoneyHidden } from '../hide';
+
+export const UploadIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>
+);
 
 const money = (n: number, dp = 2) => '£' + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const whole = (n: number) => money(n, 0);
+
+/** A picture or emoji for a bill, guessed from its name. */
+function billPic(name: string): { img?: string; emoji: string } {
+  const n = name.toLowerCase();
+  if (/spotify|music|apple music|airpods/.test(n)) return { img: '/img/airpods.png', emoji: '🎧' };
+  const table: [RegExp, string][] = [[/phone|mobile|ee\b|o2|vodafone|three|giffgaff/, '📱'], [/gym|fitness|pure|puregym/, '🏋️‍♀️'], [/rent|mortgage|landlord/, '🏠'],
+    [/netflix|disney|prime|tv|now\b/, '🎬'], [/council/, '🏛️'], [/energy|gas|electric|octopus|british gas/, '⚡'], [/water/, '💧'], [/internet|broadband|wifi|bt\b|virgin/, '🛜'],
+    [/insurance/, '🛡️'], [/icloud|google|storage|apple/, '☁️'], [/claude|chatgpt|ai\b/, '🤖'], [/loan|credit|klarna/, '💳'], [/travel|oyster|tfl|train/, '🚇']];
+  return { emoji: table.find(([re]) => re.test(n))?.[1] ?? '🧾' };
+}
 
 export default function BudgetSection() {
   const store = useStore();
@@ -19,6 +34,7 @@ export default function BudgetSection() {
   const [importing, setImporting] = useState(false);
   const [detail, setDetail] = useState<string | null>(null);
   const [editing, setEditing] = useState<Spend | null>(null);
+  const [hidden, toggleHidden] = useMoneyHidden();
 
   if (store.budgetReady === false) {
     return <section className="card"><p className="note">Budgets need database update 15. Ask Claude for the link.</p></section>;
@@ -37,25 +53,48 @@ export default function BudgetSection() {
 
   return (
     <div className="budget stack">
-      {/* Hero */}
-      <section className="card bud-hero">
-        <div className="bud-left">
-          <span className={`bud-big${v.left < 0 ? ' over' : ''}`}>{v.left < 0 ? `${whole(v.left)} over` : `${whole(v.left)} left`}</span>
-          <span className="note">out of {whole(v.budgeted)} budgeted · {shortDate(v.from)} – {shortDate(v.to)}</span>
+      {/* Wallet: categories peek out of the top; the eye hides everything */}
+      <section className={`wallet${hidden ? ' tucked' : ''}`} aria-label="Budget wallet">
+        <div className="wallet-cards">
+          {v.categories.slice(0, 3).map((c, i) => (
+            <button key={c.budget.id} type="button" className={`wallet-card w${i}`} onClick={() => setDetail(c.budget.key)} tabIndex={hidden ? -1 : 0}>
+              <span className="wallet-card-name">
+                {c.budget.key === 'eating_out' ? <img src="/img/bowl.png" alt="" className="wallet-pic" /> : <span className="wallet-emoji" aria-hidden="true">{c.budget.emoji}</span>}
+                {c.budget.name}
+              </span>
+              <span className={c.left < 0 ? 'wallet-card-amt over' : 'wallet-card-amt'}>{hidden ? '••••' : c.left < 0 ? `${whole(c.left)} over` : `${whole(c.left)} left`}</span>
+            </button>
+          ))}
         </div>
-        <PaceChart v={v} />
-        <div className="row bud-actions">
-          <button type="button" className="btn primary small" onClick={() => setAdding(true)}>+ Add a spend</button>
-          <button type="button" className="btn small" onClick={() => setImporting(true)}>Upload a statement</button>
+        <div className="wallet-pocket">
+          <span className="wallet-big">{hidden ? '£ ••••' : <>{v.left < 0 ? '−' : ''}<small>£</small>{Math.floor(Math.abs(v.left)).toLocaleString('en-GB')}<small className="pence">.{String(Math.round((Math.abs(v.left) % 1) * 100)).padStart(2, '0')}</small></>}</span>
+          <span className="wallet-sub">{v.left < 0 ? 'Over budget' : 'Left to spend'} · {shortDate(v.from)} – {shortDate(v.to)}</span>
+          {!hidden && (
+            <span className={`wallet-pace${v.pace < 0 ? ' over' : ''}`}>
+              {v.pace < 0 && <img src="/img/purse.png" alt="" className="wallet-pic" />}
+              {whole(v.pace)} {v.pace >= 0 ? 'under' : 'over'} pace · payday in {Math.max(0, daysBetween(now, addDays(v.to, 1)))} days
+            </span>
+          )}
+          <button type="button" className="wallet-eye" onClick={toggleHidden} aria-pressed={hidden} aria-label={hidden ? 'Show amounts' : 'Hide amounts'}><EyeIcon off={hidden} /></button>
         </div>
       </section>
+      <div className="duo-btns">
+        <button type="button" className="duo-btn" onClick={() => setAdding(true)}><span className="duo-ic" aria-hidden="true">+</span>Add a spend</button>
+        <button type="button" className="duo-btn" onClick={() => setImporting(true)}><span className="duo-ic" aria-hidden="true"><UploadIcon /></span>Statement</button>
+      </div>
+      {!hidden && (
+        <section className="card">
+          <div className="bud-label"><span>Pace</span><span>out of {whole(v.budgeted)} budgeted</span></div>
+          <PaceChart v={v} />
+        </section>
+      )}
 
       {/* Today */}
       <section className="card">
         <div className="bud-label"><span>So far today</span><span>{money(todays.reduce((s, x) => s + x.amount, 0))}</span></div>
         {todays.length ? (
           <ul className="bud-list">{todays.map((s) => <SpendRow key={s.id} s={s} cat={catOf(s.category)} onTap={() => setEditing(s)} />)}</ul>
-        ) : <p className="note">Nothing logged yet today. Tap “+ Add a spend” after you buy something.</p>}
+        ) : <p className="note">Nothing logged yet today. Tap “Add a spend” after you buy something.</p>}
       </section>
 
       {/* Rings */}
@@ -71,15 +110,19 @@ export default function BudgetSection() {
       {upcoming.length > 0 && (
         <section className="card">
           <div className="bud-label"><span>Upcoming</span><span>bills</span></div>
-          <div className="upcoming">
-            {upcoming.map(({ bill, day }) => (
-              <div key={bill.id + day} className="up-item">
-                <span className="note">in {daysBetween(now, day)} day{daysBetween(now, day) === 1 ? '' : 's'}</span>
-                <b>{bill.name}</b>
-                <span>{money(bill.amount)}</span>
-              </div>
-            ))}
-          </div>
+          <ul className="up-rows">
+            {upcoming.map(({ bill, day }) => {
+              const n = daysBetween(now, day);
+              const pic = billPic(bill.name);
+              return (
+                <li key={bill.id + day} className="up-row">
+                  <span className="emoji-tile" aria-hidden="true">{pic.img ? <img src={pic.img} alt="" /> : pic.emoji}</span>
+                  <span className="up-name"><b>{bill.name}</b><span className={`tag ${n <= 0 ? 'tag-today' : n <= 3 ? 't-amber' : ''}`}>{n <= 0 ? 'TODAY' : `${n} DAY${n === 1 ? '' : 'S'}`}</span></span>
+                  <span className="up-amt"><b>{money(bill.amount)}</b><span className="note">{bill.frequency === 'weekly' ? 'per week' : bill.frequency === 'yearly' ? 'per year' : 'per month'}</span></span>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 

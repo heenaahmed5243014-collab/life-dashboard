@@ -114,7 +114,15 @@ export default function TodayScreen() {
       <main className="page planner-page">
         <header className="page-head">
           <div className="page-head-row">
-            <h1 className="h1">{title}</h1>
+            {isToday ? (
+              <span className="greet">
+                <img src="/img/focus.png" alt="" className="greet-avatar" />
+                <span className="greet-text">
+                  <span className="greet-small">Good {hour < 12 ? 'morning ☀️' : hour < 18 ? 'afternoon 🌤️' : 'evening 🌙'}</span>
+                  <h1 className="h1 greet-name">{NAME}</h1>
+                </span>
+              </span>
+            ) : <h1 className="h1">{title}</h1>}
             <span className="head-btns">
               <button type="button" className="icon-btn debrief-btn" aria-label="Open today’s debrief" title="Debrief" onClick={openDebrief}>☀️</button>
               <WorkModeButton />
@@ -383,9 +391,21 @@ function TodayBody() {
     </div>
   );
   const modeSwitch = (
-    <div className="segmented focus-switch" role="radiogroup" aria-label="How much to show">
-      <button type="button" role="radio" aria-checked={!focus} className={focus ? 'seg' : 'seg on'} onClick={() => setFocus(false)}>Everything</button>
-      <button type="button" role="radio" aria-checked={focus} className={focus ? 'seg on' : 'seg'} onClick={() => setFocus(true)}>Focus</button>
+    <div className={`quick-tiles${work.active ? ' three' : ''}`}>
+      <button type="button" className="quick-tile" onClick={() => { setDebriefOpen(true); scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        <span className="qt-emoji" aria-hidden="true">☀️</span>Debrief
+      </button>
+      <button type="button" className={`quick-tile${focus ? ' on' : ''}`} aria-pressed={focus} onClick={() => setFocus(!focus)}>
+        <img src="/img/focus.png" alt="" className="qt-pic" />{focus ? 'Focus on' : 'Focus'}
+      </button>
+      {!work.active && (
+        <button type="button" className="quick-tile" onClick={() => go('/income')}>
+          <img src="/img/purse.png" alt="" className="qt-pic" />Spend
+        </button>
+      )}
+      <button type="button" className="quick-tile" onClick={() => go('/reset')}>
+        <span className="qt-emoji" aria-hidden="true">🌙</span>Reset
+      </button>
     </div>
   );
 

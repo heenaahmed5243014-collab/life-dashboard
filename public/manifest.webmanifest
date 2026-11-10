@@ -3,8 +3,8 @@
   "short_name": "Today",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F6F0F4",
-  "theme_color": "#F6F0F4",
+  "background_color": "#EEEEF6",
+  "theme_color": "#D9DAF0",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
