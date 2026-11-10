@@ -54,7 +54,7 @@ export function allReturns(tasks: Task[], subs: Subcategory[]): Task[] {
  * A picture (3D style, in public/img/areas/) or emoji for an area, matched by name.
  * Add a picture by dropping the file in public/img/areas/ and listing it in AREA_IMAGES.
  */
-const AREA_IMAGES: [RegExp, string][] = [];
+const AREA_IMAGES: [RegExp, string][] = [[/made in heaven|photo|visual|shoot/i, '/img/areas/camera.png']];
 const AREA_EMOJI: [RegExp, string][] = [
   [/made in heaven|photo|visual|shoot/i, '📸'], [/job|career|interview/i, '🎯'], [/^work$|work\b/i, '💼'],
   [/side|idea/i, '💡'], [/personal|home/i, '🏡'], [/inbox/i, '📥'], [/gym|fitness|health/i, '🏋️‍♀️'],
