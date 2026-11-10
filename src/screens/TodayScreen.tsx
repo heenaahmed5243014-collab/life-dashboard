@@ -20,6 +20,7 @@ import { Check, Person, Plus } from '../icons';
 import { routineStats } from '../routines';
 import ChunkTicks from '../components/ChunkTicks';
 import MoneyCard from '../components/MoneyCard';
+import { PinGate, useMoneyMask } from '../pin';
 import WeightCard from '../components/WeightCard';
 import StepsCard from '../components/StepsCard';
 import QuickWin from '../components/QuickWin';
@@ -306,6 +307,7 @@ function TodayBody() {
   const [skip, setSkip] = useState(0);
   const [focus, setFocusState] = useState(readFocus);
   const work = useWorkMode();
+  const mask = useMoneyMask();
   const balanceDue = useBalanceCheckDue();
   const debrief = useDebrief();
   const [debriefOpen, setDebriefOpen] = useState(() => new URLSearchParams(location.search).has('debrief') || debrief.on && new Date().getHours() < debrief.untilHour && new Date().getHours() >= 4 && !debriefDoneToday(today()));
@@ -447,8 +449,8 @@ function TodayBody() {
             {slip.slice(0, 6).map(({ task, why }) => (
               <li key={task.id} className="check-row">
                 <button type="button" className="row-body" onClick={() => go(`/item/${task.id}`)}>
-                  <span className="row-title">{task.title}</span>
-                  <span className="meta"><span className="tag t-amber">{why}</span></span>
+                  <span className="row-title">{mask(task.title)}</span>
+                  <span className="meta"><span className="tag t-amber">{mask(why)}</span></span>
                 </button>
                 <button type="button" className="btn small" onClick={() => snooze(task)}>Snooze</button>
               </li>
@@ -474,7 +476,7 @@ function TodayBody() {
         </div>
       )}
 
-      {!work.active && balanceDue && <MoneyCard />}
+      {!work.active && balanceDue && <PinGate compact label="Net worth"><MoneyCard /></PinGate>}
 
       {data.routines.length > 0 && (
         <section className="section">
@@ -538,7 +540,7 @@ function TodayBody() {
 
       <div className="card">
         <span className="eyebrow">Do this next</span>
-        <div className="big">{next ? `${taskEmoji(next, store.domain(next.domain_id).name)} ${next.title}` : 'All clear. Go enjoy your evening 💗'}</div>
+        <div className="big">{next ? `${taskEmoji(next, store.domain(next.domain_id).name)} ${mask(next.title)}` : 'All clear. Go enjoy your evening 💗'}</div>
         {next?.step && <p className="first-step"><span className="tag t-pink">First step</span> {next.step}</p>}
         {next && <span className="meta"><span className="tag">{store.domain(next.domain_id).short_name} · {whenText(next)}</span><EffortTags task={next} /></span>}
         {next && (
@@ -558,7 +560,7 @@ function TodayBody() {
       {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
 
       <WeekProgress />
-      {!work.active && !balanceDue && <MoneyCard />}
+      {!work.active && !balanceDue && <PinGate compact label="Net worth"><MoneyCard /></PinGate>}
       {store.healthReady !== false && <StepsCard />}
       {!work.active && <WeightCard />}
 

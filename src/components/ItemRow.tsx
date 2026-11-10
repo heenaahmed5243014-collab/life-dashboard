@@ -5,6 +5,7 @@ import { dueLabel, hhmm } from '../dates';
 import { go } from '../router';
 import { useToast } from '../toast';
 import { Bell, Check, Star } from '../icons';
+import { useMoneyMask } from '../pin';
 import { cheer } from '../cheers';
 
 export function whenText(t: Task): string {
@@ -35,6 +36,7 @@ export function EffortTags({ task }: { task: Task }) {
 export default function ItemRow({ task, big = false, tag }: { task: Task; big?: boolean; tag?: string }) {
   const store = useStore();
   const toast = useToast();
+  const mask = useMoneyMask();
   const d = store.domain(task.domain_id);
   const steps = task.kind === 'task' ? store.tasks.filter((x) => x.project_id === task.id && x.status !== 'not_doing') : [];
   const done = task.status === 'done';
@@ -66,7 +68,7 @@ export default function ItemRow({ task, big = false, tag }: { task: Task; big?: 
         <span className="box"><Check size={16} /></span>
       </button>
       <button type="button" className="row-body" onClick={() => go(`/item/${task.id}`)}>
-        <span className="row-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(task, d.name)}</span>{task.title}</span>
+        <span className="row-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(task, d.name)}</span>{mask(task.title)}</span>
         <span className="row-meta">
           <span className="dot" style={{ background: d.color }} />
           {d.short_name}{tag ? '' : ` · ${whenText(task)}`}

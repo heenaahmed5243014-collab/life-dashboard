@@ -12,6 +12,7 @@ import { milestones } from '../weightRewards';
 import { plannedSession } from './GymSessions';
 import { useDebrief, markDebriefDone } from '../debrief';
 import { useWorkMode } from '../workmode';
+import { useMoneyMask } from '../pin';
 import { go } from '../router';
 
 
@@ -20,6 +21,7 @@ interface Line { key: string; emoji: string; text: string; time?: string; onClic
 export default function MorningDebrief({ onClose }: { onClose: () => void }) {
   const store = useStore();
   const settings = useDebrief();
+  const mask = useMoneyMask();
   const work = useWorkMode();
   const now = today();
   const plan = buildDay(store.tasks, store.routines, store.ticks, now);
@@ -70,7 +72,7 @@ export default function MorningDebrief({ onClose }: { onClose: () => void }) {
       {top.length > 0 && (
         <div className="debrief-top">
           <span className="debrief-label">⭐ Top 3</span>
-          <ul>{top.map((t) => <li key={t.id}><button type="button" onClick={() => go(`/item/${t.id}`)}>{taskEmoji(t, store.domain(t.domain_id).name)} {t.title}</button></li>)}</ul>
+          <ul>{top.map((t) => <li key={t.id}><button type="button" onClick={() => go(`/item/${t.id}`)}>{taskEmoji(t, store.domain(t.domain_id).name)} {mask(t.title)}</button></li>)}</ul>
         </div>
       )}
 
@@ -85,7 +87,7 @@ export default function MorningDebrief({ onClose }: { onClose: () => void }) {
                 <ul>{lines.map((l) => (
                   <li key={l.key}>
                     {l.time && <span className="debrief-time">{l.time}</span>}
-                    {l.onClick ? <button type="button" onClick={l.onClick}>{l.emoji} {l.text}</button> : <span>{l.emoji} {l.text}</span>}
+                    {l.onClick ? <button type="button" onClick={l.onClick}>{l.emoji} {mask(l.text)}</button> : <span>{l.emoji} {mask(l.text)}</span>}
                   </li>
                 ))}</ul>
               ) : <p className="note">Nothing fixed. Room to breathe.</p>}
@@ -98,7 +100,7 @@ export default function MorningDebrief({ onClose }: { onClose: () => void }) {
       {heads.length > 0 && (
         <div className="debrief-heads">
           <span className="debrief-label">👀 Heads-up</span>
-          <ul>{heads.slice(0, 6).map((l) => <li key={l.key}>{l.onClick ? <button type="button" onClick={l.onClick}>{l.emoji} {l.text}</button> : <span>{l.emoji} {l.text}</span>}</li>)}</ul>
+          <ul>{heads.slice(0, 6).map((l) => <li key={l.key}>{l.onClick ? <button type="button" onClick={l.onClick}>{l.emoji} {mask(l.text)}</button> : <span>{l.emoji} {mask(l.text)}</span>}</li>)}</ul>
         </div>
       )}
 

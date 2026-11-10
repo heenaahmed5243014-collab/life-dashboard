@@ -12,6 +12,7 @@ import NoSpendCard from '../components/NoSpendCard';
 import PassiveIncome from '../components/PassiveIncome';
 import BudgetSection from '../components/BudgetSection';
 import MoneyCard from '../components/MoneyCard';
+import { LockIcon, lockFinance, usePin } from '../pin';
 import { billsDue, payPeriod, spendingMoney } from '../bills';
 
 const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -27,6 +28,7 @@ function workDaysBetween(from: Day, to: Day, days: number[]): number {
 export default function IncomeScreen() {
   const store = useStore();
   const toast = useToast();
+  const pin = usePin();
   const income = store.income ?? null;
   const payslips = store.payslips ?? [];
   const now = today();
@@ -111,6 +113,7 @@ export default function IncomeScreen() {
         <header className="page-head greet-head">
           <img src="/img/wallet.png" alt="" className="greet-pic" />
           <span className="greet-text"><span className="greet-small">Money</span><h1 className="h1">Budget</h1></span>
+          {pin.enabled && <button type="button" className="icon-btn lock-btn" onClick={lockFinance} aria-label="Lock money"><LockIcon /></button>}
         </header>
 
         <BudgetSection />

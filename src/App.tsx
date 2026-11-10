@@ -36,6 +36,9 @@ function SignedInApp({ userId, real }: { userId: string; real: Backend }) {
     </StoreProvider>
   );
 }
+import { PinGate } from './pin';
+import Nav from './components/Nav';
+import Header from './components/Header';
 import QuickAddHost from './components/QuickAdd';
 
 function Screens() {
@@ -60,8 +63,8 @@ function Page() {
     case 'routines': return <RoutinesScreen />;
     case 'areas': return <AreasScreen />;
     case 'area': return <AreaScreen key={route.id + (route.tab ?? '')} id={route.id} tab={route.tab} />;
-    case 'returns': return <ReturnsScreen />;
-    case 'income': return <IncomeScreen />;
+    case 'returns': return <PinGate after={<Header title="" />}><ReturnsScreen /></PinGate>;
+    case 'income': return <PinGate after={<Nav current="income" />}><IncomeScreen /></PinGate>;
     case 'steps': return <StepsScreen />;
     case 'reset': return <ResetScreen />;
     case 'rewards': return <WeightRewardsScreen />;

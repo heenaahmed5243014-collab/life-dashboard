@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import { setWorkMode, toggleWorkMode, useWorkMode, readWorkMode } from '../workmode';
 import { setDebrief, useDebrief } from '../debrief';
 import { useIsland, setIsland } from '../island';
+import { checkPin, clearPin, PinPad, setPin, usePin } from '../pin';
 import { disablePush, enablePush, pushSupport, readPushState, sendTestPush, setPushTime } from '../push';
 
 export default function AccountScreen() {
@@ -37,9 +38,10 @@ export default function AccountScreen() {
         </section>
         <DebriefSettings />
         <WorkModeSettings />
+        <PinSettings />
         <button type="button" className="secondary" onClick={exportFile}>Download a copy (file)</button>
         {supabase && (
-          <button type="button" className="link-btn quiet" onClick={() => supabase!.auth.signOut()}>Sign out</button>
+          <button type="button" className="link-btn quiet" onClick={() => { clearPin(); supabase!.auth.signOut(); }}>Sign out</button>
         )}
       </main>
     </>
@@ -146,5 +148,36 @@ function DebriefNotification() {
       {msg && <p className="note" role="status">{msg}</p>}
       <p className="note">Arrives within 15 minutes of the time you pick, once a day. Tapping it opens your debrief.</p>
     </div>
+  );
+}
+
+/** Finance PIN: set, change or turn off. Turning off or changing needs the current PIN. */
+function PinSettings() {
+  const pin = usePin();
+  // step: idle → (check current) → new → confirm
+  const [step, setStep] = useState<'idle' | 'check-off' | 'check-change' | 'new' | 'confirm'>('idle');
+  const [first, setFirst] = useState('');
+  const [error, setError] = useState<string>();
+  const reset = () => { setStep('idle'); setFirst(''); setError(undefined); };
+  const toggle = () => {
+    if (step !== 'idle') return reset();
+    setStep(pin.enabled ? 'check-off' : 'new');
+  };
+  return (
+    <section className="card stack" aria-label="Finance PIN">
+      <div className="between">
+        <span className="eyebrow">Finance PIN</span>
+        <button type="button" role="switch" aria-checked={pin.enabled} className={`switch${pin.enabled ? ' on' : ''}`} onClick={toggle}>
+          <span className="visually-hidden">Finance PIN</span><i />
+        </button>
+      </div>
+      <p className="note">A 4-digit PIN in front of anything to do with money: the Money tab, Returns and the net worth card on Today. It stays unlocked while you use the app and locks again 5 minutes after you leave it. It’s kept on this phone only, so set it on each device you use.</p>
+      {pin.enabled && step === 'idle' && <button type="button" className="btn small more" onClick={() => setStep('check-change')}>Change PIN</button>}
+      {step === 'check-off' && <PinPad title="Enter your PIN to turn it off" error={error} onDone={async (p) => { if (await checkPin(p)) { clearPin(); reset(); } else setError('That’s not it. Try again.'); }} />}
+      {step === 'check-change' && <PinPad title="Enter your current PIN" error={error} onDone={async (p) => { if (await checkPin(p)) { setError(undefined); setStep('new'); } else setError('That’s not it. Try again.'); }} />}
+      {step === 'new' && <PinPad title="Choose a 4-digit PIN" sub="Avoid 1234 or your birthday." error={error} onDone={(p) => { setError(undefined); setFirst(p); setStep('confirm'); }} />}
+      {step === 'confirm' && <PinPad title="Type it again to confirm" error={error} onDone={async (p) => { if (p === first) { await setPin(p); reset(); } else { setError('They didn’t match. Start again.'); setFirst(''); setStep('new'); } }} />}
+      {step !== 'idle' && <button type="button" className="btn small more" onClick={reset}>Cancel</button>}
+    </section>
   );
 }

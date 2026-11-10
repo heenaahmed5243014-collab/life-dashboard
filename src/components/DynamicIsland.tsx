@@ -9,6 +9,7 @@ import { useIsland } from '../island';
 import { go } from '../router';
 import { useToast } from '../toast';
 import { cheer } from '../cheers';
+import { useMoneyMask } from '../pin';
 import type { Task } from '../types';
 
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
@@ -19,6 +20,7 @@ interface Slot { t: Task; start: number; end: number }
 
 export default function DynamicIsland() {
   const store = useStore();
+  const mask = useMoneyMask();
   const toast = useToast();
   const settings = useIsland();
   const [tick, setTick] = useState(() => Date.now());
@@ -69,14 +71,14 @@ export default function DynamicIsland() {
         role="button"
         tabIndex={0}
         aria-expanded={open}
-        aria-label={`${isNow ? 'Now' : 'Next'}: ${show.t.title}, ${isNow ? `${fmt(left)} left` : `in ${fmt(left)}`}`}
+        aria-label={`${isNow ? 'Now' : 'Next'}: ${mask(show.t.title)}, ${isNow ? `${fmt(left)} left` : `in ${fmt(left)}`}`}
         onClick={(e) => { if ((e.target as Element).closest('button')) return; setOpen(!open); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); } }}
       >
         {!open ? (
           <div className="island-compact">
             <span className="island-emoji" aria-hidden="true">{emoji}</span>
-            <span className="island-title">{show.t.title}</span>
+            <span className="island-title">{mask(show.t.title)}</span>
             <span className="island-time">{isNow ? `${fmt(left)} left` : `in ${fmt(left)}`}</span>
             <svg className="island-ring" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
               <circle cx="11" cy="11" r={R} fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="3" />
@@ -90,7 +92,7 @@ export default function DynamicIsland() {
               <span className="island-big-emoji" aria-hidden="true">{emoji}</span>
               <div className="island-main">
                 <span className="island-kicker">{isNow ? 'Now' : 'Next up'} · {area.short_name}</span>
-                <span className="island-name">{show.t.title}</span>
+                <span className="island-name">{mask(show.t.title)}</span>
                 <span className="island-range">{clock(show.start)}–{clock(show.end)}</span>
               </div>
               <div className="island-count">
@@ -104,7 +106,7 @@ export default function DynamicIsland() {
               <button type="button" className="island-btn primary" onClick={done}>Done ✓</button>
               <button type="button" className="island-btn" onClick={() => { setOpen(false); go(`/item/${show.t.id}`); }}>Open</button>
             </div>
-            {after && <p className="island-after">Then {taskEmoji(after.t, store.domain(after.t.domain_id).name)} {after.t.title} at {clock(after.start)}</p>}
+            {after && <p className="island-after">Then {taskEmoji(after.t, store.domain(after.t.domain_id).name)} {mask(after.t.title)} at {clock(after.start)}</p>}
           </div>
         )}
       </div>

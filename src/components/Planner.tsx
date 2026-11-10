@@ -17,6 +17,7 @@ import { useToast } from '../toast';
 import { openQuickAdd } from './QuickAdd';
 import { minutesLabel } from './ItemRow';
 import { Bell, Check, Close, Plus } from '../icons';
+import { useMoneyMask } from '../pin';
 import { cheer } from '../cheers';
 
 const FIRST = 6;
@@ -42,6 +43,7 @@ const HOLD_MS = 280;
 
 export default function Planner({ day, isToday, items, tray = [] }: { day: Day; isToday: boolean; items: Task[]; tray?: Task[] }) {
   const store = useStore();
+  const mask = useMoneyMask();
   const toast = useToast();
   const [clock, setClock] = useState(() => new Date());
   const [selected, setSelected] = useState<string | null>(null);
@@ -231,7 +233,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                   {...dragProps(t)}
                   onClick={() => !justDragged.current && setSelected(on ? null : t.id)}
                 >
-                  <span className="tray-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(t, store.domain(t.domain_id).name)}</span>{t.title}</span>
+                  <span className="tray-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(t, store.domain(t.domain_id).name)}</span>{mask(t.title)}</span>
                   <span className="row-meta">
                     <span className="dot" style={{ background: store.domain(t.domain_id).color }} />
                     {t.minutes ? minutesLabel(t.minutes) : 'No estimate'}
@@ -242,7 +244,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
           </div>
           {selectedTask && (
             <p className="placing" role="status">
-              Now tap an hour for “{selectedTask.title}”
+              Now tap an hour for “{mask(selectedTask.title)}”
               <button type="button" className="link-btn" onClick={() => setSelected(null)}>Cancel</button>
             </p>
           )}
@@ -295,7 +297,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                         {...dragProps(t)}
                         onClick={() => !justDragged.current && go(`/item/${t.id}`)}
                       >
-                        <span className="slot-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(t, d.name)}</span>{t.title}</span>
+                        <span className="slot-title"><span className="t-emoji" aria-hidden="true">{taskEmoji(t, d.name)}</span>{mask(t.title)}</span>
                         <span className="row-meta">
                           {range(t)} · {d.short_name}
                           {t.remind_at && <Bell />}
@@ -327,7 +329,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
 
       {drag?.active && (
         <div className="drag-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden="true">
-          {drag.title}
+          {mask(drag.title)}
           {drag.slot !== null && <span> → {drag.slot}</span>}
         </div>
       )}

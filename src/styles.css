@@ -1477,3 +1477,35 @@ body {
 .up-name .tag { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; }
 .up-amt { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
 .up-amt .note { font-size: 0.7rem; }
+
+/* Finance PIN */
+.pin-page { align-items: center; justify-content: center; min-height: 100dvh; }
+.pin-unlock { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 340px; margin: 0 auto; }
+.pin-unlock.compact { max-width: 300px; padding: 4px 0; }
+.pin-pic { height: 84px; width: auto; filter: drop-shadow(0 8px 12px rgba(34, 30, 58, 0.22)); }
+.pin-pad { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.pin-title { margin: 0; font-weight: 800; font-size: 1.15rem; text-align: center; }
+.pin-sub { text-align: center; }
+.pin-dots { display: flex; gap: 16px; margin: 10px 0 2px; }
+.pin-dots span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent); transition: background 0.12s; }
+.pin-dots span.on { background: var(--accent); }
+.pin-dots.shake { animation: pin-shake 0.35s; }
+@keyframes pin-shake { 25% { transform: translateX(-8px); } 50% { transform: translateX(8px); } 75% { transform: translateX(-4px); } }
+@media (prefers-reduced-motion: reduce) { .pin-dots.shake { animation: none; } }
+.pin-error { margin: 0; min-height: 1.3em; font-size: 0.85rem; font-weight: 600; color: #C13B3B; text-align: center; }
+.pin-keys { display: grid; grid-template-columns: repeat(3, 72px); gap: 14px 22px; justify-content: center; }
+.pin-key {
+  width: 72px; height: 72px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.95); background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 6px 16px rgba(75, 63, 214, 0.1); font: inherit; font-size: 1.6rem; font-weight: 700; color: var(--ink);
+}
+.pin-key:active { background: var(--accent-soft); }
+.pin-key.ghost { background: none; border: none; box-shadow: none; font-size: 1.3rem; color: var(--muted); }
+.pin-key:disabled { opacity: 0.4; }
+.compact .pin-keys { grid-template-columns: repeat(3, 60px); gap: 10px 18px; }
+.compact .pin-key { width: 60px; height: 60px; font-size: 1.35rem; }
+.pin-forgot { text-align: center; font-size: 0.78rem; max-width: 300px; }
+.pin-card { padding: 12px; }
+.pin-locked { display: flex; align-items: center; gap: 12px; width: 100%; border: none; background: none; padding: 0; font: inherit; color: var(--ink); text-align: left; }
+.pin-locked-text { flex: 1; display: flex; flex-direction: column; }
+.pin-lock-ic { width: 40px; height: 40px; border-radius: 13px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.greet-head .lock-btn { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; border: none; color: var(--ink); display: flex; align-items: center; justify-content: center; }
