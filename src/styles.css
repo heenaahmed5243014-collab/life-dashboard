@@ -1156,3 +1156,4 @@ body { font-family: 'Figtree', system-ui, -apple-system, sans-serif; line-height
 .island-btn:focus-visible { outline: 3px solid #FF8DB9; outline-offset: 2px; }
 .island-after { margin: 0; font-size: .8rem; color: rgba(255,255,255,.6); }
 @media (prefers-reduced-motion: reduce) { .island, .island-expanded { transition: none; animation: none; } }
+.notif-box { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px; gap: 10px; }

@@ -300,7 +300,7 @@ function TodayBody() {
   const work = useWorkMode();
   const balanceDue = useBalanceCheckDue();
   const debrief = useDebrief();
-  const [debriefOpen, setDebriefOpen] = useState(() => debrief.on && new Date().getHours() < debrief.untilHour && new Date().getHours() >= 4 && !debriefDoneToday(today()));
+  const [debriefOpen, setDebriefOpen] = useState(() => new URLSearchParams(location.search).has('debrief') || debrief.on && new Date().getHours() < debrief.untilHour && new Date().getHours() >= 4 && !debriefDoneToday(today()));
   useEffect(() => {
     const open = () => { setDebriefOpen(true); scrollTo({ top: 0, behavior: 'smooth' }); };
     addEventListener('ld:open-debrief', open);
