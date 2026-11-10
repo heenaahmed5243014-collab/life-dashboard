@@ -8,9 +8,9 @@ import { GLASS_ML, GOAL_CHOICES, litres, setWaterGoal, waterGoal, waterOn, water
 import StepsCard from './StepsCard';
 
 type TabKey = 'steps' | 'water' | 'week' | 'streaks' | 'goals';
-const TABS: { key: TabKey; emoji: string; label: string }[] = [
-  { key: 'steps', emoji: '👟', label: 'Steps' },
-  { key: 'water', emoji: '💧', label: 'Water' },
+const TABS: { key: TabKey; emoji: string; label: string; img?: string }[] = [
+  { key: 'steps', emoji: '👟', label: 'Steps', img: '/img/steps.png' },
+  { key: 'water', emoji: '💧', label: 'Water', img: '/img/water.png' },
   { key: 'week', emoji: '📅', label: 'This week' },
   { key: 'streaks', emoji: '🔥', label: 'Streaks' },
   { key: 'goals', emoji: '🎯', label: 'Goals' },
@@ -91,7 +91,7 @@ export default function MoveCard() {
               className={on ? 'move-tab on' : 'move-tab'}
               onClick={() => setTab(on ? null : t.key)}
             >
-              <span className="move-tab-emoji" aria-hidden="true">{t.emoji}</span>
+              <span className="move-tab-emoji" aria-hidden="true">{t.img ? <img src={t.img} alt="" /> : t.emoji}</span>
               {t.label}
               {t.key === 'steps' && s.today !== null && <span className="move-tab-count">{k(s.today)}</span>}
               {t.key === 'water' && waterReady && <span className="move-tab-count">{litres(ml)}</span>}

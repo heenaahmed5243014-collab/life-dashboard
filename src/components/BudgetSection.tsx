@@ -17,10 +17,16 @@ export const UploadIcon = () => (
 const money = (n: number, dp = 2) => '£' + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const whole = (n: number) => money(n, 0);
 
+/** Pictures for the everyday budget categories (falls back to the category's emoji). */
+const CAT_PIC: Record<string, string> = { eating_out: '/img/bowl.png', groceries: '/img/groceries.png', transport: '/img/transport.png' };
+
 /** A picture or emoji for a bill, guessed from its name. */
 function billPic(name: string): { img?: string; emoji: string } {
   const n = name.toLowerCase();
   if (/spotify|music|apple music|airpods/.test(n)) return { img: '/img/airpods.png', emoji: '🎧' };
+  if (/gym|fitness|puregym/.test(n)) return { img: '/img/gym.png', emoji: '🏋️‍♀️' };
+  if (/rent|mortgage|landlord/.test(n)) return { img: '/img/rent.png', emoji: '🏠' };
+  if (/travel|oyster|tfl|train|transport/.test(n)) return { img: '/img/transport.png', emoji: '🚇' };
   if (/phone|mobile|\bee\b|o2|vodafone|three|giffgaff|iphone/.test(n)) return { img: '/img/iphone.png', emoji: '📱' };
   const table: [RegExp, string][] = [[/phone|mobile|ee\b|o2|vodafone|three|giffgaff/, '📱'], [/gym|fitness|pure|puregym/, '🏋️‍♀️'], [/rent|mortgage|landlord/, '🏠'],
     [/netflix|disney|prime|tv|now\b/, '🎬'], [/council/, '🏛️'], [/energy|gas|electric|octopus|british gas/, '⚡'], [/water/, '💧'], [/internet|broadband|wifi|bt\b|virgin/, '🛜'],
@@ -60,7 +66,7 @@ export default function BudgetSection() {
           {v.categories.slice(0, 3).map((c, i) => (
             <button key={c.budget.id} type="button" className={`wallet-card w${i}`} onClick={() => setDetail(c.budget.key)} tabIndex={hidden ? -1 : 0}>
               <span className="wallet-card-name">
-                {c.budget.key === 'eating_out' ? <img src="/img/bowl.png" alt="" className="wallet-pic" /> : <span className="wallet-emoji" aria-hidden="true">{c.budget.emoji}</span>}
+                {CAT_PIC[c.budget.key] ? <img src={CAT_PIC[c.budget.key]} alt="" className="wallet-pic" /> : <span className="wallet-emoji" aria-hidden="true">{c.budget.emoji}</span>}
                 {c.budget.name}
               </span>
               <span className={c.left < 0 ? 'wallet-card-amt over' : 'wallet-card-amt'}>{hidden ? '••••' : c.left < 0 ? `${whole(c.left)} over` : `${whole(c.left)} left`}</span>
@@ -192,7 +198,7 @@ function Ring({ c, dayFrac, onTap }: { c: CategoryStatus; dayFrac: number; onTap
       <svg width="68" height="68" viewBox="0 0 68 68" aria-hidden="true">
         <circle cx="34" cy="34" r={R} className="ring-bg" />
         <circle cx="34" cy="34" r={R} className="ring-fg" strokeDasharray={C} strokeDashoffset={C * (1 - Math.min(1, c.pct))} transform="rotate(-90 34 34)" />
-        <text x="34" y="41" textAnchor="middle" fontSize="20">{c.budget.emoji}</text>
+        {CAT_PIC[c.budget.key] ? <image href={CAT_PIC[c.budget.key]} x="20" y="20" width="28" height="28" preserveAspectRatio="xMidYMid meet" /> : <text x="34" y="41" textAnchor="middle" fontSize="20">{c.budget.emoji}</text>}
       </svg>
       <b>{c.left < 0 ? money(c.left) : money(c.left, c.left >= 100 ? 0 : 2)}</b>
       <small>{c.left < 0 ? 'over' : 'left'}</small>

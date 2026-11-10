@@ -1657,3 +1657,4 @@ body {
 .sleep-facts li { display: flex; gap: 10px; align-items: flex-start; background: rgba(255, 255, 255, 0.7); border-radius: 16px; padding: 10px 12px; font-size: 0.92rem; }
 .sleep-btns { justify-content: center; flex-wrap: wrap; }
 .returns-pic { width: 52px; height: 52px; flex: none; filter: drop-shadow(0 6px 10px rgba(34, 30, 58, 0.25)); }
+.move-tab-emoji img { width: 24px; height: 24px; object-fit: contain; display: block; }

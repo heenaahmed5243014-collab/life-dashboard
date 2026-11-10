@@ -59,6 +59,8 @@ const AREA_IMAGES: [RegExp, string][] = [
   [/job|career|interview/i, '/img/areas/jobsearch.png'],
   [/^work$|work\b/i, '/img/areas/desk.png'],
   [/side|idea/i, '/img/areas/sketchbook.png'],
+  [/personal|home/i, '/img/areas/home.png'],
+  [/inbox/i, '/img/areas/inbox.png'],
 ];
 const AREA_EMOJI: [RegExp, string][] = [
   [/made in heaven|photo|visual|shoot/i, '📸'], [/job|career|interview/i, '🎯'], [/^work$|work\b/i, '💼'],
