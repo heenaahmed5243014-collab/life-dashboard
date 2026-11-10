@@ -16,6 +16,7 @@ interface CaptureRequest {
   text: string;
   domains: string[]; // the user's domain names, e.g. "Job search"
   groups?: string[]; // groups inside areas, as "Area > Group", e.g. "Personal & home > Returns"
+  categories?: string[]; // budget category keys, e.g. groceries, eating_out, transport
   today: string; // "2026-11-04" in the user's time zone
   weekday: string; // "Wednesday"
   time: string; // "14:05"
@@ -40,6 +41,8 @@ export interface CaptureResult {
   refund_amount: number | null;
   repeat: 'week' | '2weeks' | '4weeks' | 'month' | null;
   emoji: string;
+  spend_amount: number | null;
+  spend_category: string | null;
 }
 
 const json = (status: number, body: unknown) =>
@@ -57,11 +60,11 @@ async function isSignedIn(req: Request): Promise<boolean> {
 // Structured-output schema. "Can be empty" is written as anyOf [..., null], the documented form.
 const orNull = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: 'null' }] });
 
-function schema(domains: string[], groups: string[]) {
+function schema(domains: string[], groups: string[], categories: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date', 'group', 'refund_amount', 'repeat', 'emoji'],
+    required: ['title', 'kind', 'stage', 'minutes', 'energy', 'first_step', 'domain', 'date', 'time', 'reminder', 'days', 'time_of_day', 'follow_up_title', 'follow_up_date', 'group', 'refund_amount', 'repeat', 'emoji', 'spend_amount', 'spend_category'],
     properties: {
       title: { type: 'string', description: 'Short, clear wording that starts with a verb where it makes sense. No date/time words.' },
       kind: { type: 'string', enum: ['task', 'project', 'routine', 'note', 'idea', 'goal'] },
@@ -81,6 +84,8 @@ function schema(domains: string[], groups: string[]) {
         ? { ...orNull({ type: 'string', enum: groups }), description: 'The group inside the chosen area, written exactly as listed, or null' }
         : { type: 'null' },
       refund_amount: { ...orNull({ type: 'number' }), description: 'For a return or refund: the money coming back in pounds, else null' },
+      spend_amount: { ...orNull({ type: 'number' }), description: 'Only when the text records money already spent: the amount in pounds. Else null.' },
+      spend_category: categories.length ? orNull({ type: 'string', enum: [...categories, 'other'] }) : { type: 'null' },
       emoji: { type: 'string', description: 'One emoji that fits the item, e.g. 📸 for a shoot, 🏊 for swimming, 📦 for a return' },
       repeat: { ...orNull({ type: 'string', enum: ['week', '2weeks', '4weeks', 'month'] }), description: 'For a repeating event or appointment, how often. Else null.' },
     },
@@ -104,6 +109,7 @@ Decide:
   - The user says they applied for a job (e.g. "applied to Trifid"): a project titled "<Company> application", stage "Applied", no date; follow_up_title "Follow up with <company>", follow_up_date 7 days after today.
   - The user mentions a photo or video shoot for a client (e.g. "shoot for Amira on Sat"): a project titled "<Client> shoot", stage "Booked", date = the shoot day; follow_up_title "Deliver gallery to <client>", follow_up_date 14 days after the shoot.
   Never add anything else.
+- spend_amount and spend_category: if the text just records something already bought ("lunch £8.50", "tesco 23.40", "spent £12 on an uber", "coffee 3.20"), set spend_amount and pick spend_category (groceries = supermarkets and food shops, eating_out = cafés, restaurants, takeaways, drinks, transport = trains, TfL, buses, taxis, fuel, else "other"); write the title as the shop or item. Plans to buy something later ("buy a new kettle") are tasks: spend fields null.
 - group: some areas are split into groups, listed as "Area > Group". If one clearly fits the item AND belongs to the area you chose, give it exactly as listed (e.g. "Personal & home > Returns" for anything being sent back, "Made in Heaven Visuals > Client work" for edits and shoots, "Job search > Applications" for applications). If none clearly fits, null. Never invent a group.
 - refund_amount: only for returns and refunds. The amount of money coming back, as a number in pounds (e.g. "return Zara jacket £39.99" -> 39.99, "refund 12" -> 12). Null if no amount is mentioned or it isn't a return.`;
 
@@ -119,6 +125,7 @@ export async function POST(req: Request): Promise<Response> {
   }
   const text = String(body.text ?? '').trim().slice(0, 500);
   const domains = Array.isArray(body.domains) ? body.domains.map(String).slice(0, 20) : [];
+  const categories = Array.isArray(body.categories) ? body.categories.map(String).filter((c) => /^[a-z0-9_-]{1,30}$/.test(c)).slice(0, 20) : [];
   const groups = Array.isArray(body.groups) ? body.groups.map(String).filter((g) => g.length <= 120).slice(0, 60) : [];
   if (!text || domains.length === 0) return json(400, { error: 'bad_request' });
 
@@ -127,7 +134,7 @@ export async function POST(req: Request): Promise<Response> {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 8000,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: schema(domains, groups) } },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: schema(domains, groups, categories) } },
       system: SYSTEM,
       messages: [
         {

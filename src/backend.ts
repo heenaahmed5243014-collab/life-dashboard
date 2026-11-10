@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -29,6 +29,10 @@ export interface Snapshot {
   rewards?: WeightReward[];
   /** False until database update 13 (weight rewards) has been run. */
   rewardsReady?: boolean;
+  budgets?: Budget[];
+  spends?: Spend[];
+  /** False until database update 15 (budgets) has been run. */
+  budgetReady?: boolean;
   /** False until database update 10 has been run. */
   affirmReady?: boolean;
   leads?: Lead[];
@@ -72,6 +76,11 @@ export interface Backend {
   insertReward(r: WeightReward): Promise<void>;
   updateReward(id: string, changes: Partial<WeightReward>): Promise<void>;
   deleteReward(id: string): Promise<void>;
+  insertSpends(s: Spend[]): Promise<void>;
+  updateSpend(id: string, changes: Partial<Spend>): Promise<void>;
+  deleteSpend(id: string): Promise<void>;
+  upsertBudget(b: Budget): Promise<void>;
+  deleteBudget(id: string): Promise<void>;
   /** Saves a QR screenshot privately and returns where it's stored. */
   uploadQr(taskId: string, file: File): Promise<string>;
   /** A short-lived link to show a stored QR screenshot. */
@@ -148,6 +157,22 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       return { rewards: [], rewardsReady: false };
     }
     return { rewards: (res.data as WeightReward[]).map((r) => ({ ...r, kg: Number(r.kg), target_lb: Number(r.target_lb) })), rewardsReady: true };
+  };
+  const loadBudget = async (now: Day): Promise<{ budgets: Budget[]; spends: Spend[]; budgetReady: boolean }> => {
+    const [b, s] = await Promise.all([
+      sb.from('budgets').select('id, key, name, emoji, amount, sort').order('sort'),
+      sb.from('spends').select('id, day, amount, category, note, source, import_key').gte('day', addDays(now, -400)).order('day'),
+    ]);
+    const err = b.error ?? s.error;
+    if (err) {
+      if (/fetch|network|load failed/i.test(err.message)) throw new Error(err.message);
+      return { budgets: [], spends: [], budgetReady: false };
+    }
+    return {
+      budgets: (b.data as Budget[]).map((x) => ({ ...x, amount: Number(x.amount) })),
+      spends: (s.data as Spend[]).map((x) => ({ ...x, amount: Number(x.amount) })),
+      budgetReady: true,
+    };
   };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
@@ -227,6 +252,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         ...(await loadHealthMoney(now)),
         ...(await loadAffirmations()),
         ...(await loadRewards()),
+        ...(await loadBudget(now)),
       };
     },
     async insertTask(t) {
@@ -316,6 +342,21 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     },
     async deleteAffirmation(id) {
       check(await sb.from('affirmations').delete().eq('id', id));
+    },
+    async insertSpends(list) {
+      check(await sb.from('spends').upsert(list, { onConflict: 'id', ignoreDuplicates: true }));
+    },
+    async updateSpend(id, changes) {
+      check(await sb.from('spends').update(changes).eq('id', id));
+    },
+    async deleteSpend(id) {
+      check(await sb.from('spends').delete().eq('id', id));
+    },
+    async upsertBudget(b) {
+      check(await sb.from('budgets').upsert(b, { onConflict: 'id' }));
+    },
+    async deleteBudget(id) {
+      check(await sb.from('budgets').delete().eq('id', id));
     },
     async insertReward(r) {
       check(await sb.from('weight_rewards').insert(r));
@@ -478,13 +519,24 @@ export function demoBackend(): Backend {
       affirmReady: true,
       db12: true,
       rewardsReady: true,
+      budgetReady: true,
+      budgets: [
+        { id: 'bg1', key: 'groceries', name: 'Groceries', emoji: '🛒', amount: 200, sort: 1 },
+        { id: 'bg2', key: 'eating_out', name: 'Eating out', emoji: '🍔', amount: 100, sort: 2 },
+        { id: 'bg3', key: 'transport', name: 'Transport', emoji: '🚆', amount: 211, sort: 3 },
+      ],
+      spends: [
+        [-3, 42.3, 'groceries', 'Tesco'], [-2, 8.5, 'eating_out', 'Pret'], [-2, 18.9, 'groceries', 'Lidl'], [-1, 32, 'eating_out', 'Dinner with Sam'],
+        [-1, 6.2, 'groceries', 'Co-op'], [0, 4.1, 'eating_out', 'Coffee'], [-20, 55.4, 'groceries', 'Tesco'], [-24, 22, 'eating_out', 'Nandos'],
+        [-34, 61.2, 'groceries', 'Sainsbury’s'], [-40, 28, 'eating_out', 'Brunch'], [-55, 70.1, 'groceries', 'Tesco'], [-60, 45, 'eating_out', 'Birthday drinks'],
+      ].map(([d, amount, category, note], i) => ({ id: `sp${i}`, day: addDays(now, d as number), amount: amount as number, category: category as string, note: note as string, source: 'manual' as const })),
       rewards: [{ id: 'wr1', kg: 2, target_lb: 129.8, title: 'Spa day', emoji: '💆', unlocked_on: null, claimed_on: null }, { id: 'wr2', kg: 4, target_lb: 125.4, title: 'Weekend in Lisbon', emoji: '✈️', unlocked_on: null, claimed_on: null }],
     }),
     insertTask: noop, updateTask: noop, insertRoutine: noop, updateRoutine: noop, setTick: noop,
     insertDomain: noop, insertSubcategory: noop, updateSubcategory: noop, deleteSubcategory: noop,
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
     setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
-    insertAffirmation: noop, deleteAffirmation: noop, insertLead: noop, updateLead: noop, deleteLead: noop, insertReward: noop, updateReward: noop, deleteReward: noop,
+    insertAffirmation: noop, deleteAffirmation: noop, insertLead: noop, updateLead: noop, deleteLead: noop, insertReward: noop, updateReward: noop, deleteReward: noop, insertSpends: noop, updateSpend: noop, deleteSpend: noop, upsertBudget: noop, deleteBudget: noop,
     setSteps: noop, insertGoal: noop, updateGoal: noop, deleteGoal: noop, setNoSpend: noop,
     stepLink: async () => 'demo0000000000000000000000000000demo',
     uploadQr: async (taskId, file) => {

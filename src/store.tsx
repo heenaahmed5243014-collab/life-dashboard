@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Affirmation, Lead, WeightReward, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { nextDue, REPEAT_LABEL } from './repeat';
 import { milestones } from './weightRewards';
@@ -71,6 +71,13 @@ interface Store extends Snapshot {
   deleteAffirmation(id: string): void;
   leads: Lead[];
   rewards: WeightReward[];
+  budgets: Budget[];
+  spends: Spend[];
+  addSpends(list: Omit<Spend, 'id'>[]): Spend[];
+  updateSpend(id: string, changes: Partial<Spend>): void;
+  deleteSpend(id: string): void;
+  saveBudget(b: Omit<Budget, 'id'> & { id?: string }): Budget;
+  deleteBudget(id: string): void;
   addReward(r: Omit<WeightReward, 'id' | 'unlocked_on' | 'claimed_on'>): WeightReward;
   updateReward(id: string, changes: Partial<WeightReward>): void;
   deleteReward(id: string): void;
@@ -188,6 +195,8 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       affirmations: data.affirmations ?? [],
       leads: view.leads ?? [],
       rewards: data.rewards ?? [],
+      budgets: data.budgets ?? [],
+      spends: data.spends ?? [],
       inbox,
       domain: (id) => byId.get(id) ?? FALLBACK,
       addTask(fields) {
@@ -393,6 +402,32 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       deleteAffirmation(id) {
         setData((d) => d && { ...d, affirmations: (d.affirmations ?? []).filter((x) => x.id !== id) });
         save(backend.deleteAffirmation(id));
+      },
+      addSpends(list) {
+        const known = new Set((data.spends ?? []).map((s) => s.import_key).filter(Boolean));
+        const fresh = list.filter((s) => !s.import_key || !known.has(s.import_key)).map((s) => ({ id: crypto.randomUUID(), ...s }));
+        if (!fresh.length) return [];
+        setData((d) => d && { ...d, spends: [...(d.spends ?? []), ...fresh].sort((a, b) => a.day.localeCompare(b.day)) });
+        save(backend.insertSpends(fresh));
+        return fresh;
+      },
+      updateSpend(id, changes) {
+        setData((d) => d && { ...d, spends: (d.spends ?? []).map((s) => (s.id === id ? { ...s, ...changes } : s)) });
+        save(backend.updateSpend(id, changes));
+      },
+      deleteSpend(id) {
+        setData((d) => d && { ...d, spends: (d.spends ?? []).filter((s) => s.id !== id) });
+        save(backend.deleteSpend(id));
+      },
+      saveBudget(fields) {
+        const b: Budget = { id: fields.id ?? crypto.randomUUID(), key: fields.key, name: fields.name, emoji: fields.emoji, amount: fields.amount, sort: fields.sort };
+        setData((d) => d && { ...d, budgets: [...(d.budgets ?? []).filter((x) => x.id !== b.id), b].sort((x, y) => x.sort - y.sort) });
+        save(backend.upsertBudget(b));
+        return b;
+      },
+      deleteBudget(id) {
+        setData((d) => d && { ...d, budgets: (d.budgets ?? []).filter((x) => x.id !== id) });
+        save(backend.deleteBudget(id));
       },
       addReward(fields) {
         const r: WeightReward = { id: crypto.randomUUID(), unlocked_on: null, claimed_on: null, ...fields };

@@ -12,6 +12,8 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 interface StatementRequest {
   files: { media_type: string; data: string }[]; // base64, no data: prefix
   accounts: string[]; // the user's account names
+  mode?: 'balance' | 'payments'; // payments: list each money-out payment with a budget category
+  categories?: { key: string; name: string }[];
   today: string;
 }
 
@@ -52,6 +54,33 @@ function schema(accounts: string[]) {
   };
 }
 
+function paymentsSchema(keys: string[]) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['readable', 'problem', 'payments'],
+    properties: {
+      readable: { type: 'boolean' },
+      problem: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      payments: {
+        type: 'array',
+        description: 'Every money-out payment visible (card payments, direct debits, standing orders). Skip money coming in, refunds, salary and transfers between the user\'s own accounts or to savings.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['date', 'description', 'amount', 'category'],
+          properties: {
+            date: { type: 'string', description: 'YYYY-MM-DD' },
+            description: { type: 'string', description: 'Payee as shown, tidied (e.g. "Tesco", "TfL travel")' },
+            amount: { type: 'number', description: 'Positive number in pounds' },
+            category: { type: 'string', enum: [...keys, 'other'] },
+          },
+        },
+      },
+    },
+  };
+}
+
 const SYSTEM = `You read UK bank statements and banking app screenshots for a personal money tracker.
 Only report what you can actually see. Never guess or invent figures. Amounts are in pounds.
 If several pictures are given, they are parts of the same statement or app screen: combine them and count each payment once.
@@ -74,19 +103,26 @@ export async function POST(req: Request): Promise<Response> {
     return json(400, { error: 'bad_request', detail: 'Use photos, screenshots or a PDF' });
   }
 
+  const mode = body.mode === 'payments' ? 'payments' : 'balance';
+  const cats = Array.isArray(body.categories) ? body.categories.filter((c) => /^[a-z0-9_-]{1,30}$/.test(String(c?.key))).slice(0, 20) : [];
   const content: Anthropic.ContentBlockParam[] = files.map((f) =>
     f.media_type === 'application/pdf'
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data } }
       : { type: 'image', source: { type: 'base64', media_type: f.media_type as 'image/jpeg', data: f.data } },
   );
-  content.push({ type: 'text', text: `Today is ${body.today}. My accounts: ${accounts.join(', ') || 'none listed'}. Read this statement.` });
+  content.push({
+    type: 'text',
+    text: mode === 'payments'
+      ? `Today is ${body.today}. List every money-out payment and put each in one of my budget categories: ${cats.map((c) => `${c.key} (${c.name})`).join(', ') || 'none'}; anything else is "other". Groceries = supermarkets and food shops; eating out = cafés, restaurants, takeaways, drinks; transport = trains, TfL, buses, taxis, fuel.`
+      : `Today is ${body.today}. My accounts: ${accounts.join(', ') || 'none listed'}. Read this statement.`,
+  });
 
   const client = new Anthropic();
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 8000,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: schema(accounts) } },
+      max_tokens: mode === 'payments' ? 16000 : 8000,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: mode === 'payments' ? paymentsSchema(cats.map((c) => c.key)) : schema(accounts) } },
       system: SYSTEM,
       messages: [{ role: 'user', content }],
     });

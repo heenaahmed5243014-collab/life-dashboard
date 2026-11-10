@@ -35,6 +35,35 @@ const toBase64 = async (file: File) => {
 
 const isPdf = (f: File) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
 
+export interface AiPayment { date: string; description: string; amount: number; category: string }
+
+/** Lists every money-out payment in pictures or a PDF of a statement, sorted into budget categories. */
+export async function readPaymentsWithClaude(files: File[], categories: { key: string; name: string }[]): Promise<AiPayment[]> {
+  if (!navigator.onLine) throw new Error('Reading a picture needs an internet connection.');
+  const pdf = files.find(isPdf);
+  if (pdf && pdf.size > 3_000_000) throw new Error('That PDF is too big. Try one month at a time, or screenshots.');
+  const payload = pdf ? [{ media_type: 'application/pdf', data: await toBase64(pdf) }] : await Promise.all(files.slice(0, 4).map(shrink));
+  const token = supabase ? (await supabase.auth.getSession()).data.session?.access_token : undefined;
+  let res: Response;
+  try {
+    res = await fetch('/api/statement', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ files: payload, accounts: [], categories, mode: 'payments', today: today() }),
+    });
+  } catch {
+    throw new Error('Couldn’t reach Claude just now. Try again in a moment.');
+  }
+  const body = (await res.json().catch(() => ({}))) as { readable?: boolean; problem?: string; payments?: AiPayment[]; error?: string; detail?: string };
+  if (!res.ok) {
+    if (body.error === 'not_configured' || res.status === 404) throw new Error('Claude isn’t connected, so pictures can’t be read. CSV files still work.');
+    if (body.error === 'no_credit') throw new Error('Your Anthropic credit has run out, so the statement couldn’t be read.');
+    throw new Error(`Claude couldn’t read that${body.detail ? ` (${String(body.detail).slice(0, 100)})` : ''}.`);
+  }
+  if (!body.readable) throw new Error(body.problem || 'That doesn’t look like a statement. Try a clearer screenshot.');
+  return (body.payments ?? []).filter((p) => p.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(p.date)).map((p) => ({ ...p, amount: Math.round(Math.abs(p.amount) * 100) / 100 }));
+}
+
 export async function readStatementWithClaude(files: File[], accounts: string[]): Promise<AiStatement> {
   if (!navigator.onLine) throw new Error('Reading a picture needs an internet connection.');
   const pdf = files.find(isPdf);

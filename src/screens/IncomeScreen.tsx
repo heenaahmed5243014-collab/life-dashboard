@@ -10,6 +10,7 @@ import BillsSection, { scheduleText } from '../components/BillsSection';
 import SavingsGoals from '../components/SavingsGoals';
 import NoSpendCard from '../components/NoSpendCard';
 import PassiveIncome from '../components/PassiveIncome';
+import BudgetSection from '../components/BudgetSection';
 import { billsDue, payPeriod, spendingMoney } from '../bills';
 
 const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -108,8 +109,10 @@ export default function IncomeScreen() {
       <main className="page income-page">
         <header className="page-head">
           <h1 className="h1">Money</h1>
-          <p className="sub">A plan from your pay, bills and travel. Not your bank balance.</p>
+          <p className="sub">Your budget, pay, bills and savings.</p>
         </header>
+
+        <BudgetSection />
 
         {spend && (
           <section className="card hero">

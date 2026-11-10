@@ -25,6 +25,8 @@ export interface CaptureResult {
   refund_amount?: number | null;
   repeat?: 'week' | '2weeks' | '4weeks' | 'month' | null;
   emoji?: string | null;
+  spend_amount?: number | null;
+  spend_category?: string | null;
 }
 
 export type CaptureError = 'not_configured' | 'bad_key' | 'no_credit' | 'offline' | 'failed';
@@ -59,7 +61,7 @@ export async function checkClaude(): Promise<boolean> {
 /** Groups inside areas, as Claude sees them: "Area > Group". */
 export const groupLabel = (s: Subcategory, domains: Domain[]) => `${domains.find((d) => d.id === s.domain_id)?.name ?? ''} > ${s.name.trim()}`;
 
-export async function askClaude(text: string, domains: Domain[], subs: Subcategory[] = []): Promise<CaptureResult> {
+export async function askClaude(text: string, domains: Domain[], subs: Subcategory[] = [], categories: string[] = []): Promise<CaptureResult> {
   lastCaptureProblem = '';
   const now = new Date();
   const token = supabase ? (await supabase.auth.getSession()).data.session?.access_token : undefined;
@@ -71,6 +73,7 @@ export async function askClaude(text: string, domains: Domain[], subs: Subcatego
       body: JSON.stringify({
         text,
         domains: domains.map((d) => d.name),
+        categories,
         groups: subs.filter((s) => domains.some((d) => d.id === s.domain_id)).map((s) => groupLabel(s, domains)),
         today: today(),
         weekday: longDate(today()).split(' ')[0],

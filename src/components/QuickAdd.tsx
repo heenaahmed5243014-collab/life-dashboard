@@ -170,7 +170,15 @@ function AddSheet({ options, onClose }: { options: OpenOptions; onClose: () => v
     setBusy(true);
     const raw = text.trim();
     try {
-      const result = await askClaude(raw, store.domains, store.subcategories);
+      const result = await askClaude(raw, store.domains, store.subcategories, store.budgetReady === false ? [] : store.budgets.map((b) => b.key));
+      // Something already bought ("lunch £8.50") goes into the budget, not the to-do list.
+      if (result.spend_amount && result.spend_amount > 0 && store.budgetReady !== false && !kindPicked && !domainId) {
+        const cat = store.budgets.find((b) => b.key === result.spend_category);
+        store.addSpends([{ day: today(), amount: Math.round(result.spend_amount * 100) / 100, category: cat ? cat.key : 'other', note: result.title.slice(0, 120), source: 'quick' }]);
+        toast({ message: `£${result.spend_amount.toFixed(2)} added to ${cat ? `${cat.emoji} ${cat.name}` : 'Other'} spending` });
+        reset([]);
+        return;
+      }
       // Anything you picked yourself wins over Claude's guess.
       if (kindPicked) result.kind = kind;
       if (kind === 'routine' && days.length) result.days = days;

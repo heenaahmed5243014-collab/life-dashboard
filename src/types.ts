@@ -187,3 +187,22 @@ export interface WeightReward {
   unlocked_on: Day | null;
   claimed_on: Day | null;
 }
+
+export interface Budget {
+  id: string;
+  key: string; // groceries, eating_out, transport…
+  name: string;
+  emoji: string;
+  amount: number; // per pay month
+  sort: number;
+}
+
+export interface Spend {
+  id: string;
+  day: Day;
+  amount: number;
+  category: string; // a budget key, or 'other'
+  note: string;
+  source: 'manual' | 'quick' | 'statement';
+  import_key?: string | null;
+}

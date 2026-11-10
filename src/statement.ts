@@ -89,7 +89,14 @@ const find = (head: string[], ...patterns: RegExp[]) => {
   return -1;
 };
 
-export function readStatement(text: string): StatementSummary {
+interface Item { date: string; amount: number; balance: number | null; name: string; cat: string; order: number }
+
+/** Every money-out payment in a statement CSV (amount as a positive number), for the budget. */
+export function readPayments(text: string): { date: string; desc: string; amount: number; bankCategory: string }[] {
+  return parseItems(text).items.filter((x) => x.amount < 0).map((x) => ({ date: x.date, desc: x.name || x.cat || 'Payment', amount: Math.round(-x.amount * 100) / 100, bankCategory: x.cat }));
+}
+
+function parseItems(text: string): { items: Item[]; iCat: number } {
   const rows = parseCsv(text);
   // The header is the first row that names a date column and some kind of amount column.
   const hi = rows.findIndex((r) => {
@@ -107,7 +114,7 @@ export function readStatement(text: string): StatementSummary {
   const iName = find(head, /^name$/, /counter ?party/, /payee/, /merchant/, /description/, /memo/, /reference/, /details/);
   if (iDate < 0 || (iAmount < 0 && iIn < 0 && iOut < 0)) throw new Error('Couldn’t find the date and amount columns in this file.');
 
-  const items: { date: string; amount: number; balance: number | null; name: string; cat: string; order: number }[] = [];
+  const items: Item[] = [];
   rows.slice(hi + 1).forEach((r, order) => {
     const date = parseDate(r[iDate] ?? '');
     if (!date) return;
@@ -122,6 +129,11 @@ export function readStatement(text: string): StatementSummary {
     items.push({ date, amount, balance: iBal >= 0 ? parseAmount(r[iBal] ?? '') : null, name: (r[iName] ?? '').trim(), cat: iCat >= 0 ? (r[iCat] ?? '').trim() : '', order });
   });
   if (!items.length) throw new Error('No payments found in this file.');
+  return { items, iCat };
+}
+
+export function readStatement(text: string): StatementSummary {
+  const { items, iCat } = parseItems(text);
 
   const dates = items.map((x) => x.date).sort();
   const from = dates[0];
