@@ -21,6 +21,7 @@ const whole = (n: number) => money(n, 0);
 function billPic(name: string): { img?: string; emoji: string } {
   const n = name.toLowerCase();
   if (/spotify|music|apple music|airpods/.test(n)) return { img: '/img/airpods.png', emoji: '🎧' };
+  if (/phone|mobile|\bee\b|o2|vodafone|three|giffgaff|iphone/.test(n)) return { img: '/img/iphone.png', emoji: '📱' };
   const table: [RegExp, string][] = [[/phone|mobile|ee\b|o2|vodafone|three|giffgaff/, '📱'], [/gym|fitness|pure|puregym/, '🏋️‍♀️'], [/rent|mortgage|landlord/, '🏠'],
     [/netflix|disney|prime|tv|now\b/, '🎬'], [/council/, '🏛️'], [/energy|gas|electric|octopus|british gas/, '⚡'], [/water/, '💧'], [/internet|broadband|wifi|bt\b|virgin/, '🛜'],
     [/insurance/, '🛡️'], [/icloud|google|storage|apple/, '☁️'], [/claude|chatgpt|ai\b/, '🤖'], [/loan|credit|klarna/, '💳'], [/travel|oyster|tfl|train/, '🚇']];

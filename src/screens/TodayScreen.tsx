@@ -399,7 +399,7 @@ function TodayBody() {
   const modeSwitch = (
     <div className={`quick-tiles${work.active ? ' three' : ''}`}>
       <button type="button" className="quick-tile" onClick={() => { setDebriefOpen(true); scrollTo({ top: 0, behavior: 'smooth' }); }}>
-        <span className="qt-emoji" aria-hidden="true">☀️</span>Debrief
+        <img src="/img/coffee.png" alt="" className="qt-pic" />Debrief
       </button>
       <button type="button" className={`quick-tile${focus ? ' on' : ''}`} aria-pressed={focus} onClick={() => setFocus(!focus)}>
         <img src="/img/focus.png" alt="" className="qt-pic" />{focus ? 'Focus on' : 'Focus'}

@@ -1,7 +1,7 @@
 // Life Dashboard service worker: keeps the app itself on the phone so it opens offline.
 // Your data is handled separately by the app (saved copy + sync queue), never cached here.
 const CACHE = 'ld-app-v3';
-const CORE = ['/', '/manifest.webmanifest', '/icon.svg', '/apple-touch-icon.png', '/icon-192.png', '/img/wallet.png', '/img/purse.png', '/img/bowl.png', '/img/focus.png', '/img/airpods.png', '/img/sleep.png', '/img/shoebox.png', '/img/areas/camera.png'];
+const CORE = ['/', '/manifest.webmanifest', '/icon.svg', '/apple-touch-icon.png', '/icon-192.png', '/img/wallet.png', '/img/purse.png', '/img/bowl.png', '/img/focus.png', '/img/airpods.png', '/img/sleep.png', '/img/shoebox.png', '/img/areas/camera.png', '/img/areas/desk.png', '/img/areas/jobsearch.png', '/img/areas/sketchbook.png', '/img/coffee.png', '/img/iphone.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
