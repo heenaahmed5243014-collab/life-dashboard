@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type WaterDay, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -33,6 +33,9 @@ export interface Snapshot {
   spends?: Spend[];
   /** False until database update 15 (budgets) has been run. */
   budgetReady?: boolean;
+  water?: WaterDay[];
+  /** False until database update 16 (water) has been run. */
+  waterReady?: boolean;
   /** False until database update 10 has been run. */
   affirmReady?: boolean;
   leads?: Lead[];
@@ -62,6 +65,7 @@ export interface Backend {
   updateBill(id: string, changes: Partial<Bill>): Promise<void>;
   deleteBill(id: string): Promise<void>;
   setSteps(s: StepDay): Promise<void>;
+  setWater(w: WaterDay): Promise<void>;
   insertGoal(g: SavingsGoal): Promise<void>;
   updateGoal(id: string, changes: Partial<SavingsGoal>): Promise<void>;
   deleteGoal(id: string): Promise<void>;
@@ -174,6 +178,14 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       budgetReady: true,
     };
   };
+  const loadWater = async (now: Day): Promise<{ water: WaterDay[]; waterReady: boolean }> => {
+    const res = await sb.from('water').select('day, ml').gte('day', addDays(now, -120)).order('day');
+    if (res.error) {
+      if (/fetch|network|load failed/i.test(res.error.message)) throw new Error(res.error.message);
+      return { water: [], waterReady: false };
+    }
+    return { water: (res.data as WaterDay[]).map((w) => ({ ...w, ml: Number(w.ml) })), waterReady: true };
+  };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
       sb.from('income_settings').select('*').maybeSingle(),
@@ -253,6 +265,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         ...(await loadAffirmations()),
         ...(await loadRewards()),
         ...(await loadBudget(now)),
+        ...(await loadWater(now)),
       };
     },
     async insertTask(t) {
@@ -312,6 +325,9 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     },
     async deleteBill(id) {
       check(await sb.from('bills').delete().eq('id', id));
+    },
+    async setWater(w) {
+      check(await sb.from('water').upsert({ day: w.day, ml: w.ml, updated_at: new Date().toISOString() }, { onConflict: 'user_id,day' }));
     },
     async setSteps(s) {
       check(await sb.from('steps').upsert({ day: s.day, count: s.count, source: 'manual', updated_at: new Date().toISOString() }, { onConflict: 'user_id,day' }));
@@ -508,6 +524,8 @@ export function demoBackend(): Backend {
         { id: 'b4', name: 'Gym', amount: 8.5, frequency: 'weekly', due_day: 0, due_month: null, kind: 'subscription', active: true },
       ],
       steps: [9200, 21400, 17800, 22100, 12600, 20300].map((count, i) => ({ day: addDays(now, i - 6), count })),
+      water: [1750, 2250, 1500, 2000, 2500, 1250].map((ml, i) => ({ day: addDays(now, i - 6), ml })).concat([{ day: now, ml: 750 }]),
+      waterReady: true,
       goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
       noSpend: [addDays(now, -2), addDays(now, -4)],
       healthReady: true,
@@ -537,7 +555,7 @@ export function demoBackend(): Backend {
     insertAccount: noop, updateAccount: noop, setBalance: noop, setWeight: noop,
     setIncome: noop, addPayslip: noop, deletePayslip: noop, insertBill: noop, updateBill: noop, deleteBill: noop,
     insertAffirmation: noop, deleteAffirmation: noop, insertLead: noop, updateLead: noop, deleteLead: noop, insertReward: noop, updateReward: noop, deleteReward: noop, insertSpends: noop, updateSpend: noop, deleteSpend: noop, upsertBudget: noop, deleteBudget: noop,
-    setSteps: noop, insertGoal: noop, updateGoal: noop, deleteGoal: noop, setNoSpend: noop,
+    setSteps: noop, setWater: noop, insertGoal: noop, updateGoal: noop, deleteGoal: noop, setNoSpend: noop,
     stepLink: async () => 'demo0000000000000000000000000000demo',
     uploadQr: async (taskId, file) => {
       const path = `demo/${taskId}-${Date.now()}`;

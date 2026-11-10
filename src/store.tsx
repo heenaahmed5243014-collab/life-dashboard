@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, WaterDay, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { nextDue, REPEAT_LABEL } from './repeat';
 import { milestones } from './weightRewards';
@@ -61,6 +61,9 @@ interface Store extends Snapshot {
   noSpend: Day[];
   /** Saves the day's steps and ticks the steps routine's chunks to match. */
   setSteps(day: Day, count: number): void;
+  water: WaterDay[];
+  /** Sets the day's water total (ml). */
+  setWater(day: Day, ml: number): void;
   addGoal(g: Omit<SavingsGoal, 'id' | 'sort'>): SavingsGoal;
   updateGoal(id: string, changes: Partial<SavingsGoal>): void;
   deleteGoal(id: string): void;
@@ -190,6 +193,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
     const api: Store = {
       ...view,
       steps: data.steps ?? [],
+      water: data.water ?? [],
       goals: data.goals ?? [],
       noSpend: data.noSpend ?? [],
       affirmations: data.affirmations ?? [],
@@ -364,6 +368,11 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       deleteBill(id) {
         setData((d) => d && { ...d, bills: (d.bills ?? []).filter((b) => b.id !== id) });
         save(backend.deleteBill(id));
+      },
+      setWater(day, ml) {
+        const w: WaterDay = { day, ml: Math.max(0, Math.min(10000, Math.round(ml))) };
+        setData((d) => d && { ...d, water: [...(d.water ?? []).filter((x) => x.day !== day), w].sort((a, b) => a.day.localeCompare(b.day)) });
+        save(backend.setWater(w));
       },
       setSteps(day, count) {
         const s: StepDay = { day, count, source: 'manual' };

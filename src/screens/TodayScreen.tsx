@@ -22,7 +22,7 @@ import ChunkTicks from '../components/ChunkTicks';
 import MoneyCard from '../components/MoneyCard';
 import { PinGate, useMoneyMask } from '../pin';
 import WeightCard from '../components/WeightCard';
-import StepsCard from '../components/StepsCard';
+import MoveCard from '../components/MoveCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
 import MirrorCard from '../components/MirrorCard';
@@ -561,7 +561,7 @@ function TodayBody() {
 
       <WeekProgress />
       {!work.active && !balanceDue && <PinGate compact label="Net worth"><MoneyCard /></PinGate>}
-      {store.healthReady !== false && <StepsCard />}
+      {store.healthReady !== false && <MoveCard />}
       {!work.active && <WeightCard />}
 
       <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>

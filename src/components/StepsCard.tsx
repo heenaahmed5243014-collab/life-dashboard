@@ -8,7 +8,7 @@ import { go } from '../router';
 const k = (n: number) => (n >= 1000 ? `${(Math.round(n / 100) / 10).toLocaleString('en-GB')}k` : String(n));
 const full = (n: number) => n.toLocaleString('en-GB');
 
-export default function StepsCard() {
+export default function StepsCard({ bare = false }: { bare?: boolean }) {
   const store = useStore();
   const now = today();
   const goal = stepGoal(store.routines);
@@ -25,8 +25,9 @@ export default function StepsCard() {
   };
   const trend = s.weekAvg !== null && s.lastWeekAvg !== null ? s.weekAvg - s.lastWeekAvg : null;
 
+  const Wrap = bare ? 'div' : 'section';
   return (
-    <section className="card mini-card" aria-label="Steps">
+    <Wrap className={bare ? 'steps-panel' : 'card mini-card'} aria-label={bare ? undefined : 'Steps'}>
       <div className="between">
         <span className="eyebrow">Steps</span>
         {s.streak > 1 ? <span className="tag t-sage">🔥 {s.streak} days at {k(goal)}</span> : <span className="note">Goal {k(goal)}</span>}
@@ -72,6 +73,6 @@ export default function StepsCard() {
           </>
         )}
       </div>
-    </section>
+    </Wrap>
   );
 }

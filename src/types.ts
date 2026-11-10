@@ -139,6 +139,11 @@ export const DEFAULT_DOMAINS: Omit<Domain, 'id'>[] = [
   { name: 'Inbox', short_name: 'Inbox', color: '#76637A', is_inbox: true, sort: 99 },
 ];
 
+export interface WaterDay {
+  day: Day;
+  ml: number;
+}
+
 export interface StepDay {
   day: Day;
   count: number;
