@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { useRoute } from './router';
 import { ToastProvider } from './toast';
 import { StoreProvider } from './store';
@@ -7,16 +7,20 @@ import { demoBackend, isConfigured, isDemo, supabase, supabaseBackend } from './
 import TodayScreen from './screens/TodayScreen';
 import TasksScreen from './screens/TasksScreen';
 import ItemScreen from './screens/ItemScreen';
-import RoutineScreen from './screens/RoutineScreen';
+const RoutineScreen = lazy(() => import('./screens/RoutineScreen'));
 import RoutinesScreen from './screens/RoutinesScreen';
 import AreasScreen from './screens/AreasScreen';
-import AreaScreen from './screens/AreaScreen';
-import ReturnsScreen from './screens/ReturnsScreen';
-import StepsScreen from './screens/StepsScreen';
-import ResetScreen from './screens/ResetScreen';
-import WeightRewardsScreen from './screens/WeightRewardsScreen';
-import IncomeScreen from './screens/IncomeScreen';
-import AccountScreen from './screens/AccountScreen';
+const AreaScreen = lazy(() => import('./screens/AreaScreen'));
+const ReturnsScreen = lazy(() => import('./screens/ReturnsScreen'));
+const StepsScreen = lazy(() => import('./screens/StepsScreen'));
+const ResetScreen = lazy(() => import('./screens/ResetScreen'));
+const WeightRewardsScreen = lazy(() => import('./screens/WeightRewardsScreen'));
+const IncomeScreen = lazy(() => import('./screens/IncomeScreen'));
+const AccountScreen = lazy(() => import('./screens/AccountScreen'));
+
+/** After Today is on screen, fetch the other screens quietly so they open instantly and work offline. */
+const warmUp = () => { void import('./screens/RoutineScreen'); void import('./screens/AreaScreen'); void import('./screens/ReturnsScreen'); void import('./screens/StepsScreen'); void import('./screens/ResetScreen'); void import('./screens/WeightRewardsScreen'); void import('./screens/IncomeScreen'); void import('./screens/AccountScreen'); };
+if (typeof window !== 'undefined') addEventListener('load', () => setTimeout(warmUp, 2500), { once: true });
 import NotConnected from './screens/NotConnected';
 import { withOffline } from './offline';
 import SyncBanner from './components/SyncBanner';
@@ -46,7 +50,9 @@ function Screens() {
     <>
       <WorkModeBar />
       <DynamicIsland />
-      <Page />
+      <Suspense fallback={<main className="page loading-page" aria-busy="true"><span className="loading-dot" aria-label="Loading" /></main>}>
+        <Page />
+      </Suspense>
       <QuickAddHost />
     </>
   );

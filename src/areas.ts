@@ -49,3 +49,18 @@ export function allReturns(tasks: Task[], subs: Subcategory[]): Task[] {
   const returnIds = new Set(subs.filter((x) => x.name.trim().toLowerCase() === 'returns').map((x) => x.id));
   return tasks.filter((t) => t.status === 'open' && t.kind === 'task' && ((t.subcategory_id && returnIds.has(t.subcategory_id)) || (!t.subcategory_id && isReturn(t))));
 }
+
+/**
+ * A picture (3D style, in public/img/areas/) or emoji for an area, matched by name.
+ * Add a picture by dropping the file in public/img/areas/ and listing it in AREA_IMAGES.
+ */
+const AREA_IMAGES: [RegExp, string][] = [];
+const AREA_EMOJI: [RegExp, string][] = [
+  [/made in heaven|photo|visual|shoot/i, '📸'], [/job|career|interview/i, '🎯'], [/^work$|work\b/i, '💼'],
+  [/side|idea/i, '💡'], [/personal|home/i, '🏡'], [/inbox/i, '📥'], [/gym|fitness|health/i, '🏋️‍♀️'],
+  [/money|finance/i, '💷'], [/study|learn|course/i, '📚'], [/family/i, '👨‍👩‍👧'], [/travel|trip/i, '✈️'],
+];
+export function areaPic(name: string): { img?: string; emoji: string } {
+  const img = AREA_IMAGES.find(([re]) => re.test(name))?.[1];
+  return { img, emoji: AREA_EMOJI.find(([re]) => re.test(name))?.[1] ?? '✨' };
+}

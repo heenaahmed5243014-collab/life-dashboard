@@ -12,6 +12,7 @@ import ItemRow, { whenText } from '../components/ItemRow';
 import { openQuickAdd } from '../components/QuickAdd';
 import { Chevron, Plus } from '../icons';
 import ProjectsTab from '../components/ProjectsTab';
+import { AreaTile } from './AreasScreen';
 import OutreachTab from '../components/OutreachTab';
 
 /** Areas that get the Brain Planner's Projects and Outreach tabs. */
@@ -129,7 +130,7 @@ export default function AreaScreen({ id, tab: startTab }: { id: string; tab?: st
       <Header title="" />
       <main className="page page-form area-page">
         <header className="page-head">
-          <h1 className="h1 area-h1"><span className="dot big" style={{ background: d.color }} />{d.name}</h1>
+          <h1 className="h1 area-h1"><AreaTile name={d.name} color={d.color} big />{d.name}</h1>
           <p className="sub">{todo === 0 ? 'All clear here.' : `${todo} thing${todo === 1 ? '' : 's'} to do. Just start with the first one.`}</p>
         </header>
 

@@ -1,6 +1,6 @@
 // Areas: one calm line per area. Tap one to open it.
 import { useStore } from '../store';
-import { isReturn } from '../areas';
+import { areaPic, isReturn } from '../areas';
 import { go } from '../router';
 import { whenText } from '../components/ItemRow';
 import Nav from '../components/Nav';
@@ -30,7 +30,7 @@ export default function AreasScreen() {
             const returns = mine.filter(isReturn).length;
             return (
               <button key={d.id} type="button" className="area-line" onClick={() => go(`/area/${d.id}`)}>
-                <span className="dot big" style={{ background: d.color }} />
+                <AreaTile name={d.name} color={d.color} />
                 <span className="area-line-main">
                   <span className="area-line-name">{d.name}</span>
                   <span className="row-meta">
@@ -51,5 +51,15 @@ export default function AreasScreen() {
       <button type="button" className="fab" aria-label="Add something" onClick={() => openQuickAdd()}><Plus /></button>
       <Nav current="areas" />
     </>
+  );
+}
+
+export function AreaTile({ name, color, big = false }: { name: string; color: string; big?: boolean }) {
+  const pic = areaPic(name);
+  return (
+    <span className={big ? 'area-tile-pic big' : 'area-tile-pic'} aria-hidden="true">
+      {pic.img ? <img src={pic.img} alt="" /> : pic.emoji}
+      <i style={{ background: color }} />
+    </span>
   );
 }

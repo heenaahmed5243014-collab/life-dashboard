@@ -4,7 +4,7 @@ import { taskEmoji } from '../emoji';
 import MorningDebrief from '../components/MorningDebrief';
 import { debriefDoneToday, openDebrief, useDebrief } from '../debrief';
 import { stepOnce } from '../repeat';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '../store';
 import { buildDay, buildToday } from '../today';
 import { addDays, daysBetween, dueLabel, shortDate, longDate, parseDay, toDay, today, weekday, WEEKDAY_SHORT, type Day } from '../dates';
@@ -32,6 +32,7 @@ import { dueFollowUps } from '../components/OutreachTab';
 import { WorkModeButton } from '../components/WorkModeBar';
 import { useWorkMode } from '../workmode';
 import { useShowWeight } from '../weightPref';
+import { CustomiseSheet, Folded, Foldable, useLayout, type CardId, type CardPref } from '../todayLayout';
 import { resetDoneToday } from './ResetScreen';
 
 /** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
@@ -309,6 +310,8 @@ function TodayBody() {
   const [focus, setFocusState] = useState(readFocus);
   const work = useWorkMode();
   const mask = useMoneyMask();
+  const layout = useLayout();
+  const [customising, setCustomising] = useState(false);
   const showWeight = useShowWeight();
   const balanceDue = useBalanceCheckDue();
   const debrief = useDebrief();
@@ -436,13 +439,11 @@ function TodayBody() {
     );
   }
 
-  return (
-    <>
-      {debriefCard}
-      {modeSwitch}
-      {resetCard}
-      {top}
-
+  const cards: Record<CardId, ReactNode> = {
+    quick: modeSwitch,
+    top,
+    slip: slip.length + follows.length === 0 ? null : (
+      <>
       {slip.length + follows.length > 0 && (
         <div className="card slip">
           <div className="between"><span className="eyebrow">Slipping · {slip.length + follows.length}</span></div>
@@ -477,9 +478,10 @@ function TodayBody() {
           {slip.length > 6 && <p className="note">+{slip.length - 6} more</p>}
         </div>
       )}
-
-      {!work.active && balanceDue && <PinGate compact label="Net worth"><MoneyCard /></PinGate>}
-
+      </>
+    ),
+    routines: data.routines.length === 0 ? null : (
+      <>
       {data.routines.length > 0 && (
         <section className="section">
           <div className="between"><h2 className="h2">Routine</h2><span className="count">{routinesDone}/{data.routines.length}</span></div>
@@ -524,9 +526,10 @@ function TodayBody() {
           </ul>
         </section>
       )}
-
-      {mirror && !work.active && <MirrorCard day={now} />}
-
+      </>
+    ),
+    mirror: mirror && !work.active ? <MirrorCard day={now} /> : null,
+    todos: (
       <section className="section">
         <div className="between"><h2 className="h2">Today’s to-dos</h2><span className="count">{also.length}</span></div>
         <p className="note">Little one-off jobs. Anything unfinished moves to tomorrow by itself.</p>
@@ -537,9 +540,9 @@ function TodayBody() {
           <button type="submit" className="btn primary">Add</button>
         </form>
       </section>
-
-      <PlanSection day={now} isToday items={plan.timed} tray={[...data.top, ...data.also].filter((t) => !t.due_time && t.kind !== 'project')} />
-
+    ),
+    plan: <PlanSection day={now} isToday items={plan.timed} tray={[...data.top, ...data.also].filter((t) => !t.due_time && t.kind !== 'project')} />,
+    next: (
       <div className="card">
         <span className="eyebrow">Do this next</span>
         <div className="big">{next ? `${taskEmoji(next, store.domain(next.domain_id).name)} ${mask(next.title)}` : 'All clear. Go enjoy your evening 💗'}</div>
@@ -552,7 +555,9 @@ function TodayBody() {
           </div>
         )}
       </div>
-
+    ),
+    soon: soon.length + inbox.length + hidden > 0 ? (
+      <>
       {(soon.length > 0 || inbox.length > 0) && (
         <>
           {soon.length > 0 && <ListSection title="Next 3 days" tasks={soon} />}
@@ -560,11 +565,42 @@ function TodayBody() {
         </>
       )}
       {hidden > 0 && <button type="button" className="btn small more" onClick={() => setExpanded(true)}>Show {hidden} more</button>}
+      </>
+    ) : null,
+    week: <WeekProgress />,
+    money: !work.active ? <PinGate compact label="Net worth"><MoneyCard /></PinGate> : null,
+    move: store.healthReady !== false ? <MoveCard /> : null,
+    weight: !work.active ? (showWeight ? <WeightCard /> : <WeightHidden />) : null,
+  };
+  const summaries: Partial<Record<CardId, string>> = {
+    top: `${data.top.length}/3`,
+    slip: slip.length + follows.length ? String(slip.length + follows.length) : undefined,
+    routines: data.routines.length ? `${routinesDone}/${data.routines.length}` : undefined,
+    todos: also.length ? String(also.length) : undefined,
+    next: next ? mask(next.title) : 'All clear',
+    soon: soon.length + inbox.length ? String(soon.length + inbox.length) : undefined,
+  };
+  // The balance check jumps up under Slipping (and opens) when it's due.
+  const order = layout.filter((p) => p.show && !(balanceDue && p.id === 'money'));
+  const shown: CardPref[] = [];
+  for (const p of order) {
+    shown.push(p);
+    if (p.id === 'slip' && balanceDue && layout.find((x) => x.id === 'money')?.show) shown.push({ id: 'money', show: true, fold: false });
+  }
 
-      <WeekProgress />
-      {!work.active && !balanceDue && <PinGate compact label="Net worth"><MoneyCard /></PinGate>}
-      {store.healthReady !== false && <MoveCard />}
-      {!work.active && (showWeight ? <WeightCard /> : <WeightHidden />)}
+  return (
+    <>
+      {debriefCard}
+      {resetCard}
+      {shown.map((p) => {
+        const el = cards[p.id];
+        if (!el) return null;
+        if (p.fold) return <Folded key={p.id} id={p.id} summary={summaries[p.id]} />;
+        return p.id === 'quick' || p.id === 'money' && balanceDue ? <Fragment key={p.id}>{el}</Fragment> : <Foldable key={p.id} id={p.id}>{el}</Foldable>;
+      })}
+
+      <button type="button" className="btn small more customise-btn" onClick={() => setCustomising(true)}>⚙️ Customise Today</button>
+      {customising && <CustomiseSheet onClose={() => setCustomising(false)} />}
 
       <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
     </>
