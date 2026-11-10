@@ -21,7 +21,7 @@ import { routineStats } from '../routines';
 import ChunkTicks from '../components/ChunkTicks';
 import MoneyCard from '../components/MoneyCard';
 import { PinGate, useMoneyMask } from '../pin';
-import WeightCard from '../components/WeightCard';
+import WeightCard, { WeightHidden } from '../components/WeightCard';
 import MoveCard from '../components/MoveCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
@@ -31,6 +31,7 @@ import { useBalanceCheckDue } from '../components/BalancePrompt';
 import { dueFollowUps } from '../components/OutreachTab';
 import { WorkModeButton } from '../components/WorkModeBar';
 import { useWorkMode } from '../workmode';
+import { useShowWeight } from '../weightPref';
 import { resetDoneToday } from './ResetScreen';
 
 /** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
@@ -308,6 +309,7 @@ function TodayBody() {
   const [focus, setFocusState] = useState(readFocus);
   const work = useWorkMode();
   const mask = useMoneyMask();
+  const showWeight = useShowWeight();
   const balanceDue = useBalanceCheckDue();
   const debrief = useDebrief();
   const [debriefOpen, setDebriefOpen] = useState(() => new URLSearchParams(location.search).has('debrief') || debrief.on && new Date().getHours() < debrief.untilHour && new Date().getHours() >= 4 && !debriefDoneToday(today()));
@@ -562,7 +564,7 @@ function TodayBody() {
       <WeekProgress />
       {!work.active && !balanceDue && <PinGate compact label="Net worth"><MoneyCard /></PinGate>}
       {store.healthReady !== false && <MoveCard />}
-      {!work.active && <WeightCard />}
+      {!work.active && (showWeight ? <WeightCard /> : <WeightHidden />)}
 
       <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
     </>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { daysBetween, shortDate, today } from '../dates';
 import { milestones } from '../weightRewards';
+import { setShowWeight } from '../weightPref';
 import { go } from '../router';
 
 const fix = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
@@ -42,7 +43,10 @@ export default function WeightCard() {
     <section className="card mini-card" aria-label="Weight">
       <div className="between">
         <span className="eyebrow">Weight</span>
-        <span className="note">{lastLabel}</span>
+        <span className="weight-head-right">
+          <span className="note">{lastLabel}</span>
+          <button type="button" className="link-btn weight-hide" onClick={() => setShowWeight(false)}>Hide</button>
+        </span>
       </div>
       {latest ? (
         <div className="mini-main">
@@ -109,6 +113,16 @@ export default function WeightCard() {
           <button type="button" className="btn small" onClick={() => { setDraft(latest ? fix(latest.lb) : ''); setOpen(true); }}>Log weight</button>
         )}
       </div>
+    </section>
+  );
+}
+
+/** What Today shows while weight is switched off: one slim line to bring it back. */
+export function WeightHidden() {
+  return (
+    <section className="card weight-hidden" aria-label="Weight (hidden)">
+      <span className="weight-hidden-text"><span aria-hidden="true">⚖️</span> Weight hidden</span>
+      <button type="button" className="link-btn" onClick={() => setShowWeight(true)}>Show</button>
     </section>
   );
 }

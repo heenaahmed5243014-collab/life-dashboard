@@ -7,6 +7,7 @@ import { setWorkMode, toggleWorkMode, useWorkMode, readWorkMode } from '../workm
 import { setDebrief, useDebrief } from '../debrief';
 import { useIsland, setIsland } from '../island';
 import { checkPin, clearPin, PinPad, setPin, usePin } from '../pin';
+import { setShowWeight, useShowWeight } from '../weightPref';
 import { disablePush, enablePush, pushSupport, readPushState, sendTestPush, setPushTime } from '../push';
 
 export default function AccountScreen() {
@@ -39,6 +40,7 @@ export default function AccountScreen() {
         <DebriefSettings />
         <WorkModeSettings />
         <PinSettings />
+        <WeightSettings />
         <button type="button" className="secondary" onClick={exportFile}>Download a copy (file)</button>
         {supabase && (
           <button type="button" className="link-btn quiet" onClick={() => { clearPin(); supabase!.auth.signOut(); }}>Sign out</button>
@@ -178,6 +180,21 @@ function PinSettings() {
       {step === 'new' && <PinPad title="Choose a 4-digit PIN" sub="Avoid 1234 or your birthday." error={error} onDone={(p) => { setError(undefined); setFirst(p); setStep('confirm'); }} />}
       {step === 'confirm' && <PinPad title="Type it again to confirm" error={error} onDone={async (p) => { if (p === first) { await setPin(p); reset(); } else { setError('They didn’t match. Start again.'); setFirst(''); setStep('new'); } }} />}
       {step !== 'idle' && <button type="button" className="btn small more" onClick={reset}>Cancel</button>}
+    </section>
+  );
+}
+
+function WeightSettings() {
+  const on = useShowWeight();
+  return (
+    <section className="card stack" aria-label="Weight">
+      <div className="between">
+        <span className="eyebrow">Weight</span>
+        <button type="button" role="switch" aria-checked={on} className={`switch${on ? ' on' : ''}`} onClick={() => setShowWeight(!on)}>
+          <span className="visually-hidden">Show weight</span><i />
+        </button>
+      </div>
+      <p className="note">Turn off to hide your weight card on Today and your next weight reward in the morning debrief. Nothing is deleted: your log and rewards are kept, and you can turn it back on any time. Set on this phone only.</p>
     </section>
   );
 }

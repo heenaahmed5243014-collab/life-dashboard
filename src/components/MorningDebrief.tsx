@@ -13,6 +13,7 @@ import { plannedSession } from './GymSessions';
 import { useDebrief, markDebriefDone } from '../debrief';
 import { useWorkMode } from '../workmode';
 import { useMoneyMask } from '../pin';
+import { useShowWeight } from '../weightPref';
 import { go } from '../router';
 
 
@@ -22,6 +23,7 @@ export default function MorningDebrief({ onClose }: { onClose: () => void }) {
   const store = useStore();
   const settings = useDebrief();
   const mask = useMoneyMask();
+  const showWeight = useShowWeight();
   const work = useWorkMode();
   const now = today();
   const plan = buildDay(store.tasks, store.routines, store.ticks, now);
@@ -55,7 +57,7 @@ export default function MorningDebrief({ onClose }: { onClose: () => void }) {
 
   const steps = settings.health ? stepSummary(store.steps, stepGoal(store.routines), now) : null;
   const yesterdaySteps = settings.health ? store.steps.find((s) => s.day === addDays(now, -1))?.count : undefined;
-  const reward = settings.health && !work.active ? milestones(store.weights, store.rewards, store.tasks, now).find((m) => !m.reached && m.reward) : undefined;
+  const reward = settings.health && showWeight && !work.active ? milestones(store.weights, store.rewards, store.tasks, now).find((m) => !m.reached && m.reward) : undefined;
   const hour = new Date().getHours();
 
   const finish = () => { markDebriefDone(now); onClose(); };
