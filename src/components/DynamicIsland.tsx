@@ -10,6 +10,7 @@ import { go } from '../router';
 import { useToast } from '../toast';
 import { cheer } from '../cheers';
 import { useMoneyMask } from '../pin';
+import { useSleep } from '../sleepmode';
 import type { Task } from '../types';
 
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
@@ -20,6 +21,7 @@ interface Slot { t: Task; start: number; end: number }
 
 export default function DynamicIsland() {
   const store = useStore();
+  const sleeping = useSleep();
   const mask = useMoneyMask();
   const toast = useToast();
   const settings = useIsland();
@@ -39,7 +41,7 @@ export default function DynamicIsland() {
     return () => { removeEventListener('pointerdown', close); removeEventListener('keydown', esc); };
   }, [open]);
 
-  if (!settings.on) return null;
+  if (!settings.on || sleeping) return null;
   const d = new Date(tick);
   const nowMin = d.getHours() * 60 + d.getMinutes();
   const slots: Slot[] = buildDay(store.tasks, store.routines, store.ticks, today()).timed

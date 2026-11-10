@@ -77,7 +77,7 @@ export default function ReturnsScreen() {
       <main className="page page-form returns-page">
         <header className="page-head">
           {home && <button type="button" className="link-btn crumb" onClick={() => go(`/area/${home.id}`)}>‹ {home.name}</button>}
-          <h1 className="h1 area-h1"><span className="dot big" style={{ background: home?.color ?? '#3E7A64' }} />Returns</h1>
+          <h1 className="h1 area-h1"><img src="/img/shoebox.png" alt="" className="returns-pic" />Returns</h1>
           <p className="sub">Do first. Screenshot every QR code, then one post office trip.</p>
           <div className="progress">
             <div className="bar"><i style={{ width: `${total ? (recent.length / total) * 100 : 0}%` }} /></div>

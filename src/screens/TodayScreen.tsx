@@ -28,10 +28,10 @@ import MirrorCard from '../components/MirrorCard';
 import { hasSessions, plannedSession, SessionPicker } from '../components/GymSessions';
 import { useBalanceCheckDue } from '../components/BalancePrompt';
 import { dueFollowUps } from '../components/OutreachTab';
-import { WorkModeButton } from '../components/WorkModeBar';
 import { useWorkMode } from '../workmode';
 import { useShowWeight } from '../weightPref';
 import { CustomiseSheet, Folded, Foldable, useLayout, type CardId, type CardPref } from '../todayLayout';
+import { ModeSwitch, setSleep, useSleep } from '../sleepmode';
 import { resetDoneToday } from './ResetScreen';
 
 /** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
@@ -94,6 +94,7 @@ export default function TodayScreen() {
     try { sessionStorage.setItem(DAY_KEY, d); } catch { /* ignore */ }
   };
   const isToday = day === now;
+  const sleeping = useSleep();
   // The strip shows the next month; a day picked further away gets its own month-long strip.
   const stripStart = day >= now && day <= addDays(now, RANGE - 1) ? now : addDays(day, -weekday(day));
   const week = Array.from({ length: RANGE }, (_, i) => addDays(stripStart, i));
@@ -127,19 +128,18 @@ export default function TodayScreen() {
             ) : <h1 className="h1">{title}</h1>}
             <span className="head-btns">
               <button type="button" className="icon-btn debrief-btn" aria-label="Open today’s debrief" title="Debrief" onClick={openDebrief}>☀️</button>
-              <WorkModeButton />
               <button type="button" className="icon-btn" aria-label="Account" onClick={() => go('/account')}><Person /></button>
             </span>
           </div>
-          <p className="sub">{longDate(day)}</p>
+          <div className="sub-row"><p className="sub">{longDate(day)}</p><ModeSwitch /></div>
           <div className="pills">
             {pills.length ? pills.map((p, i) => <span key={p.text + i} className={`pill ${p.cls}`}>{p.text}</span>) : <span className="pill">Easy day</span>}
           </div>
         </header>
 
-        <DayStrip days={week} selected={day} now={now} onPick={setDay} />
+        {sleeping && isToday ? <SleepScreen /> : <DayStrip days={week} selected={day} now={now} onPick={setDay} />}
 
-        {isToday ? <TodayBody /> : (
+        {sleeping && isToday ? null : isToday ? <TodayBody /> : (
           <>
             {plan.anytime.length > 0 && (
               <section className="section">
@@ -410,7 +410,7 @@ function TodayBody() {
         </button>
       )}
       <button type="button" className="quick-tile" onClick={() => go('/reset')}>
-        <span className="qt-emoji" aria-hidden="true">🌙</span>Reset
+        <img src="/img/sleep.png" alt="" className="qt-pic" />Reset
       </button>
     </div>
   );
@@ -610,6 +610,30 @@ function ListSection({ title, tasks }: { title: string; tasks: Task[] }) {
     <section className="section">
       <div className="between"><h2 className="h2">{title}</h2><span className="count">{tasks.length}</span></div>
       <div className="list">{tasks.map((t) => <ItemRow key={t.id} task={t} />)}</div>
+    </section>
+  );
+}
+
+/** Sleep mode: one calm card. Everything else waits until morning. */
+function SleepScreen() {
+  const store = useStore();
+  const now = today();
+  const tomorrow = addDays(now, 1);
+  const first = store.tasks.filter((t) => t.status === 'open' && t.due === tomorrow && t.due_time).sort((a, b) => (a.due_time ?? '').localeCompare(b.due_time ?? ''))[0];
+  const tops = store.tasks.filter((t) => t.status === 'open' && t.starred).length;
+  return (
+    <section className="card sleep-card" aria-label="Sleep mode">
+      <img src="/img/sleep.png" alt="" className="sleep-pic" />
+      <h2 className="sleep-title">Sleep mode</h2>
+      <p className="note">Everything else is tucked away until 6am. Nothing is lost.</p>
+      <ul className="sleep-facts">
+        <li><span aria-hidden="true">⏰</span><span>{first ? <>Tomorrow starts with <b>{first.title}</b> at {first.due_time!.slice(0, 5)}</> : 'Nothing timed tomorrow morning'}</span></li>
+        <li><span aria-hidden="true">⭐</span><span>{tops ? `${tops} in your Top 3, ready for tomorrow` : 'No Top 3 picked yet'}</span></li>
+      </ul>
+      <div className="row sleep-btns">
+        {!resetDoneToday() && <button type="button" className="btn small" onClick={() => go('/reset')}>Do the evening reset first</button>}
+        <button type="button" className="btn primary small" onClick={() => setSleep(false)}>Wake up</button>
+      </div>
     </section>
   );
 }
