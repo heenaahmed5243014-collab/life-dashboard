@@ -128,7 +128,7 @@ export default function MoveCard() {
                     aria-label={`Glass ${i + 1}${i < filled ? ', drunk' : ''}`}
                     onClick={() => store.setWater(now, i < filled && i === filled - 1 ? i * GLASS_ML : (i + 1) * GLASS_ML)}
                   >
-                    <svg viewBox="0 0 24 30" aria-hidden="true"><path d="M3 3h18l-2.2 23.2a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8z" className="glass-cup" /><path d="M4.6 12h14.8l-1.6 14.1a1.2 1.2 0 0 1-1.2 1H7.4a1.2 1.2 0 0 1-1.2-1z" className="glass-water" /></svg>
+                    <img src="/img/water.png" alt="" className="glass-pic" />
                   </button>
                 ))}
               </div>
