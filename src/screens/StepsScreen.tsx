@@ -78,7 +78,7 @@ export default function StepsScreen() {
           <span className="eyebrow">Part 2 · Run it three times a day (1 minute each)</span>
           <ol className="steps-list">
             <li>Go to the <b>Automation</b> tab → <b>+</b> → <b>Time of Day</b>. Pick <b>11:45 am</b>, <b>Daily</b>, and <b>Run Immediately</b>. Tap <b>Next</b>.</li>
-            <li>Choose <b>Send steps</b> from the list (or add the action <b>Run Shortcut</b> and pick <b>Send steps</b>). Tap <b>Done</b>.</li>
+            <li>Tap <b>New Blank Automation</b> → <b>Add Action</b>. Search for <b>Run Shortcut</b> and tap it. Tap the faded blue word <b>Shortcut</b> in the action and pick <b>Send steps</b>. Tap <b>Done</b>.</li>
             <li>Do the same twice more for <b>4:45 pm</b> and <b>10:30 pm</b>. Each one only has that single step, so it’s quick.</li>
           </ol>
           <p className="note">Each run is saved as your morning, afternoon or night reading. Want it more often? Add more times; the latest one in each part of the day is kept. Already made the old version inside an automation? Keep it, make the <b>Send steps</b> shortcut, and use it for the other times.</p>
