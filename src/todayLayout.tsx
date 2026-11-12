@@ -17,7 +17,7 @@ export const CARDS: { id: CardId; emoji: string; label: string }[] = [
   { id: 'soon', emoji: '📬', label: 'Next 3 days & Inbox' },
   { id: 'week', emoji: '📈', label: 'Weekly progress' },
   { id: 'money', emoji: '💷', label: 'Net worth' },
-  { id: 'weight', emoji: '🌸', label: 'Body progress' },
+  { id: 'weight', emoji: '🌸', label: 'My journey' },
 ];
 
 export interface CardPref { id: CardId; show: boolean; fold: boolean }

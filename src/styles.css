@@ -1661,7 +1661,7 @@ body {
 .glass-pic { height: 40px; width: auto; display: block; filter: grayscale(0.85) opacity(0.35); transition: filter 0.25s, transform 0.25s; }
 .glass.on .glass-pic { filter: drop-shadow(0 3px 4px rgba(34, 30, 58, 0.18)); transform: translateY(-1px); }
 
-/* Body progress */
+/* My journey */
 .body-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .body-stats > div { background: #F6F6FA; border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
 .body-stats b { font-size: 1.15rem; font-weight: 800; }

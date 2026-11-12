@@ -107,7 +107,7 @@ function DebriefSettings() {
       </label>
       <DebriefNotification />
       <Toggle on={d.headsUp} label="Heads-up: follow-ups, returns and anything carried over" onChange={(v) => setDebrief({ headsUp: v })} />
-      <Toggle on={d.health} label="Health: steps and your next progress reward" onChange={(v) => setDebrief({ health: v })} />
+      <Toggle on={d.health} label="Health: steps and your next journey reward" onChange={(v) => setDebrief({ health: v })} />
       <span className="eyebrow">Live pill</span>
       <Toggle on={island.on} label="Show the live pill at the top (what’s now and next, with a countdown)" onChange={(v) => setIsland({ on: v })} />
     </section>
@@ -187,14 +187,14 @@ function PinSettings() {
 function WeightSettings() {
   const on = useStartHidden();
   return (
-    <section className="card stack" aria-label="Body progress">
+    <section className="card stack" aria-label="My journey">
       <div className="between">
-        <span className="eyebrow">Body progress</span>
+        <span className="eyebrow">My journey</span>
         <button type="button" role="switch" aria-checked={on} className={`switch${on ? ' on' : ''}`} onClick={() => setStartHidden(!on)}>
-          <span className="visually-hidden">Keep body progress hidden when the app opens</span><i />
+          <span className="visually-hidden">Keep my journey hidden when the app opens</span><i />
         </button>
       </div>
-      <p className="note">On: your weight, body fat, muscle and progress photos start hidden every time you open the app. Tap Show on Today to see them until you close it. Your next progress reward stays out of the morning debrief while hidden. Set on this phone only.</p>
+      <p className="note">On: your weight, body fat, muscle and progress photos start hidden every time you open the app. Tap Show on Today to see them until you close it. Your next journey reward stays out of the morning debrief while hidden. Set on this phone only.</p>
     </section>
   );
 }

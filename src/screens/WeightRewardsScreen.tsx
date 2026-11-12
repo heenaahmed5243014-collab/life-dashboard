@@ -22,7 +22,7 @@ export default function WeightRewardsScreen() {
 
   return (
     <>
-      <Header title="Progress rewards" />
+      <Header title="Journey rewards" />
       <main className="page page-form wr-page">
         {store.rewardsReady === false && <p className="note warn-text">Rewards need database update 13. Ask Claude for the link.</p>}
         {start === null ? (

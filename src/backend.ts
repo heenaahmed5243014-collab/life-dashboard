@@ -41,7 +41,7 @@ export interface Snapshot {
   leads?: Lead[];
   stepCheckins?: StepCheckin[];
   photos?: ProgressPhoto[];
-  /** True once database update 17 (body progress, gym minutes, step check-ins, cancel dates) has been run. */
+  /** True once database update 17 (my journey, gym minutes, step check-ins, cancel dates) has been run. */
   db17?: boolean;
 }
 

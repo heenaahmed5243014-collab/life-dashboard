@@ -1,4 +1,4 @@
-// Progress photos inside Body progress: private, shrunk on the phone before upload,
+// Progress photos inside My journey: private, shrunk on the phone before upload,
 // shown as a strip of dates. Tap one to see it bigger, compare with your first, or delete it.
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';

@@ -1,4 +1,4 @@
-// Body progress privacy: hidden every time the app opens (unless you switch that off in Account).
+// My journey privacy: hidden every time the app opens (unless you switch that off in Account).
 // "Show" reveals it until you close the app. Remembered on this phone.
 import { useEffect, useState } from 'react';
 

@@ -1,4 +1,4 @@
-// Body progress: weight (lb), body fat %, muscle mass (lb) and private progress photos.
+// My journey: weight (lb), body fat %, muscle mass (lb) and private progress photos.
 // The goal comes from a Life goal like "120lb". Starts hidden each time the app opens.
 import { useState } from 'react';
 import { useStore } from '../store';
@@ -61,9 +61,9 @@ export default function WeightCard() {
   const lastLabel = latest ? (latest.day === now ? 'Logged today' : `Last logged ${daysBetween(latest.day, now) === 1 ? 'yesterday' : shortDate(latest.day)}`) : 'Not logged yet';
 
   return (
-    <section className="card mini-card body-card" aria-label="Body progress">
+    <section className="card mini-card body-card" aria-label="My journey">
       <div className="between">
-        <span className="eyebrow">Body progress</span>
+        <span className="eyebrow">My journey</span>
         <span className="weight-head-right">
           <span className="note">{lastLabel}</span>
           <button type="button" className="link-btn weight-hide" onClick={() => setShowWeight(false)}>Hide</button>
@@ -162,8 +162,8 @@ export default function WeightCard() {
 /** What Today shows while weight is switched off: one slim line to bring it back. */
 export function WeightHidden() {
   return (
-    <section className="card weight-hidden" aria-label="Body progress (hidden)">
-      <span className="weight-hidden-text"><span aria-hidden="true">🌸</span> Body progress · hidden</span>
+    <section className="card weight-hidden" aria-label="My journey (hidden)">
+      <span className="weight-hidden-text"><span aria-hidden="true">🌸</span> My journey · hidden</span>
       <button type="button" className="link-btn" onClick={() => setShowWeight(true)}>Show</button>
     </section>
   );
