@@ -30,3 +30,22 @@ export function EyeIcon({ off }: { off: boolean }) {
     </svg>
   );
 }
+
+/** Net worth: hidden every time the app opens. The eye shows it until the app is closed. */
+const NW_KEY = 'ld:networth-shown';
+const NW_EVENT = 'ld:networth-shown';
+const readNw = () => { try { return sessionStorage.getItem(NW_KEY) !== '1'; } catch { return true; } };
+
+export function useNetWorthHidden(): [boolean, () => void] {
+  const [hidden, setHidden] = useState(readNw);
+  useEffect(() => {
+    const sync = () => setHidden(readNw());
+    addEventListener(NW_EVENT, sync);
+    return () => removeEventListener(NW_EVENT, sync);
+  }, []);
+  const toggle = () => {
+    try { sessionStorage.setItem(NW_KEY, readNw() ? '1' : '0'); } catch { setHidden((h) => !h); return; }
+    dispatchEvent(new Event(NW_EVENT));
+  };
+  return [hidden, toggle];
+}

@@ -5,7 +5,7 @@ import { daysBetween, today } from '../dates';
 import { useStore } from '../store';
 import type { Account, Balance } from '../types';
 import BalancePrompt from './BalancePrompt';
-import { EyeIcon, useMoneyHidden } from '../hide';
+import { EyeIcon, useNetWorthHidden } from '../hide';
 
 const initials = (name: string) => name.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase() || '£';
 
@@ -80,7 +80,7 @@ export default function MoneyCard() {
   const [newName, setNewName] = useState('');
   const [newDebt, setNewDebt] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
-  const [hidden, toggleHidden] = useMoneyHidden();
+  const [hidden, toggleHidden] = useNetWorthHidden();
   const accounts = store.accounts.filter((a) => a.active).sort((a, b) => a.sort - b.sort);
   const thisMonth = monthsBack(0);
 
