@@ -1,4 +1,7 @@
-// Mirror work: 2 minutes with an affirmation, on days the Mirror work routine is on.
+// Quiet moment (was "Mirror work"): 2 minutes with an affirmation, on days that routine is on.
+
+/** Matches the routine by its new name or its old one. */
+export const QUIET_RE = /quiet moment|mirror/i;
 // A new one each day, from the built-in list plus any you add yourself.
 import { useState } from 'react';
 import { daysBetween } from '../dates';
@@ -52,7 +55,7 @@ export default function MirrorCard({ day }: { day: string }) {
   return (
     <div className="card violet-card">
       <div className="between">
-        <span className="eyebrow">Mirror work · 2 minutes</span>
+        <span className="eyebrow">Quiet moment · 2 minutes</span>
         {cur.id && <span className="tag t-violet-solid">Yours</span>}
       </div>
       <blockquote className="affirm">{cur.text}</blockquote>

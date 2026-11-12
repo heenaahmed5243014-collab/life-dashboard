@@ -25,7 +25,7 @@ import { PinGate, useMoneyMask } from '../pin';
 import WeightCard, { WeightHidden } from '../components/WeightCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
-import MirrorCard from '../components/MirrorCard';
+import MirrorCard, { QUIET_RE } from '../components/MirrorCard';
 import { DurationPicker, hasSessions, isGym, plannedSession, SessionPicker } from '../components/GymSessions';
 import { useBalanceCheckDue } from '../components/BalancePrompt';
 import { dueFollowUps } from '../components/OutreachTab';
@@ -35,14 +35,14 @@ import { CustomiseSheet, Folded, Foldable, useLayout, type CardId, type CardPref
 import { ModeSwitch, setSleep, useSleep } from '../sleepmode';
 import { resetDoneToday } from './ResetScreen';
 
-/** Brain Planner style day pills: Gym morning, Mirror work, Fun night tonight. */
+/** Brain Planner style day pills: Gym morning, Quiet moment, Fun night tonight. */
 function dayPill(title: string): { text: string; cls: string } {
   if (/gym/i.test(title)) return { text: 'Gym morning', cls: 'p-sage' };
-  if (/mirror/i.test(title)) return { text: 'Mirror work', cls: 'p-violet' };
+  if (QUIET_RE.test(title)) return { text: 'Quiet moment', cls: 'p-violet' };
   if (/fun night/i.test(title)) return { text: 'Fun night tonight 🎉', cls: 'p-pink' };
   return { text: title, cls: '' };
 }
-const PILL_ORDER = [/gym/i, /mirror/i, /fun night/i];
+const PILL_ORDER = [/gym/i, QUIET_RE, /fun night/i];
 
 const FOCUS_KEY = 'ld:focus';
 const readFocus = () => { try { return localStorage.getItem(FOCUS_KEY) === '1'; } catch { return false; } };
@@ -403,7 +403,11 @@ function TodayBody() {
     store.addTask({ title, domain_id: home.id, due: now });
     setTodo('');
   };
-  const mirror = data.routines.some(({ routine }) => /mirror/i.test(routine.title));
+  const mirror = data.routines.some(({ routine }) => QUIET_RE.test(routine.title));
+  // One-time rename of the old "Mirror work" routine (streak and history stay the same)
+  useEffect(() => {
+    for (const r of store.routines) if (/mirror work/i.test(r.title)) store.updateRoutine(r.id, { title: r.title.replace(/mirror work/i, 'Quiet moment') });
+  }, [store.routines]); // eslint-disable-line react-hooks/exhaustive-deps
   const funNight = data.routines.some(({ routine }) => /fun night/i.test(routine.title));
 
   const nowTime = `${String(new Date().getHours()).padStart(2, '0')}:00`;

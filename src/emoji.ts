@@ -31,6 +31,7 @@ const RULES: [RegExp, string][] = [
   [/\b(hair|nails|lashes|brows|skin|spa|beauty)\b/i, '💅'],
   [/\b(watch|earrings|hoops|jewellery|clothes|outfit|dress|trainers|shoes)\b/i, '👗'],
   [/\b(sleep|rest|nap|bed)\b/i, '😴'],
+  [/quiet moment/i, '🕊️'],
   [/\b(mirror|affirmation|meditat|breathe|therapy)\b/i, '🪞'],
   [/\b(form|forms|paperwork|admin|document|passport|visa|council)\b/i, '📋'],
   [/\b(fix|repair|install|build)\b/i, '🔧'],

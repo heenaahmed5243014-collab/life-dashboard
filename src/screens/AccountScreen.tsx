@@ -67,7 +67,7 @@ function WorkModeSettings() {
           <span className="visually-hidden">Work mode</span><i />
         </button>
       </div>
-      <p className="note">Hides personal things on this device, for when people can see your screen. Money, weight, steps, Mirror work and returns are always hidden. Work mode hides things from view; it doesn’t lock them.</p>
+      <p className="note">Hides personal things on this device, for when people can see your screen. Money, weight, steps, Quiet moment and returns are always hidden. Work mode hides things from view; it doesn’t lock them.</p>
       <span className="eyebrow">Areas that stay visible</span>
       <div className="chips">
         {names.map((n) => (

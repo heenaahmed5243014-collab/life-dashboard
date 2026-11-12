@@ -10,7 +10,7 @@ export const CARDS: { id: CardId; emoji: string; label: string }[] = [
   { id: 'slip', emoji: '🐢', label: 'Slipping' },
   { id: 'subs', emoji: '✂️', label: 'Subscriptions to cancel' },
   { id: 'routines', emoji: '🔁', label: 'Routine' },
-  { id: 'mirror', emoji: '🪞', label: 'Mirror work' },
+  { id: 'mirror', emoji: '🕊️', label: 'Quiet moment' },
   { id: 'todos', emoji: '✅', label: 'Today’s to-dos' },
   { id: 'plan', emoji: '🗓️', label: 'Plan for the day' },
   { id: 'next', emoji: '👉', label: 'Do this next' },
