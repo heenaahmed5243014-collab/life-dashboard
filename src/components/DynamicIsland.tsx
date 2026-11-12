@@ -73,14 +73,14 @@ export default function DynamicIsland() {
         role="button"
         tabIndex={0}
         aria-expanded={open}
-        aria-label={`${isNow ? 'Now' : 'Next'}: ${mask(show.t.title)}, ${isNow ? `${fmt(left)} left` : `in ${fmt(left)}`}`}
+        aria-label={`${isNow ? 'Now' : 'Next'}: ${settings.privateNames ? 'appointment' : mask(show.t.title)}, ${isNow ? `${fmt(left)} left` : `in ${fmt(left)}`}`}
         onClick={(e) => { if ((e.target as Element).closest('button')) return; setOpen(!open); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); } }}
       >
         {!open ? (
           <div className="island-compact">
-            <span className="island-emoji" aria-hidden="true">{emoji}</span>
-            <span className="island-title">{mask(show.t.title)}</span>
+            <span className="island-emoji" aria-hidden="true">{settings.privateNames ? '🕒' : emoji}</span>
+            <span className="island-title">{settings.privateNames ? (isNow ? 'Appointment now' : 'Next appointment') : mask(show.t.title)}</span>
             <span className="island-time">{isNow ? `${fmt(left)} left` : `in ${fmt(left)}`}</span>
             <svg className="island-ring" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
               <circle cx="11" cy="11" r={R} fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="3" />

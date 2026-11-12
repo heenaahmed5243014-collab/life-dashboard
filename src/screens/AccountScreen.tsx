@@ -110,6 +110,7 @@ function DebriefSettings() {
       <Toggle on={d.health} label="Health: steps and your next journey reward" onChange={(v) => setDebrief({ health: v })} />
       <span className="eyebrow">Live pill</span>
       <Toggle on={island.on} label="Show the live pill at the top (what’s now and next, with a countdown)" onChange={(v) => setIsland({ on: v })} />
+      {island.on && <Toggle on={island.privateNames} label="Hide appointment names in the live pill (tap it to see them)" onChange={(v) => setIsland({ privateNames: v })} />}
     </section>
   );
 }
