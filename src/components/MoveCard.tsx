@@ -1,19 +1,18 @@
-// Steps & water on Today: a row of tabs you can swipe sideways. Tap a tab to open it,
+// Steps on Routines: a row of tabs you can swipe sideways. Tap a tab to open it,
 // tap it again to close it. Swiping across the open panel moves to the next or previous tab.
 import { useEffect, useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
 import { useStore } from '../store';
 import { today, WEEKDAY_SHORT, weekday } from '../dates';
 import { stepGoal, stepSummary } from '../steps';
-import { GLASS_ML, GOAL_CHOICES, litres, setWaterGoal, waterGoal, waterOn, waterStreak } from '../water';
+import { addDays, shortDate } from '../dates';
 import StepsCard from './StepsCard';
 
-type TabKey = 'steps' | 'water' | 'week' | 'streaks' | 'goals';
+type TabKey = 'steps' | 'week' | 'earlier' | 'streaks';
 const TABS: { key: TabKey; emoji: string; label: string; img?: string }[] = [
   { key: 'steps', emoji: '👟', label: 'Steps', img: '/img/steps.png' },
-  { key: 'water', emoji: '💧', label: 'Water', img: '/img/water.png' },
   { key: 'week', emoji: '📅', label: 'This week' },
+  { key: 'earlier', emoji: '✏️', label: 'Earlier days' },
   { key: 'streaks', emoji: '🔥', label: 'Streaks' },
-  { key: 'goals', emoji: '🎯', label: 'Goals' },
 ];
 const TAB_KEY = 'ld:move-tab';
 const readTab = (): TabKey | null => {
@@ -29,13 +28,19 @@ export default function MoveCard() {
   const store = useStore();
   const now = today();
   const [tab, setTabState] = useState<TabKey | null>(readTab);
-  const [goal, setGoal] = useState(waterGoal);
+  const [editDay, setEditDay] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
   const stripRef = useRef<HTMLDivElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const stepsGoal = stepGoal(store.routines);
   const s = stepSummary(store.steps, stepsGoal, now);
-  const ml = waterOn(store.water, now);
-  const waterReady = store.waterReady !== false;
+  const stepsOn = (d: string) => store.steps.find((x) => x.day === d)?.count ?? null;
+  const startEdit = (d: string) => { setEditDay(d); setDraft(stepsOn(d)?.toString() ?? ''); };
+  const saveEdit = () => {
+    const v = Math.round(Number(draft.replace(/[,\s]/g, '')));
+    if (editDay && draft.trim() && Number.isFinite(v) && v >= 0 && v <= 200000) store.setSteps(editDay, v);
+    setEditDay(null);
+  };
 
   const setTab = (t: TabKey | null) => {
     setTabState(t);
@@ -67,15 +72,12 @@ export default function MoveCard() {
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
   };
 
-  const addWater = (delta: number) => store.setWater(now, Math.max(0, ml + delta));
-  const glasses = Math.ceil(goal / GLASS_ML);
-  const filled = Math.floor(ml / GLASS_ML);
-  const week = s.week.map((w) => ({ ...w, ml: waterOn(store.water, w.day) }));
-  const wStreak = waterStreak(store.water, goal, now);
+  const week = s.week;
+  const earlier = Array.from({ length: 14 }, (_, i) => addDays(now, -(i + 1)));
 
   return (
-    <section className="card move-card" aria-label="Steps and water">
-      <div className="move-tabs" role="tablist" aria-label="Steps and water" ref={stripRef} onKeyDown={onKey}>
+    <section className="card move-card" aria-label="Steps">
+      <div className="move-tabs" role="tablist" aria-label="Steps" ref={stripRef} onKeyDown={onKey}>
         {TABS.map((t) => {
           const on = tab === t.key;
           return (
@@ -94,7 +96,6 @@ export default function MoveCard() {
               <span className="move-tab-emoji" aria-hidden="true">{t.img ? <img src={t.img} alt="" /> : t.emoji}</span>
               {t.label}
               {t.key === 'steps' && s.today !== null && <span className="move-tab-count">{k(s.today)}</span>}
-              {t.key === 'water' && waterReady && <span className="move-tab-count">{litres(ml)}</span>}
             </button>
           );
         })}
@@ -102,7 +103,7 @@ export default function MoveCard() {
 
       {!tab && (
         <p className="note move-summary">
-          👟 {s.today === null ? 'No steps yet' : `${s.today.toLocaleString('en-GB')} steps`} · 💧 {waterReady ? `${litres(ml)} of ${litres(goal)}` : 'water not set up'}. Tap a tab to open it.
+          👟 {s.today === null ? 'No steps yet today' : `${s.today.toLocaleString('en-GB')} steps today`}. Tap a tab to open it.
         </p>
       )}
 
@@ -110,70 +111,54 @@ export default function MoveCard() {
         <div id="move-panel" role="tabpanel" aria-labelledby={`move-tab-${tab}`} className="move-panel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {tab === 'steps' && <StepsCard bare />}
 
-          {tab === 'water' && (!waterReady ? (
-            <p className="note">Water needs database update 16. Ask Claude for the link.</p>
-          ) : (
-            <div className="water-panel">
-              <div className="water-head">
-                <span className="water-big">{ml.toLocaleString('en-GB')}<small> ml</small></span>
-                <span className="note">{ml >= goal ? 'Goal done 🎉' : `${(goal - ml).toLocaleString('en-GB')} ml to go · goal ${litres(goal)}`}</span>
-              </div>
-              <div className="glasses" role="group" aria-label={`${filled} of ${glasses} glasses`}>
-                {Array.from({ length: glasses }, (_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className={i < filled ? 'glass on' : 'glass'}
-                    aria-pressed={i < filled}
-                    aria-label={`Glass ${i + 1}${i < filled ? ', drunk' : ''}`}
-                    onClick={() => store.setWater(now, i < filled && i === filled - 1 ? i * GLASS_ML : (i + 1) * GLASS_ML)}
-                  >
-                    <img src="/img/water.png" alt="" className="glass-pic" />
+          {tab === 'week' && (
+            <div className="stack">
+              <div className="move-week" aria-label={`This week: ${s.hitThisWeek} days at the steps goal`}>
+                {week.map((w) => (
+                  <button key={w.day} type="button" className={`mw-day${w.day === now ? ' now' : ''}${editDay === w.day ? ' editing' : ''}`} disabled={w.day > now} onClick={() => startEdit(w.day)} aria-label={`${shortDate(w.day)}: ${w.count === null ? 'no steps logged' : `${w.count.toLocaleString('en-GB')} steps`}. Tap to change`}>
+                    <span className="mw-bars"><i className="mw-steps" style={{ height: `${w.count ? Math.max(6, Math.min(100, (w.count / stepsGoal) * 100)) : 0}%` }} /></span>
+                    <b>{WEEKDAY_SHORT[weekday(w.day)][0]}</b>
                   </button>
                 ))}
               </div>
-              <div className="water-btns">
-                <button type="button" className="btn small" onClick={() => addWater(-GLASS_ML)} disabled={ml <= 0}>− 250 ml</button>
-                <button type="button" className="btn primary small" onClick={() => addWater(GLASS_ML)}>+ Glass</button>
-                <button type="button" className="btn small" onClick={() => addWater(500)}>+ Bottle 500</button>
-              </div>
+              <p className="note">Full bar = {k(stepsGoal)}. Tap a day to add or fix its steps.</p>
             </div>
-          ))}
+          )}
 
-          {tab === 'week' && (
-            <div className="move-week" role="img" aria-label={`This week: ${s.hitThisWeek} days at the steps goal, ${week.filter((w) => w.ml >= goal).length} days at the water goal`}>
-              {week.map((w) => (
-                <span key={w.day} className={`mw-day${w.day === now ? ' now' : ''}`}>
-                  <span className="mw-bars">
-                    <i className="mw-steps" style={{ height: `${w.count ? Math.max(6, Math.min(100, (w.count / stepsGoal) * 100)) : 0}%` }} />
-                    <i className="mw-water" style={{ height: `${w.ml ? Math.max(6, Math.min(100, (w.ml / goal) * 100)) : 0}%` }} />
-                  </span>
-                  <b>{WEEKDAY_SHORT[weekday(w.day)][0]}</b>
-                </span>
-              ))}
-              <span className="mw-key"><i className="mw-steps" /> Steps <i className="mw-water" /> Water · full bar = goal</span>
+          {tab === 'earlier' && (
+            <ul className="earlier-list">
+              {earlier.map((d) => {
+                const v = stepsOn(d);
+                return (
+                  <li key={d}>
+                    <button type="button" className={`earlier-row${editDay === d ? ' editing' : ''}`} onClick={() => startEdit(d)}>
+                      <span>{shortDate(d)}</span>
+                      <b className={v !== null && v >= stepsGoal ? 'hit' : ''}>{v === null ? 'Add steps' : `${v.toLocaleString('en-GB')}${v >= stepsGoal ? ' ✓' : ''}`}</b>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {editDay && (tab === 'week' || tab === 'earlier') && (
+            <div className="edit-steps">
+              <label className="money-row">
+                <span className="money-name">Steps on {shortDate(editDay)}</span>
+                <span className="money-input"><input inputMode="numeric" autoFocus aria-label={`Steps on ${shortDate(editDay)}`} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveEdit()} /></span>
+              </label>
+              <div className="row"><button type="button" className="btn primary small" onClick={saveEdit}>Save</button><button type="button" className="btn small" onClick={() => setEditDay(null)}>Cancel</button></div>
             </div>
           )}
 
           {tab === 'streaks' && (
             <div className="move-stats">
               <div><span className="eyebrow">👟 Steps</span><b>{s.streak} day{s.streak === 1 ? '' : 's'}</b><span className="note">in a row at {k(stepsGoal)}</span></div>
-              <div><span className="eyebrow">💧 Water</span><b>{waterReady ? `${wStreak} day${wStreak === 1 ? '' : 's'}` : '—'}</b><span className="note">in a row at {litres(goal)}</span></div>
+              <div><span className="eyebrow">📅 This week</span><b>{s.hitThisWeek} day{s.hitThisWeek === 1 ? '' : 's'}</b><span className="note">at {k(stepsGoal)} so far</span></div>
               <p className="note">A missed day just starts a new run. Nothing is lost.</p>
             </div>
           )}
 
-          {tab === 'goals' && (
-            <div className="stack">
-              <span className="eyebrow">Water goal a day</span>
-              <div className="chip-scroll" role="radiogroup" aria-label="Water goal">
-                {GOAL_CHOICES.map((g) => (
-                  <button key={g} type="button" role="radio" aria-checked={goal === g} className={goal === g ? 'chip on' : 'chip'} onClick={() => { setWaterGoal(g); setGoal(g); }}>{litres(g)}</button>
-                ))}
-              </div>
-              <p className="note">Steps goal: {k(stepsGoal)}, taken from your steps routine. Change it on the routine.</p>
-            </div>
-          )}
         </div>
       )}
     </section>

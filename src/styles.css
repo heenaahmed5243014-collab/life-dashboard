@@ -1660,3 +1660,100 @@ body {
 .move-tab-emoji img { width: 24px; height: 24px; object-fit: contain; display: block; }
 .glass-pic { height: 40px; width: auto; display: block; filter: grayscale(0.85) opacity(0.35); transition: filter 0.25s, transform 0.25s; }
 .glass.on .glass-pic { filter: drop-shadow(0 3px 4px rgba(34, 30, 58, 0.18)); transform: translateY(-1px); }
+
+/* Body progress */
+.body-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.body-stats > div { background: #F6F6FA; border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.body-stats b { font-size: 1.15rem; font-weight: 800; }
+.body-form { display: flex; flex-direction: column; gap: 6px; }
+.pp { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.pp-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.pp-strip::-webkit-scrollbar { display: none; }
+.pp-add { flex: none; width: 74px; height: 96px; border-radius: 16px; border: 1.5px dashed var(--accent-edge); background: var(--accent-soft); color: var(--accent); font: inherit; font-weight: 700; font-size: 0.85rem; }
+.pp-thumb { flex: none; position: relative; width: 74px; height: 96px; border-radius: 16px; overflow: hidden; border: none; padding: 0; background: #EEEDF4; }
+.pp-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-wait { display: block; width: 100%; height: 100%; background: linear-gradient(90deg, #EEEDF4, #F7F7FB, #EEEDF4); }
+.pp-date { position: absolute; left: 4px; right: 4px; bottom: 4px; font-size: 0.62rem; font-weight: 700; color: #fff; background: rgba(34, 30, 58, 0.55); border-radius: 99px; padding: 1px 4px; text-align: center; }
+.pp-sheet { gap: 12px; }
+.pp-single img, .pp-compare img { width: 100%; max-height: 62dvh; object-fit: contain; border-radius: 18px; background: #EEEDF4; display: block; }
+.pp-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pp-compare img { max-height: 50dvh; }
+.pp-compare figure, .pp-single figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.pp-compare figcaption { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-align: center; }
+
+/* Steps dial */
+.dial { position: relative; width: min(220px, 70vw); aspect-ratio: 1; margin: 4px auto 0; }
+.dial svg { width: 100%; height: 100%; display: block; }
+.dial-track { fill: none; stroke: #EEEDF4; stroke-width: 18; }
+.dial-seg { transition: stroke-dasharray 0.6s cubic-bezier(.2, .8, .2, 1), stroke-dashoffset 0.6s; }
+.dial-done { fill: rgba(47, 158, 107, 0.08); }
+.dial-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
+.dial-num { font-family: var(--display); font-weight: 800; font-size: 2.2rem; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.dial-sub { font-size: 0.8rem; color: var(--muted); }
+.dial-pct { margin-top: 4px; font-size: 0.78rem; font-weight: 800; color: var(--accent); background: var(--accent-soft); border-radius: 99px; padding: 3px 10px; }
+.dial-pct.done { color: var(--sage-text); background: var(--sage-soft); }
+.dial-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dial-part { background: #F6F6FA; border-radius: 16px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; position: relative; }
+.dial-part.now { background: var(--accent-soft); }
+.dial-key { position: absolute; top: 10px; right: 10px; width: 9px; height: 9px; border-radius: 50%; }
+.dial-part-name { font-size: 0.72rem; font-weight: 700; color: var(--muted); }
+.dial-part b { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .dial-seg { transition: none; } }
+
+/* Steps: this week (tappable) and earlier days */
+button.mw-day { border: none; background: none; padding: 0; font: inherit; border-radius: 10px; }
+button.mw-day:disabled { opacity: 0.35; }
+button.mw-day.editing { background: var(--accent-soft); }
+.earlier-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+.earlier-row { width: 100%; min-height: 44px; display: flex; justify-content: space-between; align-items: center; border: none; border-radius: 14px; background: #F6F6FA; padding: 0 14px; font: inherit; color: var(--ink); }
+.earlier-row.editing { background: var(--accent-soft); }
+.earlier-row b { font-variant-numeric: tabular-nums; color: var(--muted); }
+.earlier-row b.hit { color: var(--sage-text); }
+.edit-steps { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* Gym session length and past-day log */
+.dur-pick { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.dur-type input { width: 70px; min-height: 44px; border-radius: 99px; border: 1px solid var(--accent-edge); padding: 0 12px; font: inherit; background: #fff; }
+.day-log { gap: 12px; }
+.day-log .money-row { display: flex; align-items: center; gap: 8px; }
+.day-log-gym { border-top: 1px solid var(--line); padding-top: 8px; }
+.check-row.in-log { background: transparent; border: none; box-shadow: none; padding: 0; min-height: 44px; }
+
+/* Subscriptions to cancel */
+.bill-wrap { display: flex; flex-direction: column; }
+.bill-cancel { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 4px 14px 8px; }
+.bill-cancel .link-btn { font-size: 0.85rem; font-weight: 700; min-height: 36px; }
+.cancel-card { border: 1px solid #FFE0C2; }
+.cancel-row { gap: 6px; }
+.cancel-btns { gap: 8px; flex-wrap: wrap; }
+
+/* Month in review */
+.month-review { gap: 12px; }
+.mr-nav { display: flex; align-items: center; gap: 6px; }
+.mr-nav b { min-width: 86px; text-align: center; font-size: 0.9rem; }
+.mr-head { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mr-head > div { background: #F6F6FA; border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; }
+.mr-head b { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; }
+.mr-save { background: var(--sage-soft) !important; }
+.mr-save b { color: var(--sage-text); }
+.mr-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mr-cats li { display: grid; grid-template-columns: 9.5rem 1fr auto; align-items: center; gap: 10px; font-size: 0.88rem; }
+.mr-bar { height: 8px; border-radius: 99px; background: #EEEDF4; overflow: hidden; }
+.mr-bar i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.mr-bar i.over { background: var(--red); }
+.mr-cats b { font-variant-numeric: tabular-nums; }
+.mr-cats b.over { color: #C13B3B; }
+.mr-cats small { color: var(--muted); font-weight: 500; }
+.mr-tips { background: #FFF8EE; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.mr-tips ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+
+/* Colour-coded calendar */
+.day-dots { display: flex; gap: 3px; justify-content: center; height: 6px; }
+.day-dots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.day-pill.on .day-dots i, .month-day.on .day-dots i { box-shadow: 0 0 0 1.5px #fff; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 8px 4px 0; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cal-legend i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.slot-item { border-left: 4px solid transparent; }
+.dial-part-name { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.dial-key { position: static; flex: none; width: 8px; height: 8px; }

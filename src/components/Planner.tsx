@@ -287,7 +287,7 @@ export default function Planner({ day, isToday, items, tray = [] }: { day: Day; 
                   const d = store.domain(t.domain_id);
                   const moving = selected === t.id;
                   return (
-                    <div key={t.id} className={`slot-item${moving ? ' moving' : ''}`} style={{ borderLeftColor: d.color }}>
+                    <div key={t.id} className={`slot-item${moving ? ' moving' : ''}`} style={{ borderLeftColor: d.color, background: `color-mix(in srgb, ${d.color} 12%, white)` }}>
                       <button type="button" className="tick" onClick={() => done(t)} aria-label={`Mark ${t.title} done`}>
                         <span className="box"><Check size={16} /></span>
                       </button>

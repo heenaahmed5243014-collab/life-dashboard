@@ -1,10 +1,13 @@
-// Weight: a small card on Today, in pounds. The goal comes from a Life goal like "120lb".
+// Body progress: weight (lb), body fat %, muscle mass (lb) and private progress photos.
+// The goal comes from a Life goal like "120lb". Starts hidden each time the app opens.
 import { useState } from 'react';
 import { useStore } from '../store';
 import { daysBetween, shortDate, today } from '../dates';
 import { milestones } from '../weightRewards';
 import { setShowWeight } from '../weightPref';
 import { go } from '../router';
+import ProgressPhotos from './ProgressPhotos';
+import type { Weight } from '../types';
 
 const fix = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
 
@@ -12,6 +15,8 @@ export default function WeightCard() {
   const store = useStore();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
+  const [fat, setFat] = useState('');
+  const [muscle, setMuscle] = useState('');
   const now = today();
   const log = store.weights;
   const latest = log[log.length - 1];
@@ -23,11 +28,27 @@ export default function WeightCard() {
   const lo = Math.min(...series.map((w) => w.lb), goal ?? Infinity) - 2;
   const hi = Math.max(...series.map((w) => w.lb), lo + 1);
 
+  const num = (s: string, lo: number, hi: number) => {
+    const v = Number(s.replace(',', '.').replace('%', '').trim());
+    return s.trim() && Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v * 10) / 10 : null;
+  };
   const save = () => {
-    const v = Number(draft.replace(',', '.'));
-    if (Number.isFinite(v) && v >= 50 && v <= 600) store.setWeight({ day: now, lb: Math.round(v * 10) / 10 });
+    const lb = num(draft, 50, 600);
+    if (lb !== null) {
+      const w: Weight = { day: now, lb };
+      if (store.db17) { w.body_fat = num(fat, 2, 70); w.muscle = num(muscle, 20, 400); }
+      store.setWeight(w);
+    }
     setOpen(false);
   };
+  // Latest body fat / muscle readings and the change since the reading before
+  const reading = (k: 'body_fat' | 'muscle') => {
+    const xs = log.filter((w) => w[k] !== null && w[k] !== undefined);
+    const a = xs[xs.length - 1], b = xs[xs.length - 2];
+    return a ? { v: a[k] as number, d: b ? (a[k] as number) - (b[k] as number) : null } : null;
+  };
+  const bf = reading('body_fat');
+  const mm = reading('muscle');
 
   const avgOf = (from: number, to: number) => {
     const xs = log.filter((w) => { const n = daysBetween(w.day, now); return n >= from && n <= to; }).map((w) => w.lb);
@@ -40,9 +61,9 @@ export default function WeightCard() {
   const lastLabel = latest ? (latest.day === now ? 'Logged today' : `Last logged ${daysBetween(latest.day, now) === 1 ? 'yesterday' : shortDate(latest.day)}`) : 'Not logged yet';
 
   return (
-    <section className="card mini-card" aria-label="Weight">
+    <section className="card mini-card body-card" aria-label="Body progress">
       <div className="between">
-        <span className="eyebrow">Weight</span>
+        <span className="eyebrow">Body progress</span>
         <span className="weight-head-right">
           <span className="note">{lastLabel}</span>
           <button type="button" className="link-btn weight-hide" onClick={() => setShowWeight(false)}>Hide</button>
@@ -64,6 +85,12 @@ export default function WeightCard() {
         </div>
       ) : (
         <p className="note">Log a weigh-in to start your trend.</p>
+      )}
+      {(bf || mm) && (
+        <div className="body-stats">
+          {bf && <div><span className="eyebrow">Body fat</span><b>{fix(bf.v)}%</b>{bf.d !== null && Math.abs(bf.d) >= 0.05 && <span className={`tag ${bf.d < 0 ? 't-sage' : ''}`}>{bf.d < 0 ? '▼' : '▲'} {fix(Math.abs(bf.d))}%</span>}</div>}
+          {mm && <div><span className="eyebrow">Muscle mass</span><b>{fix(mm.v)} lb</b>{mm.d !== null && Math.abs(mm.d) >= 0.05 && <span className={`tag ${mm.d > 0 ? 't-sage' : ''}`}>{mm.d > 0 ? '▲' : '▼'} {fix(Math.abs(mm.d))} lb</span>}</div>}
+        </div>
       )}
       {thisWeek !== null && (
         <p className="note">
@@ -95,24 +122,39 @@ export default function WeightCard() {
         );
       })()}
       {open && (
-        <label className="money-row">
-          <span className="money-name">Today’s weight</span>
-          <span className="money-input">
-            <input inputMode="decimal" autoFocus aria-label="Today’s weight in pounds" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
-            <span aria-hidden="true">lb</span>
-          </span>
-        </label>
+        <div className="body-form">
+          <label className="money-row">
+            <span className="money-name">Weight</span>
+            <span className="money-input">
+              <input inputMode="decimal" autoFocus aria-label="Today’s weight in pounds" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} />
+              <span aria-hidden="true">lb</span>
+            </span>
+          </label>
+          {store.db17 && (
+            <>
+              <label className="money-row">
+                <span className="money-name">Body fat <span className="note">optional</span></span>
+                <span className="money-input"><input inputMode="decimal" aria-label="Body fat percentage" value={fat} onChange={(e) => setFat(e.target.value)} /><span aria-hidden="true">%</span></span>
+              </label>
+              <label className="money-row">
+                <span className="money-name">Muscle mass <span className="note">optional</span></span>
+                <span className="money-input"><input inputMode="decimal" aria-label="Muscle mass in pounds" value={muscle} onChange={(e) => setMuscle(e.target.value)} /><span aria-hidden="true">lb</span></span>
+              </label>
+            </>
+          )}
+        </div>
       )}
       <div className="row">
         {open ? (
           <>
-            <button type="button" className="btn primary small" onClick={save}>Save weight</button>
+            <button type="button" className="btn primary small" onClick={save}>Save</button>
             <button type="button" className="btn small" onClick={() => setOpen(false)}>Cancel</button>
           </>
         ) : (
-          <button type="button" className="btn small" onClick={() => { setDraft(latest ? fix(latest.lb) : ''); setOpen(true); }}>Log weight</button>
+          <button type="button" className="btn small" onClick={() => { setDraft(latest ? fix(latest.lb) : ''); setFat(bf ? fix(bf.v) : ''); setMuscle(mm ? fix(mm.v) : ''); setOpen(true); }}>Log a weigh-in</button>
         )}
       </div>
+      <ProgressPhotos />
     </section>
   );
 }
@@ -120,8 +162,8 @@ export default function WeightCard() {
 /** What Today shows while weight is switched off: one slim line to bring it back. */
 export function WeightHidden() {
   return (
-    <section className="card weight-hidden" aria-label="Weight (hidden)">
-      <span className="weight-hidden-text"><span aria-hidden="true">⚖️</span> Weight hidden</span>
+    <section className="card weight-hidden" aria-label="Body progress (hidden)">
+      <span className="weight-hidden-text"><span aria-hidden="true">🌸</span> Body progress · hidden</span>
       <button type="button" className="link-btn" onClick={() => setShowWeight(true)}>Show</button>
     </section>
   );

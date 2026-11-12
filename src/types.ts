@@ -67,6 +67,7 @@ export interface Tick {
   day: Day;
   count: number; // how many chunks are done that day
   session?: string | null; // gym: what was trained, e.g. "Legs"
+  minutes?: number | null; // gym: how long it lasted
 }
 
 export interface Subcategory {
@@ -112,6 +113,7 @@ export interface Bill {
   due_month: number | null; // yearly only, 1-12
   kind: BillKind;
   active: boolean;
+  cancel_by?: Day | null; // subscriptions you want to cancel: cancel before this renewal
 }
 
 export interface Payslip {
@@ -124,7 +126,13 @@ export interface Payslip {
 export interface Weight {
   day: Day;
   lb: number;
+  body_fat?: number | null; // %
+  muscle?: number | null; // lb
 }
+
+export type DayPart = 'morning' | 'afternoon' | 'night';
+export interface StepCheckin { day: Day; part: DayPart; count: number }
+export interface ProgressPhoto { id: string; day: Day; path: string }
 
 /** The fixed domains, plus Inbox. Created on first sign-in. */
 /** Domains that have been retired. Their items move to Inbox (routines to Home) on next load. */

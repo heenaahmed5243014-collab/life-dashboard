@@ -20,12 +20,13 @@ import { Check, Person, Plus } from '../icons';
 import { routineStats } from '../routines';
 import ChunkTicks from '../components/ChunkTicks';
 import MoneyCard from '../components/MoneyCard';
+import CancelReminders from '../components/CancelReminders';
 import { PinGate, useMoneyMask } from '../pin';
 import WeightCard, { WeightHidden } from '../components/WeightCard';
 import QuickWin from '../components/QuickWin';
 import WeekProgress from '../components/WeekProgress';
 import MirrorCard from '../components/MirrorCard';
-import { hasSessions, plannedSession, SessionPicker } from '../components/GymSessions';
+import { DurationPicker, hasSessions, isGym, plannedSession, SessionPicker } from '../components/GymSessions';
 import { useBalanceCheckDue } from '../components/BalancePrompt';
 import { dueFollowUps } from '../components/OutreachTab';
 import { useWorkMode } from '../workmode';
@@ -51,6 +52,8 @@ const CAP = 7; // lines shown in the lists before "Show more"
 const DAY_KEY = 'ld:todayDay';
 /** How far ahead the date strip and month view go. */
 const RANGE = 31;
+/** How many past days the strip shows, so you can go back and log things. */
+const BACK = 14;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const TIME_LABEL = { commute: 'Commute', day: 'Daytime', evening: 'Evening' } as const;
 
@@ -96,8 +99,8 @@ export default function TodayScreen() {
   const isToday = day === now;
   const sleeping = useSleep();
   // The strip shows the next month; a day picked further away gets its own month-long strip.
-  const stripStart = day >= now && day <= addDays(now, RANGE - 1) ? now : addDays(day, -weekday(day));
-  const week = Array.from({ length: RANGE }, (_, i) => addDays(stripStart, i));
+  const stripStart = day >= addDays(now, -BACK) && day <= addDays(now, RANGE - 1) ? addDays(now, -BACK) : addDays(day, -weekday(day));
+  const week = Array.from({ length: RANGE + BACK }, (_, i) => addDays(stripStart, i));
   const plan = buildDay(store.tasks, store.routines, store.ticks, day);
   const hour = new Date().getHours();
 
@@ -147,6 +150,7 @@ export default function TodayScreen() {
                 <div className="list">{plan.anytime.map((t) => <ItemRow key={t.id} task={t} />)}</div>
               </section>
             )}
+            {day < now && <DayLog day={day} />}
             <PlanSection day={day} isToday={false} items={plan.timed} tray={plan.anytime} />
             {plan.routines.length > 0 && (
               <section className="section">
@@ -190,13 +194,29 @@ function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day;
   const [view, setView] = useState(() => ({ y: sel.getFullYear(), m: sel.getMonth() }));
   const strip = useRef<HTMLDivElement>(null);
   const counts = new Map<Day, number>();
-  for (const t of store.tasks) {
-    if (t.status !== 'open' || !t.due || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
-    const d = t.due < now ? now : t.due;
+  // Each day's events, colour-coded by area (one dot per area, up to three)
+  const colours = new Map<Day, string[]>();
+  const mark = (d: Day, colour: string) => {
     counts.set(d, (counts.get(d) ?? 0) + 1);
+    const c = colours.get(d) ?? [];
+    if (!c.includes(colour)) colours.set(d, [...c, colour]);
+  };
+  for (const t of store.tasks) {
+    if (!t.due || t.kind === 'idea' || t.kind === 'note' || t.kind === 'goal') continue;
+    if (t.status !== 'open' && !(t.status === 'done' && t.due < now)) continue; // past days keep what was done
+    const colour = store.domain(t.domain_id).color;
+    const d = t.status === 'open' && t.due < now ? now : t.due;
+    mark(d, colour);
     // Repeating events: count their next few dates too
-    if (t.repeat) for (let x = stepOnce(t.due, t.repeat), i = 0; i < 20 && x <= addDays(now, 400); x = stepOnce(x, t.repeat), i++) counts.set(x, (counts.get(x) ?? 0) + 1);
+    if (t.repeat && t.status === 'open') for (let x = stepOnce(t.due, t.repeat), i = 0; i < 20 && x <= addDays(now, 400); x = stepOnce(x, t.repeat), i++) mark(x, colour);
   }
+  const dots = (d: Day) => {
+    const c = colours.get(d) ?? [];
+    return c.length
+      ? <span className="day-dots" aria-hidden="true">{c.slice(0, 3).map((x) => <i key={x} style={{ background: x }} />)}</span>
+      : <span className="day-pill-dot is-none" aria-hidden="true" />;
+  };
+  const legend = store.domains.filter((d) => !d.is_inbox && [...colours.values()].some((c) => c.includes(d.color)));
 
   // Keep the chosen day in view when it changes (e.g. picked from the month view).
   useEffect(() => {
@@ -235,7 +255,7 @@ function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day;
         onClick={() => { onPick(d); setMonth(false); }}
       >
         <span className="month-num">{parseDay(d).getDate()}</span>
-        <span className={n ? 'day-pill-dot' : 'day-pill-dot is-none'} aria-hidden="true" />
+        {dots(d)}
       </button>
     );
   };
@@ -257,6 +277,11 @@ function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day;
             {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((w, i) => <span key={i} className="month-wd" aria-hidden="true">{w}</span>)}
             {grid.map(dayCell)}
           </div>
+          {legend.length > 0 && (
+            <div className="cal-legend">
+              {legend.map((d) => <span key={d.id}><i style={{ background: d.color }} />{d.short_name}</span>)}
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -284,7 +309,7 @@ function DayStrip({ days, selected, now, onPick }: { days: Day[]; selected: Day;
                 >
                   <span className="day-pill-name">{d === now ? 'Today' : date === 1 ? MONTHS[parseDay(d).getMonth()].slice(0, 3) : WEEKDAY_SHORT[weekday(d)]}</span>
                   <span className="day-pill-num">{date}</span>
-                  <span className={n ? 'day-pill-dot' : 'day-pill-dot is-none'} aria-hidden="true" />
+                  {dots(d)}
                 </button>
               );
             })}
@@ -519,6 +544,7 @@ function TodayBody() {
                   </button>
                   {chunked && <ChunkTicks routine={routine} day={now} />}
                   {hasSessions(routine) && <SessionPicker routine={routine} day={now} />}
+                  {!hasSessions(routine) && isGym(routine) && done && <DurationPicker routine={routine} day={now} />}
                 </li>
               );
             })}
@@ -527,6 +553,7 @@ function TodayBody() {
       )}
       </>
     ),
+    subs: !work.active && (store.bills ?? []).some((b) => b.active && b.cancel_by && daysBetween(now, b.cancel_by) <= 7) ? <CancelReminders /> : null,
     mirror: mirror && !work.active ? <MirrorCard day={now} /> : null,
     todos: (
       <section className="section">
@@ -634,6 +661,47 @@ function SleepScreen() {
         {!resetDoneToday() && <button type="button" className="btn small" onClick={() => go('/reset')}>Do the evening reset first</button>}
         <button type="button" className="btn primary small" onClick={() => setSleep(false)}>Wake up</button>
       </div>
+    </section>
+  );
+}
+
+/** On a past day: fill in what you didn't log at the time (steps, gym session and how long). */
+function DayLog({ day }: { day: Day }) {
+  const store = useStore();
+  const toast = useToast();
+  const saved = store.steps.find((x) => x.day === day)?.count ?? null;
+  const [steps, setSteps] = useState(saved === null ? '' : String(saved));
+  useEffect(() => { setSteps(saved === null ? '' : String(saved)); }, [day, saved]);
+  const gym = store.routines.filter((r) => r.active && isGym(r));
+  const saveSteps = () => {
+    const v = Math.round(Number(steps.replace(/[,\s]/g, '')));
+    if (!steps.trim() || !Number.isFinite(v) || v < 0 || v > 200000) return;
+    store.setSteps(day, v);
+    toast({ message: `Steps saved for ${shortDate(day)}` });
+  };
+  return (
+    <section className="card day-log" aria-label={`Log for ${longDate(day)}`}>
+      <div className="between"><span className="eyebrow">✏️ Log for this day</span><span className="note">{shortDate(day)}</span></div>
+      <form className="money-row" onSubmit={(e) => { e.preventDefault(); saveSteps(); }}>
+        <span className="money-name">👟 Steps</span>
+        <span className="money-input"><input inputMode="numeric" aria-label={`Steps on ${shortDate(day)}`} value={steps} placeholder="0" onChange={(e) => setSteps(e.target.value)} /></span>
+        <button type="submit" className="btn small">Save</button>
+      </form>
+      {gym.map((r) => {
+        const done = store.tickCount(r.id, day) >= (r.chunks ?? 1);
+        return (
+          <div key={r.id} className="day-log-gym">
+            <div className="check-row in-log">
+              <button type="button" className="tick" aria-pressed={done} aria-label={`${done ? 'Untick' : 'Tick'} ${r.title} on ${shortDate(day)}`} onClick={() => store.toggleTick(r.id, day)}>
+                <span className="box"><Check size={16} /></span>
+              </button>
+              <span className="row-title">{r.title}</span>
+            </div>
+            {hasSessions(r) ? <SessionPicker routine={r} day={day} /> : done && <DurationPicker routine={r} day={day} />}
+          </div>
+        );
+      })}
+      {gym.length === 0 && <p className="note">Add a gym routine on the Routines tab to log sessions here.</p>}
     </section>
   );
 }

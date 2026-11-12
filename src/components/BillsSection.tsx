@@ -119,7 +119,8 @@ export default function BillsSection() {
             onSave={(d) => { const x = toBill(d); if (x) { store.updateBill(b.id, x); setEditing(null); } }}
           />
         ) : (
-          <button key={b.id} type="button" className={`bill-row${b.active ? '' : ' paused'}`} onClick={() => setEditing(b.id)}>
+          <div key={b.id} className="bill-wrap">
+          <button type="button" className={`bill-row${b.active ? '' : ' paused'}`} onClick={() => setEditing(b.id)}>
             <span className="bill-main">
               <span className="row-title">{b.name}</span>
               <span className="row-meta">{scheduleText(b)}{b.active && due ? ` · next ${shortDate(due)}` : ''}{!b.active ? ' · paused' : ''}</span>
@@ -129,6 +130,20 @@ export default function BillsSection() {
               <span className={`tag ${b.kind === 'subscription' ? 't-violet' : b.kind === 'debt' ? 't-amber' : b.kind === 'saving' ? 't-sage' : ''}`}>{KINDS.find((k) => k.value === b.kind)!.label}</span>
             </span>
           </button>
+          {b.kind === 'subscription' && b.active && store.db17 && (
+            <div className="bill-cancel">
+              {b.cancel_by ? (
+                <>
+                  <span className="tag tag-today">Cancel before {shortDate(b.cancel_by)}</span>
+                  <button type="button" className="link-btn" onClick={() => { store.updateBill(b.id, { active: false, cancel_by: null }); toast({ message: `${b.name} cancelled. That’s ${money(monthlyCost(b))} a month back 🎉` }); }}>Cancelled ✓</button>
+                  <button type="button" className="link-btn quiet" onClick={() => store.updateBill(b.id, { cancel_by: null })}>Keep it</button>
+                </>
+              ) : (
+                <button type="button" className="link-btn" onClick={() => { if (due) { store.updateBill(b.id, { cancel_by: due }); toast({ message: `I’ll remind you to cancel ${b.name} before ${shortDate(due)}` }); } }}>Want to cancel? Remind me</button>
+              )}
+            </div>
+          )}
+          </div>
         );
       })}
       {adding ? (

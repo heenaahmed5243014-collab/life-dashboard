@@ -2,12 +2,13 @@
 // Remembered on this phone. The debrief and evening reset stay at the top when they're due.
 import { useEffect, useState, type ReactNode } from 'react';
 
-export type CardId = 'quick' | 'top' | 'slip' | 'routines' | 'mirror' | 'todos' | 'plan' | 'next' | 'soon' | 'week' | 'money' | 'weight';
+export type CardId = 'quick' | 'top' | 'slip' | 'subs' | 'routines' | 'mirror' | 'todos' | 'plan' | 'next' | 'soon' | 'week' | 'money' | 'weight';
 
 export const CARDS: { id: CardId; emoji: string; label: string }[] = [
   { id: 'quick', emoji: '⚡', label: 'Quick buttons' },
   { id: 'top', emoji: '⭐', label: 'Top 3' },
   { id: 'slip', emoji: '🐢', label: 'Slipping' },
+  { id: 'subs', emoji: '✂️', label: 'Subscriptions to cancel' },
   { id: 'routines', emoji: '🔁', label: 'Routine' },
   { id: 'mirror', emoji: '🪞', label: 'Mirror work' },
   { id: 'todos', emoji: '✅', label: 'Today’s to-dos' },
@@ -16,7 +17,7 @@ export const CARDS: { id: CardId; emoji: string; label: string }[] = [
   { id: 'soon', emoji: '📬', label: 'Next 3 days & Inbox' },
   { id: 'week', emoji: '📈', label: 'Weekly progress' },
   { id: 'money', emoji: '💷', label: 'Net worth' },
-  { id: 'weight', emoji: '⚖️', label: 'Weight' },
+  { id: 'weight', emoji: '🌸', label: 'Body progress' },
 ];
 
 export interface CardPref { id: CardId; show: boolean; fold: boolean }

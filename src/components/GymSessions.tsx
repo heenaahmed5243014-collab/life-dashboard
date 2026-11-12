@@ -41,6 +41,41 @@ export function SessionPicker({ routine, day }: { routine: Routine; day: Day }) 
           );
         })}
       </div>
+      {ticked && <DurationPicker routine={routine} day={day} />}
+    </div>
+  );
+}
+
+export const isGym = (r: Routine) => hasSessions(r) || /gym|workout|training|pilates|swim|run\b|yoga/i.test(r.title);
+
+/** How long the session lasted. Quick chips, or type your own. */
+export function DurationPicker({ routine, day }: { routine: Routine; day: Day }) {
+  const store = useStore();
+  const [typing, setTyping] = useState(false);
+  const [draft, setDraft] = useState('');
+  if (store.db17 === false) return null;
+  const mins = store.minutesOf(routine.id, day);
+  const set = (m: number | null) => store.setTickMinutes(routine.id, day, m);
+  const saveTyped = () => {
+    const v = Math.round(Number(draft));
+    if (Number.isFinite(v) && v >= 1 && v <= 600) set(v);
+    setTyping(false);
+  };
+  return (
+    <div className="dur-pick">
+      <span className="note">{mins ? `Lasted ${mins >= 60 ? `${Math.floor(mins / 60)} hr${mins % 60 ? ` ${mins % 60} min` : ''}` : `${mins} min`}` : 'How long?'}</span>
+      <div className="chips">
+        {[30, 45, 60, 75, 90].map((m) => (
+          <button key={m} type="button" aria-pressed={mins === m} className={mins === m ? 'chip on' : 'chip'} onClick={() => set(mins === m ? null : m)}>{m} min</button>
+        ))}
+        {typing ? (
+          <form className="dur-type" onSubmit={(e) => { e.preventDefault(); saveTyped(); }}>
+            <input inputMode="numeric" autoFocus aria-label="Minutes" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={saveTyped} placeholder="min" />
+          </form>
+        ) : (
+          <button type="button" className={mins && ![30, 45, 60, 75, 90].includes(mins) ? 'chip on' : 'chip'} onClick={() => { setDraft(mins ? String(mins) : ''); setTyping(true); }}>Other</button>
+        )}
+      </div>
     </div>
   );
 }

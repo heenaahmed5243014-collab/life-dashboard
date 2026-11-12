@@ -7,7 +7,7 @@ import { setWorkMode, toggleWorkMode, useWorkMode, readWorkMode } from '../workm
 import { setDebrief, useDebrief } from '../debrief';
 import { useIsland, setIsland } from '../island';
 import { checkPin, clearPin, PinPad, setPin, usePin } from '../pin';
-import { setShowWeight, useShowWeight } from '../weightPref';
+import { setStartHidden, useStartHidden } from '../weightPref';
 import { disablePush, enablePush, pushSupport, readPushState, sendTestPush, setPushTime } from '../push';
 
 export default function AccountScreen() {
@@ -107,7 +107,7 @@ function DebriefSettings() {
       </label>
       <DebriefNotification />
       <Toggle on={d.headsUp} label="Heads-up: follow-ups, returns and anything carried over" onChange={(v) => setDebrief({ headsUp: v })} />
-      <Toggle on={d.health} label="Health: steps and your next weight reward" onChange={(v) => setDebrief({ health: v })} />
+      <Toggle on={d.health} label="Health: steps and your next progress reward" onChange={(v) => setDebrief({ health: v })} />
       <span className="eyebrow">Live pill</span>
       <Toggle on={island.on} label="Show the live pill at the top (what’s now and next, with a countdown)" onChange={(v) => setIsland({ on: v })} />
     </section>
@@ -185,16 +185,16 @@ function PinSettings() {
 }
 
 function WeightSettings() {
-  const on = useShowWeight();
+  const on = useStartHidden();
   return (
-    <section className="card stack" aria-label="Weight">
+    <section className="card stack" aria-label="Body progress">
       <div className="between">
-        <span className="eyebrow">Weight</span>
-        <button type="button" role="switch" aria-checked={on} className={`switch${on ? ' on' : ''}`} onClick={() => setShowWeight(!on)}>
-          <span className="visually-hidden">Show weight</span><i />
+        <span className="eyebrow">Body progress</span>
+        <button type="button" role="switch" aria-checked={on} className={`switch${on ? ' on' : ''}`} onClick={() => setStartHidden(!on)}>
+          <span className="visually-hidden">Keep body progress hidden when the app opens</span><i />
         </button>
       </div>
-      <p className="note">Turn off to hide your weight card on Today and your next weight reward in the morning debrief. Nothing is deleted: your log and rewards are kept, and you can turn it back on any time. Set on this phone only.</p>
+      <p className="note">On: your weight, body fat, muscle and progress photos start hidden every time you open the app. Tap Show on Today to see them until you close it. Your next progress reward stays out of the morning debrief while hidden. Set on this phone only.</p>
     </section>
   );
 }

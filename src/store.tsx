@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, WaterDay, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, WaterDay, StepCheckin, ProgressPhoto, DayPart, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { nextDue, REPEAT_LABEL } from './repeat';
 import { milestones } from './weightRewards';
@@ -61,6 +61,14 @@ interface Store extends Snapshot {
   noSpend: Day[];
   /** Saves the day's steps and ticks the steps routine's chunks to match. */
   setSteps(day: Day, count: number): void;
+  stepCheckins: StepCheckin[];
+  photos: ProgressPhoto[];
+  /** Gym: minutes for a ticked session (update 17). */
+  setTickMinutes(routineId: string, day: Day, minutes: number | null): void;
+  minutesOf(routineId: string, day: Day): number | null;
+  addPhoto(file: Blob, day: Day): Promise<void>;
+  removePhoto(p: ProgressPhoto): void;
+  photoUrl(path: string): Promise<string>;
   water: WaterDay[];
   /** Sets the day's water total (ml). */
   setWater(day: Day, ml: number): void;
@@ -193,6 +201,8 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
     const api: Store = {
       ...view,
       steps: data.steps ?? [],
+      stepCheckins: data.stepCheckins ?? [],
+      photos: data.photos ?? [],
       water: data.water ?? [],
       goals: data.goals ?? [],
       noSpend: data.noSpend ?? [],
@@ -274,6 +284,26 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         const r = data.routines.find((x) => x.id === routineId);
         api.setTickCount(routineId, day, r?.chunks ?? 1, session);
       },
+      setTickMinutes(routineId, day, minutes) {
+        setData((d) => d && { ...d, ticks: d.ticks.map((t) => (t.routine_id === routineId && t.day === day ? { ...t, minutes } : t)) });
+        if (data.db17) save(backend.setTickMinutes(routineId, day, minutes));
+      },
+      minutesOf(routineId, day) {
+        return data.ticks.find((t) => t.routine_id === routineId && t.day === day)?.minutes ?? null;
+      },
+      async addPhoto(file, day) {
+        const path = await backend.uploadProgress(file);
+        const p: ProgressPhoto = { id: crypto.randomUUID(), day, path };
+        await backend.insertPhoto(p);
+        setData((d) => d && { ...d, photos: [...(d.photos ?? []), p].sort((a, b) => a.day.localeCompare(b.day)) });
+      },
+      removePhoto(p) {
+        setData((d) => d && { ...d, photos: (d.photos ?? []).filter((x) => x.id !== p.id) });
+        save(backend.deletePhoto(p));
+      },
+      photoUrl(path) {
+        return backend.photoUrl(path);
+      },
       sessionOf(routineId, day) {
         return data.ticks.find((t) => t.routine_id === routineId && t.day === day)?.session ?? null;
       },
@@ -336,7 +366,7 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       setWeight(w) {
         const weights = [...data.weights.filter((x) => x.day !== w.day), w].sort((a, b) => a.day.localeCompare(b.day));
         setData((d) => d && { ...d, weights });
-        save(backend.setWeight(w));
+        save(backend.setWeight(strip(w, data.db17, ['body_fat', 'muscle'])));
         // Did this weigh-in unlock a reward?
         const won = milestones(weights, data.rewards ?? [], data.tasks, today()).filter((m) => m.reached && m.reward && !m.reward.unlocked_on);
         for (const m of won) api.updateReward(m.reward!.id, { unlocked_on: today() });
@@ -363,7 +393,8 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       },
       updateBill(id, changes) {
         setData((d) => d && { ...d, bills: (d.bills ?? []).map((b) => (b.id === id ? { ...b, ...changes } : b)) });
-        save(backend.updateBill(id, changes));
+        const c = strip(changes, data.db17, ['cancel_by']);
+        if (Object.keys(c).length) save(backend.updateBill(id, c));
       },
       deleteBill(id) {
         setData((d) => d && { ...d, bills: (d.bills ?? []).filter((b) => b.id !== id) });
@@ -378,6 +409,12 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
         const s: StepDay = { day, count, source: 'manual' };
         setData((d) => d && { ...d, steps: [...(d.steps ?? []).filter((x) => x.day !== day), s].sort((a, b) => a.day.localeCompare(b.day)) });
         save(backend.setSteps(s));
+        // Mirror the database's morning / afternoon / night check-in straight away
+        if (day === today() && data.db17) {
+          const h = new Date().getHours();
+          const part: DayPart = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'night';
+          setData((d) => d && { ...d, stepCheckins: [...(d.stepCheckins ?? []).filter((c) => !(c.day === day && c.part === part)), { day, part, count }] });
+        }
         for (const r of data.routines.filter((x) => /steps/i.test(x.title))) {
           const done = Math.min(r.chunks, Math.floor(count / stepSize(r)));
           if (done > api.tickCount(r.id, day)) api.setTickCount(r.id, day, done);

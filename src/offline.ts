@@ -11,7 +11,7 @@ const QUEUEABLE = [
   'insertDomain', 'insertSubcategory', 'updateSubcategory', 'deleteSubcategory',
   'insertAccount', 'updateAccount', 'setBalance', 'setWeight', 'removeQr',
   'setIncome', 'addPayslip', 'deletePayslip', 'insertBill', 'updateBill', 'deleteBill',
-  'setSteps', 'setWater', 'insertGoal', 'updateGoal', 'deleteGoal', 'setNoSpend',
+  'setSteps', 'setWater', 'setTickMinutes', 'insertGoal', 'updateGoal', 'deleteGoal', 'setNoSpend',
   'insertAffirmation', 'deleteAffirmation', 'insertLead', 'updateLead', 'deleteLead', 'insertReward', 'updateReward', 'deleteReward', 'insertSpends', 'updateSpend', 'deleteSpend', 'upsertBudget', 'deleteBudget',
 ] as const;
 type QueueableName = (typeof QUEUEABLE)[number];

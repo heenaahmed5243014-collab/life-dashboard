@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type WaterDay, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type WaterDay, type StepCheckin, type ProgressPhoto, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -39,6 +39,10 @@ export interface Snapshot {
   /** False until database update 10 has been run. */
   affirmReady?: boolean;
   leads?: Lead[];
+  stepCheckins?: StepCheckin[];
+  photos?: ProgressPhoto[];
+  /** True once database update 17 (body progress, gym minutes, step check-ins, cancel dates) has been run. */
+  db17?: boolean;
 }
 
 export interface Backend {
@@ -90,6 +94,13 @@ export interface Backend {
   /** A short-lived link to show a stored QR screenshot. */
   qrUrl(path: string): Promise<string>;
   removeQr(path: string): Promise<void>;
+  /** Gym: how long the session lasted (update 17). */
+  setTickMinutes(routineId: string, day: Day, minutes: number | null): Promise<void>;
+  /** Progress photos (update 17): stored privately. */
+  uploadProgress(file: Blob): Promise<string>;
+  insertPhoto(p: ProgressPhoto): Promise<void>;
+  deletePhoto(p: ProgressPhoto): Promise<void>;
+  photoUrl(path: string): Promise<string>;
   /** Offline support: keep a copy of the list on the phone. */
   saveSnapshot?(s: Snapshot): void;
 }
@@ -186,6 +197,28 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     }
     return { water: (res.data as WaterDay[]).map((w) => ({ ...w, ml: Number(w.ml) })), waterReady: true };
   };
+  // Update 17: extra columns and tables. Missing ones just mean "not set up yet".
+  const loadDb17 = async (now: Day) => {
+    const [ck, ph, wx, tx, bx] = await Promise.all([
+      sb.from('step_checkins').select('day, part, count').gte('day', addDays(now, -60)),
+      sb.from('progress_photos').select('id, day, path').order('day'),
+      sb.from('weights').select('day, body_fat, muscle').gte('day', addDays(now, -180)),
+      sb.from('routine_ticks').select('routine_id, day, minutes').not('minutes', 'is', null),
+      sb.from('bills').select('id, cancel_by').not('cancel_by', 'is', null),
+    ]);
+    const err = ck.error ?? ph.error ?? wx.error ?? tx.error ?? bx.error;
+    if (err) {
+      if (/fetch|network|load failed/i.test(err.message)) throw new Error(err.message);
+      return null;
+    }
+    return {
+      stepCheckins: (ck.data as StepCheckin[]).map((c) => ({ ...c, count: Number(c.count) })),
+      photos: ph.data as ProgressPhoto[],
+      body: new Map((wx.data as { day: Day; body_fat: number | null; muscle: number | null }[]).map((w) => [w.day, w])),
+      minutes: new Map((tx.data as { routine_id: string; day: Day; minutes: number }[]).map((t) => [t.routine_id + '|' + t.day, Number(t.minutes)])),
+      cancels: new Map((bx.data as { id: string; cancel_by: Day }[]).map((b) => [b.id, b.cancel_by])),
+    };
+  };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
       sb.from('income_settings').select('*').maybeSingle(),
@@ -249,7 +282,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         ...t,
         refund_amount: t.refund_amount === null || t.refund_amount === undefined ? null : Number(t.refund_amount),
       }));
-      return {
+      const snap: Snapshot = {
         domains,
         bills: extras.bills,
         tasks,
@@ -266,6 +299,18 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         ...(await loadRewards()),
         ...(await loadBudget(now)),
         ...(await loadWater(now)),
+      };
+      const x = await loadDb17(now);
+      if (!x) return { ...snap, db17: false };
+      const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+      return {
+        ...snap,
+        db17: true,
+        stepCheckins: x.stepCheckins,
+        photos: x.photos,
+        weights: snap.weights.map((w) => { const b = x.body.get(w.day); return b ? { ...w, body_fat: num(b.body_fat), muscle: num(b.muscle) } : w; }),
+        ticks: snap.ticks.map((t) => ({ ...t, minutes: x.minutes.get(t.routine_id + '|' + t.day) ?? null })),
+        bills: (snap.bills ?? []).map((b) => ({ ...b, cancel_by: x.cancels.get(b.id) ?? null })),
       };
     },
     async insertTask(t) {
@@ -407,6 +452,27 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     async removeQr(path) {
       check(await sb.storage.from('qr').remove([path]));
     },
+    async setTickMinutes(routineId, day, minutes) {
+      check(await sb.from('routine_ticks').update({ minutes }).eq('routine_id', routineId).eq('day', day));
+    },
+    async uploadProgress(file) {
+      const { data } = await sb.auth.getUser();
+      if (!data.user) throw new Error('Not signed in');
+      const path = `${data.user.id}/${today()}-${Date.now()}.jpg`;
+      check(await sb.storage.from('progress').upload(path, file, { contentType: 'image/jpeg', upsert: false }));
+      return path;
+    },
+    async insertPhoto(p) {
+      check(await sb.from('progress_photos').insert(p));
+    },
+    async deletePhoto(p) {
+      check(await sb.from('progress_photos').delete().eq('id', p.id));
+      await sb.storage.from('progress').remove([p.path]);
+    },
+    async photoUrl(path) {
+      const res = await sb.storage.from('progress').createSignedUrl(path, 3600);
+      return check<{ signedUrl: string }>(res).signedUrl;
+    },
   };
 }
 
@@ -526,6 +592,9 @@ export function demoBackend(): Backend {
       steps: [9200, 21400, 17800, 22100, 12600, 20300].map((count, i) => ({ day: addDays(now, i - 6), count })),
       water: [1750, 2250, 1500, 2000, 2500, 1250].map((ml, i) => ({ day: addDays(now, i - 6), ml })).concat([{ day: now, ml: 750 }]),
       waterReady: true,
+      db17: true,
+      photos: [],
+      stepCheckins: [{ day: now, part: 'morning', count: 3800 }, { day: now, part: 'afternoon', count: 9100 }],
       goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
       noSpend: [addDays(now, -2), addDays(now, -4)],
       healthReady: true,
@@ -564,5 +633,10 @@ export function demoBackend(): Backend {
     },
     qrUrl: async (path) => qrFiles.get(path) ?? '',
     removeQr: async (path) => { qrFiles.delete(path); },
+    setTickMinutes: noop,
+    uploadProgress: async (file) => { const path = `demo/${Date.now()}`; qrFiles.set(path, URL.createObjectURL(file)); return path; },
+    insertPhoto: noop,
+    deletePhoto: noop,
+    photoUrl: async (path) => qrFiles.get(path) ?? '',
   };
 }

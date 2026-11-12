@@ -12,6 +12,7 @@ import NoSpendCard from '../components/NoSpendCard';
 import PassiveIncome from '../components/PassiveIncome';
 import BudgetSection from '../components/BudgetSection';
 import MoneyCard from '../components/MoneyCard';
+import MonthReview from '../components/MonthReview';
 import { LockIcon, lockFinance, usePin } from '../pin';
 import { billsDue, payPeriod, spendingMoney } from '../bills';
 
@@ -117,6 +118,8 @@ export default function IncomeScreen() {
         </header>
 
         <BudgetSection />
+
+        {store.budgetReady !== false && <MonthReview />}
 
         <MoneyCard />
 

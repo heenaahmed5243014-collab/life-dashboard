@@ -47,7 +47,7 @@ export default function StepsScreen() {
       <Header title="Steps from Apple Health" />
       <main className="page page-form steps-setup">
         <p className="sub">
-          An iPhone Shortcut reads today’s steps from Health and sends the number here every evening. It ticks your 10k chunks too.
+          An iPhone Shortcut reads today’s steps from Health and sends them here in the morning, afternoon and at night, so your steps dial fills up through the day. It ticks your 10k chunks too.
           {last ? ` Last received: ${last.count.toLocaleString('en-GB')} steps on ${last.day}.` : ''}
         </p>
         {problem && <p className="note warn-text">{problem}</p>}
@@ -63,7 +63,7 @@ export default function StepsScreen() {
         <section className="card stack">
           <span className="eyebrow">Set up the Shortcut (about 5 minutes, once)</span>
           <ol className="steps-list">
-            <li>Open the <b>Shortcuts</b> app → <b>Automation</b> tab → <b>+</b> → <b>Time of Day</b>. Pick <b>10:30 pm</b>, <b>Daily</b>, and choose <b>Run Immediately</b>. Tap <b>Next</b> → <b>New Blank Automation</b>.</li>
+            <li>Open the <b>Shortcuts</b> app → <b>Automation</b> tab → <b>+</b> → <b>Time of Day</b>. Pick <b>11:45 am</b>, <b>Daily</b>, and choose <b>Run Immediately</b>. Tap <b>Next</b> → <b>New Blank Automation</b>.</li>
             <li>Add the action <b>Find Health Samples</b>. Set Type to <b>Steps</b>, tap <b>Add Filter</b> so it says <b>Start Date is Today</b>, then under <b>Group By</b> choose <b>Day</b>.</li>
             <li>Add <b>Get Details of Health Sample</b> and choose <b>Value</b>.</li>
             <li>Add <b>Get Contents of URL</b>. Paste the <b>web address</b>. Tap the arrow to show more:
@@ -75,7 +75,8 @@ export default function StepsScreen() {
             </li>
             <li>Tap <b>Done</b>. To test it now, open the automation and tap the play button, then come back here and pull the page down. Today’s steps should appear on the Today screen.</li>
           </ol>
-          <p className="note">The first time it runs, your iPhone asks to allow access to Health steps. Tap <b>Allow</b>. You can also add a second automation at lunchtime if you like seeing progress during the day.</p>
+          <p className="note"><b>Then make two copies</b> so it runs three times a day: in the Automation tab, press and hold the automation → <b>Duplicate</b>, and change its time to <b>4:45 pm</b>. Duplicate again for <b>10:30 pm</b>. Each run is saved as your morning, afternoon or night reading. Want it more often? Add more times; the latest one in each part of the day is kept.</p>
+          <p className="note">The first time it runs, your iPhone asks to allow access to Health steps. Tap <b>Allow</b>.</p>
         </section>
 
         <button type="button" className="link-btn quiet" onClick={renew}>Make a new link code</button>
