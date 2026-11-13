@@ -1922,3 +1922,41 @@ html[data-layout="desktop"] body::before {
 .prize-name { font-weight: 700; font-size: 0.9rem; }
 .prize-btns { justify-content: center; flex-wrap: wrap; }
 .wr-choose { align-self: flex-start; }
+
+/* Wallet pop (matches the screen recording): cards dip, shoot up past their resting place,
+   then bounce back and settle; the pocket gives a little squeeze and the balance blurs in. */
+.wallet-card { transition: none; }
+.wallet-card.w0 { --tuck: 6px; --over: -70px; }
+.wallet-card.w1 { --tuck: -28px; --over: -54px; }
+.wallet-card.w2 { --tuck: -62px; --over: -38px; }
+.wallet:not(.tucked) .wallet-card { animation: card-pop 0.95s cubic-bezier(.3, .7, .3, 1) both; }
+.wallet:not(.tucked) .wallet-card.w1 { animation-delay: 0.04s; }
+.wallet:not(.tucked) .wallet-card.w2 { animation-delay: 0.08s; }
+.wallet.tucked .wallet-card { transform: translateY(var(--tuck)); animation: card-tuck 0.55s cubic-bezier(.4, 0, .6, 1) both; }
+@keyframes card-pop {
+  0%   { transform: translateY(var(--tuck)); }
+  16%  { transform: translateY(calc(var(--tuck) + 16px)) scale(0.97); }
+  52%  { transform: translateY(var(--over)) scale(1.03); }
+  72%  { transform: translateY(7px); }
+  86%  { transform: translateY(-3px); }
+  100% { transform: none; }
+}
+@keyframes card-tuck {
+  0%   { transform: none; }
+  30%  { transform: translateY(-16px); }
+  100% { transform: translateY(var(--tuck)); }
+}
+.wallet:not(.tucked) .wallet-pocket { animation: pocket-bump 0.7s cubic-bezier(.3, .7, .3, 1); }
+.wallet.tucked .wallet-pocket { animation: pocket-bump-in 0.5s ease; }
+@keyframes pocket-bump { 0% { transform: none; } 18% { transform: scale(1.02, 0.96); } 50% { transform: scale(0.99, 1.03); } 100% { transform: none; } }
+@keyframes pocket-bump-in { 0% { transform: none; } 45% { transform: scale(1.015, 0.97); } 100% { transform: none; } }
+.wallet-pocket { transform-origin: 50% 100%; }
+.wallet:not(.tucked) .wallet-big, .wallet:not(.tucked) .wallet-pace { animation: num-in 0.6s 0.25s ease both; }
+.wallet.tucked .wallet-big { animation: num-in 0.35s ease both; }
+@keyframes num-in { from { opacity: 0; filter: blur(10px); transform: scale(0.94); } to { opacity: 1; filter: none; transform: none; } }
+.wallet-eye { transition: transform 0.2s; }
+.wallet-eye:active { transform: scale(0.86); }
+@media (prefers-reduced-motion: reduce) {
+  .wallet .wallet-card, .wallet .wallet-pocket, .wallet .wallet-big, .wallet .wallet-pace { animation: none !important; }
+}
+.wallet-card { height: 130px; }
