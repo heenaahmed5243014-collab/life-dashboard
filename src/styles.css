@@ -1825,3 +1825,72 @@ html[data-layout="desktop"] .routines-page { display: grid; grid-template-column
 html[data-layout="desktop"] .routines-page > * { grid-column: 2; min-width: 0; }
 html[data-layout="desktop"] .routines-page > .page-head { grid-column: 1 / -1; }
 html[data-layout="desktop"] .routines-page > .move-card { grid-column: 1; grid-row: 2 / span 40; position: sticky; top: 24px; }
+
+/* =====================================================================
+   Glass effect: soft colour glows behind the page, frosted see-through cards
+   with a bright edge and a light sheen on top.
+   ===================================================================== */
+html { background: #EEEEF6; }
+body { background: transparent; }
+body::before {
+  content: ''; position: fixed; inset: -10vmax; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(38vmax 38vmax at 12% 8%, rgba(167, 154, 255, 0.55), transparent 70%),
+    radial-gradient(34vmax 34vmax at 92% 18%, rgba(255, 170, 214, 0.45), transparent 70%),
+    radial-gradient(40vmax 40vmax at 78% 88%, rgba(140, 200, 255, 0.45), transparent 70%),
+    radial-gradient(30vmax 30vmax at 8% 82%, rgba(255, 214, 150, 0.35), transparent 70%),
+    linear-gradient(180deg, #E4E2F7 0%, #F1F0F8 100%);
+}
+:root {
+  --glass: rgba(255, 255, 255, 0.52);
+  --glass-strong: rgba(255, 255, 255, 0.7);
+  --glass-edge: rgba(255, 255, 255, 0.75);
+  --glass-blur: blur(22px) saturate(170%);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.25), 0 10px 32px rgba(75, 63, 214, 0.10);
+  --card: var(--glass);
+}
+.card, .routine-card, .area-tile, .project-card, .empty, .filed-card, .capture-card, .planner, .routine-tile,
+.list > .row, .list > .plain-row, .recent-list li, .check-row, .quick-tile, .area-line, .bill-row, .folded-card, .move-card, .nw-card {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.42) 100%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.in-card .check-row, .list.in-card > .row { background: transparent; border: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.card.slip { background: linear-gradient(160deg, rgba(255, 244, 232, 0.72), rgba(255, 236, 220, 0.45)); }
+.nav, .topbar { background: rgba(255, 255, 255, 0.5); border: 1px solid var(--glass-edge); box-shadow: var(--glass-shadow); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+.topbar { border-width: 0 0 1px; }
+.sheet { background: rgba(250, 249, 255, 0.78); -webkit-backdrop-filter: blur(28px) saturate(170%); backdrop-filter: blur(28px) saturate(170%); border: 1px solid var(--glass-edge); }
+.sheet-backdrop { background: rgba(34, 30, 58, 0.25); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.btn:not(.primary), .chip:not(.on), .round-btn, .icon-btn, .duo-btn, .pin-key, .day-pill:not(.on), .month-day:not(.on), .seg.on {
+  background: rgba(255, 255, 255, 0.6); border: 1px solid var(--glass-edge);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.body-stats > div, .mr-head > div, .dial-part, .move-stats > div, .earlier-row, .duo-ic, .emoji-tile, .t-emoji { background: rgba(255, 255, 255, 0.55); }
+.wallet-pocket { box-shadow: 0 16px 30px rgba(75, 63, 214, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 18px 30px -18px rgba(255, 255, 255, 0.45); }
+.nw-inner { background:
+    radial-gradient(120% 90% at 85% 0%, rgba(185, 180, 255, 0.85) 0%, rgba(185, 180, 255, 0) 55%),
+    radial-gradient(90% 80% at 0% 0%, rgba(220, 230, 255, 0.9) 0%, rgba(220, 230, 255, 0) 60%),
+    rgba(255, 255, 255, 0.35); }
+/* Sheen: a soft light along the top of each glass card */
+.card { position: relative; }
+.card::after {
+  content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+}
+/* If the phone can't blur, fall back to solid frosted white so text stays readable */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card, .list > .row, .check-row, .quick-tile, .area-line, .nav, .sheet { background: rgba(255, 255, 255, 0.92); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .card, .list > .row, .check-row, .quick-tile, .area-line, .nav, .sheet { background: rgba(255, 255, 255, 0.95); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+.nav { background: rgba(255, 255, 255, 0.72); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); }
+html[data-layout="desktop"] body::before {
+  background:
+    radial-gradient(34vmax 34vmax at 18% 10%, rgba(167, 154, 255, 0.6), transparent 70%),
+    radial-gradient(30vmax 30vmax at 88% 12%, rgba(255, 170, 214, 0.5), transparent 70%),
+    radial-gradient(36vmax 36vmax at 72% 92%, rgba(140, 200, 255, 0.5), transparent 70%),
+    radial-gradient(28vmax 28vmax at 30% 90%, rgba(255, 214, 150, 0.4), transparent 70%),
+    linear-gradient(180deg, #E2DFF6 0%, #F0EFF8 100%);
+}
