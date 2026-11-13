@@ -1,6 +1,7 @@
 // Progress photos inside My journey: private, shrunk on the phone before upload,
 // shown as a strip of dates. Tap one to see it bigger, compare with your first, or delete it.
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { shortDate, today } from '../dates';
 import { useToast } from '../toast';
@@ -45,7 +46,7 @@ function Viewer({ p, first, onClose }: { p: ProgressPhoto; first: ProgressPhoto;
   const [compare, setCompare] = useState(false);
   const url = useUrl(p.path);
   const firstUrl = useUrl(compare ? first.path : undefined);
-  return (
+  return createPortal(
     <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet pp-sheet" role="dialog" aria-modal="true" aria-label="Progress photo">
         <div className="sheet-head"><h2 className="sheet-title">{shortDate(p.day)}</h2><button type="button" className="link-btn" onClick={onClose}>Close</button></div>
@@ -58,7 +59,8 @@ function Viewer({ p, first, onClose }: { p: ProgressPhoto; first: ProgressPhoto;
           <button type="button" className="btn small" onClick={() => { if (confirm('Delete this photo? This can’t be undone.')) { store.removePhoto(p); toast({ message: 'Photo deleted' }); onClose(); } }}>Delete</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -1,6 +1,7 @@
 // "I've got 15 minutes": suggests one small thing that fits, one at a time.
 import { taskEmoji } from '../emoji';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import type { Task } from '../types';
 import { today } from '../dates';
@@ -37,7 +38,7 @@ export default function QuickWin() {
   return (
     <>
       <button type="button" className="btn quick-win-btn" onClick={() => { setSkip(0); setOpen(true); }}>⏱ I’ve got 15 minutes</button>
-      {open && (
+      {open && createPortal(
         <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
           <div className="sheet" role="dialog" aria-modal="true" aria-label="Something for 15 minutes">
             <div className="sheet-head">
@@ -64,7 +65,8 @@ export default function QuickWin() {
               <p className="note">Nothing small enough yet. On any item, set <b>How long</b> to 5 or 15 minutes (or add a first step) and it shows up here.</p>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

@@ -1,6 +1,6 @@
 // My journey: weight (lb), body fat %, muscle mass (lb) and private progress photos.
 // The goal comes from a Life goal like "120lb". Starts hidden each time the app opens.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { daysBetween, shortDate, today } from '../dates';
 import { milestones, prizeToChoose } from '../weightRewards';
@@ -21,6 +21,14 @@ export default function WeightCard() {
   const [muscle, setMuscle] = useState('');
   const now = today();
   const toChoose = prizeToChoose(store.weights, store.rewards, store.tasks, now);
+  // Pop the prize choice up by itself the first time you see a newly hit target (once per app visit)
+  useEffect(() => {
+    if (!toChoose) return;
+    const key = `ld:prize-popped-${toChoose.kg}`;
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch { /* ignore */ }
+    const t = setTimeout(() => setChoosing(true), 500);
+    return () => clearTimeout(t);
+  }, [toChoose?.kg]); // eslint-disable-line react-hooks/exhaustive-deps
   const log = store.weights;
   const latest = log[log.length - 1];
   const prev = log[log.length - 2];
