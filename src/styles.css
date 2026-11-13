@@ -1757,3 +1757,64 @@ button.mw-day.editing { background: var(--accent-soft); }
 .slot-item { border-left: 4px solid transparent; }
 .dial-part-name { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .dial-key { position: static; flex: none; width: 8px; height: 8px; }
+
+/* =====================================================================
+   Desktop layout (Account → Layout, or Auto on wide screens)
+   Menu down the left, wider page, cards spread into columns.
+   ===================================================================== */
+.today-body { display: flex; flex-direction: column; gap: 22px; }
+html[data-layout="desktop"] body { background: linear-gradient(180deg, #D9DAF0 0%, #EEEEF6 420px, #F4F4F7 100%) fixed, #F4F4F7; }
+html[data-layout="desktop"] .app { max-width: 1320px; padding-left: 248px; }
+html[data-layout="desktop"] .page { padding: 36px 36px 56px; gap: 24px; }
+
+/* Sidebar menu */
+html[data-layout="desktop"] .nav {
+  left: max(16px, calc(50% - 660px + 16px)); right: auto; top: 16px; bottom: 16px; width: 216px; max-width: none; margin: 0;
+  flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; padding: 18px 12px; border-radius: 28px;
+}
+html[data-layout="desktop"] .nav-plus { order: -1; width: 100%; height: 50px; border-radius: 16px; margin-bottom: 10px; gap: 8px; }
+html[data-layout="desktop"] .nav-plus::after { content: 'Add'; font-weight: 700; font-size: 0.95rem; }
+html[data-layout="desktop"] .nav-half { flex: none; flex-direction: column; justify-content: flex-start; gap: 4px; }
+html[data-layout="desktop"] .tab, html[data-layout="desktop"] .tab.on {
+  flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 48px; padding: 0 14px; border-radius: 14px; font-size: 0.95rem; font-weight: 600; color: var(--muted);
+}
+html[data-layout="desktop"] .tab:hover { background: #F4F3FA; }
+html[data-layout="desktop"] .tab.on { background: var(--accent-soft); color: var(--accent); }
+html[data-layout="desktop"] .tab-label { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: nowrap; }
+html[data-layout="desktop"] .nav-foot { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 0 6px; }
+.nav-foot { display: none; }
+html[data-layout="desktop"] .nav-brand { font-weight: 800; font-size: 0.85rem; color: var(--ink); }
+html[data-layout="desktop"] .nav-layout { border: none; background: #F1F1F6; border-radius: 12px; min-height: 40px; font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+
+/* A screen's own + becomes a round button in the corner */
+html[data-layout="desktop"] .fab:not(.fab-low) { left: auto; right: max(28px, calc(50% - 660px + 28px)); bottom: 28px; transform: none; width: 60px; height: 60px; border-radius: 20px; }
+html[data-layout="desktop"] .toast-wrap { bottom: 28px; }
+
+/* Live pill sits over the content, not the sidebar */
+html[data-layout="desktop"] .island-wrap { padding-left: 248px; }
+
+/* Today: header and date strip across the top, cards in two columns below */
+html[data-layout="desktop"] .today-body { display: block; column-count: 2; column-gap: 24px; }
+html[data-layout="desktop"] .today-body > * { break-inside: avoid; margin-bottom: 22px; display: flex; width: 100%; }
+html[data-layout="desktop"] .today-body > .debrief, html[data-layout="desktop"] .today-body > .reset-prompt,
+html[data-layout="desktop"] .today-body > .quick-tiles, html[data-layout="desktop"] .today-body > .calm { column-span: all; }
+html[data-layout="desktop"] .today-body > .quick-tiles { display: grid; }
+html[data-layout="desktop"] .today-body > .customise-btn { display: inline-flex; width: auto; }
+
+/* Money: wallet column + everything else */
+html[data-layout="desktop"] .income-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; row-gap: 24px; align-items: start; }
+html[data-layout="desktop"] .income-page > * { grid-column: 2; min-width: 0; }
+html[data-layout="desktop"] .income-page > .page-head { grid-column: 1 / -1; }
+html[data-layout="desktop"] .income-page > .budget { grid-column: 1; grid-row: 2 / span 40; }
+
+/* Areas, Routines, Tasks: use the width */
+html[data-layout="desktop"] .area-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+html[data-layout="desktop"] .routines-page .routine-list, html[data-layout="desktop"] .routine-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+
+/* Sheets open as centred windows */
+html[data-layout="desktop"] .sheet-backdrop { align-items: center; padding-left: 248px; }
+html[data-layout="desktop"] .sheet { max-width: 620px; border-radius: 28px; }
+.pin-forgot-form { display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: stretch; text-align: center; }
+html[data-layout="desktop"] .routines-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+html[data-layout="desktop"] .routines-page > :not(.routine-card) { grid-column: 1 / -1; }
+html[data-layout="desktop"] .routines-page > .move-card { grid-column: auto; }

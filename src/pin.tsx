@@ -1,7 +1,9 @@
 // Finance PIN: a 4-digit PIN in front of anything to do with money (Money tab, Returns,
-// the net worth card on Today). Kept on this phone only, stored as a salted hash, never the PIN.
+// the net worth card on Today). Saved to your account as a salted hash (never the PIN), with a copy
+// on the phone so it works offline. Signing out does not remove it; "Forgot PIN?" asks for your password.
 // Once unlocked it stays open while you use the app, and locks again 5 minutes after you leave it.
 import { useEffect, useState, type ReactNode } from 'react';
+import { supabase } from './backend';
 
 const PIN_KEY = 'ld:pin';
 const OK_KEY = 'ld:pin-ok';
@@ -29,17 +31,54 @@ async function hashPin(salt: string, pin: string): Promise<string> {
 export const pinEnabled = () => stored() !== null;
 const isUnlocked = () => !pinEnabled() || get(sessionStorage, OK_KEY) === '1';
 
+/** Save to (or remove from) your account. Quietly does nothing if update 17 hasn't been run. */
+async function saveToAccount(s: Stored | null) {
+  if (!supabase) return;
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return;
+  await supabase.from('user_settings').upsert({ user_id: data.user.id, pin_salt: s?.salt ?? null, pin_hash: s?.hash ?? null, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+}
+
+/** On sign-in: your account's PIN wins; a PIN set only on this phone is copied up to your account. */
+export async function syncPin() {
+  if (!supabase) return;
+  const res = await supabase.from('user_settings').select('pin_salt, pin_hash').maybeSingle();
+  if (res.error) return; // update 17 not run yet: keep the phone's copy
+  const row = res.data as { pin_salt: string | null; pin_hash: string | null } | null;
+  if (row?.pin_hash && row.pin_salt) {
+    const local = stored();
+    if (!local || local.hash !== row.pin_hash) { set(localStorage, PIN_KEY, JSON.stringify({ salt: row.pin_salt, hash: row.pin_hash })); changed(); }
+  } else if (stored()) {
+    await saveToAccount(stored());
+  }
+}
+
+/** Forgot PIN: check your account password, then remove the PIN everywhere. */
+export async function resetPinWithPassword(password: string): Promise<boolean> {
+  if (!supabase) { clearPin(); return true; }
+  const { data } = await supabase.auth.getUser();
+  const email = data.user?.email;
+  if (!email) return false;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return false;
+  clearPin();
+  return true;
+}
+
 export async function setPin(pin: string) {
   const salt = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
-  set(localStorage, PIN_KEY, JSON.stringify({ salt, hash: await hashPin(salt, pin) }));
+  const s = { salt, hash: await hashPin(salt, pin) };
+  set(localStorage, PIN_KEY, JSON.stringify(s));
+  void saveToAccount(s);
   set(sessionStorage, OK_KEY, '1');
   set(localStorage, FAIL_KEY, null);
   changed();
 }
 
-/** Remove the PIN (used by Account after checking the PIN, and on sign-out as the "forgot PIN" route). */
+/** Remove the PIN everywhere (Account after checking the PIN, or Forgot PIN after checking your password). */
 export function clearPin() {
   set(localStorage, PIN_KEY, null);
+  void saveToAccount(null);
   set(localStorage, FAIL_KEY, null);
   set(sessionStorage, OK_KEY, null);
   changed();
@@ -155,16 +194,35 @@ export function PinPad({ title, sub, error, onDone }: { title: string; sub?: str
 
 function Unlock({ compact }: { compact?: boolean }) {
   const [error, setError] = useState<string>();
+  const [forgot, setForgot] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pwError, setPwError] = useState('');
   return (
     <div className={compact ? 'pin-unlock compact' : 'pin-unlock'}>
       {!compact && <img src="/img/wallet.png" alt="" className="pin-pic" />}
-      <PinPad
-        title="Enter your finance PIN"
-        sub={compact ? undefined : 'Money stays private until you unlock it.'}
-        error={error}
-        onDone={async (pin) => { setError(undefined); if (!(await unlock(pin))) setError('That’s not it. Try again.'); }}
-      />
-      <p className="note pin-forgot">Forgot it? Sign out in Account, then sign back in. That removes the PIN.</p>
+      {forgot ? (
+        <form className="pin-forgot-form" onSubmit={async (e) => {
+          e.preventDefault();
+          setPwError('');
+          if (!(await resetPinWithPassword(pw))) setPwError('That password didn’t work. Try again.');
+        }}>
+          <p className="pin-title">Forgot your PIN?</p>
+          <p className="note pin-sub">Type your account password. That removes the PIN, and you can set a new one in Account.</p>
+          <input type="password" autoComplete="current-password" aria-label="Account password" className="step-input" value={pw} onChange={(e) => setPw(e.target.value)} />
+          <p className="pin-error" role="alert">{pwError}</p>
+          <div className="row"><button type="submit" className="btn primary small" disabled={!pw}>Remove PIN</button><button type="button" className="btn small" onClick={() => setForgot(false)}>Back</button></div>
+        </form>
+      ) : (
+        <>
+          <PinPad
+            title="Enter your finance PIN"
+            sub={compact ? undefined : 'Money stays private until you unlock it.'}
+            error={error}
+            onDone={async (pin) => { setError(undefined); if (!(await unlock(pin))) setError('That’s not it. Try again.'); }}
+          />
+          <button type="button" className="link-btn pin-forgot" onClick={() => setForgot(true)}>Forgot PIN?</button>
+        </>
+      )}
     </div>
   );
 }

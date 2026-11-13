@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { go } from '../router';
 import { useWorkMode } from '../workmode';
 import { openQuickAdd } from './QuickAdd';
+import { setLayoutPref, useLayoutPref } from '../layout';
 
 type Tab = 'today' | 'areas' | 'tasks' | 'routines' | 'income';
 
@@ -26,6 +27,7 @@ const TABS: { key: Tab; label: string; path: string }[] = [
 export default function Nav({ current }: { current: Tab }) {
   const work = useWorkMode();
   const tabs = work.active ? TABS.filter((t) => t.key !== 'income') : TABS;
+  const [, mode] = useLayoutPref();
   const half = Math.floor(tabs.length / 2);
   const link = (t: (typeof TABS)[number]) => (
     <a
@@ -48,6 +50,12 @@ export default function Nav({ current }: { current: Tab }) {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </button>
       <span className="nav-half">{tabs.slice(half).map(link)}</span>
+      {mode === 'desktop' && (
+        <span className="nav-foot">
+          <span className="nav-brand">Life Dashboard</span>
+          <button type="button" className="nav-layout" onClick={() => setLayoutPref('phone')}>📱 Phone view</button>
+        </span>
+      )}
     </nav>
   );
 }

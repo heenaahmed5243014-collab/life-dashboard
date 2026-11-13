@@ -142,7 +142,7 @@ export default function TodayScreen() {
 
         {sleeping && isToday ? <SleepScreen /> : <DayStrip days={week} selected={day} now={now} onPick={setDay} />}
 
-        {sleeping && isToday ? null : isToday ? <TodayBody /> : (
+        {sleeping && isToday ? null : isToday ? <div className="today-body"><TodayBody /></div> : (
           <>
             {plan.anytime.length > 0 && (
               <section className="section">

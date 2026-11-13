@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { useRoute } from './router';
 import { ToastProvider } from './toast';
 import { StoreProvider } from './store';
@@ -33,6 +33,7 @@ import type { Backend } from './backend';
 /** The real app for a signed-in user, with offline support. */
 function SignedInApp({ userId, real }: { userId: string; real: Backend }) {
   const backend = useMemo(() => withOffline(real, userId), [real, userId]);
+  useEffect(() => { void syncPin(); }, [userId]);
   return (
     <StoreProvider backend={backend}>
       <SyncBanner />
@@ -40,7 +41,7 @@ function SignedInApp({ userId, real }: { userId: string; real: Backend }) {
     </StoreProvider>
   );
 }
-import { PinGate } from './pin';
+import { PinGate, syncPin } from './pin';
 import Nav from './components/Nav';
 import Header from './components/Header';
 import QuickAddHost from './components/QuickAdd';

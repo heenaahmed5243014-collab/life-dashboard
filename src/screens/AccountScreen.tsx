@@ -8,6 +8,7 @@ import { setDebrief, useDebrief } from '../debrief';
 import { useIsland, setIsland } from '../island';
 import { checkPin, clearPin, PinPad, setPin, usePin } from '../pin';
 import { setStartHidden, useStartHidden } from '../weightPref';
+import { setLayoutPref, useLayoutPref, type LayoutPref } from '../layout';
 import { disablePush, enablePush, pushSupport, readPushState, sendTestPush, setPushTime } from '../push';
 
 export default function AccountScreen() {
@@ -37,13 +38,14 @@ export default function AccountScreen() {
           <p>{supabase ? <>Signed in as <strong>{email ?? '…'}</strong>.</> : 'Demo mode. Nothing is saved.'}</p>
           <p className="muted small">Your list is saved online, so it’s the same on your phone and the desk PC.</p>
         </section>
+        <LayoutSettings />
         <DebriefSettings />
         <WorkModeSettings />
         <PinSettings />
         <WeightSettings />
         <button type="button" className="secondary" onClick={exportFile}>Download a copy (file)</button>
         {supabase && (
-          <button type="button" className="link-btn quiet" onClick={() => { clearPin(); supabase!.auth.signOut(); }}>Sign out</button>
+          <button type="button" className="link-btn quiet" onClick={() => supabase!.auth.signOut()}>Sign out</button>
         )}
       </main>
     </>
@@ -174,7 +176,7 @@ function PinSettings() {
           <span className="visually-hidden">Finance PIN</span><i />
         </button>
       </div>
-      <p className="note">A 4-digit PIN in front of anything to do with money: the Money tab, Returns and the net worth card on Today. It stays unlocked while you use the app and locks again 5 minutes after you leave it. It’s kept on this phone only, so set it on each device you use.</p>
+      <p className="note">A 4-digit PIN in front of anything to do with money: the Money tab, Returns and the net worth card on Today. It stays unlocked while you use the app and locks again 5 minutes after you leave it. It’s saved to your account, so it stays on on every device and after signing out.</p>
       {pin.enabled && step === 'idle' && <button type="button" className="btn small more" onClick={() => setStep('check-change')}>Change PIN</button>}
       {step === 'check-off' && <PinPad title="Enter your PIN to turn it off" error={error} onDone={async (p) => { if (await checkPin(p)) { clearPin(); reset(); } else setError('That’s not it. Try again.'); }} />}
       {step === 'check-change' && <PinPad title="Enter your current PIN" error={error} onDone={async (p) => { if (await checkPin(p)) { setError(undefined); setStep('new'); } else setError('That’s not it. Try again.'); }} />}
@@ -196,6 +198,20 @@ function WeightSettings() {
         </button>
       </div>
       <p className="note">On: your weight, body fat, muscle and progress photos start hidden every time you open the app. Tap Show on Today to see them until you close it. Your next journey reward stays out of the morning debrief while hidden. Set on this phone only.</p>
+    </section>
+  );
+}
+
+function LayoutSettings() {
+  const [pref, now] = useLayoutPref();
+  const opts: { v: LayoutPref; label: string }[] = [{ v: 'auto', label: 'Auto' }, { v: 'phone', label: 'Phone' }, { v: 'desktop', label: 'Desktop' }];
+  return (
+    <section className="card stack" aria-label="Layout">
+      <div className="between"><span className="eyebrow">Layout</span><span className="note">Showing: {now === 'desktop' ? 'desktop' : 'phone'}</span></div>
+      <div className="segmented" role="radiogroup" aria-label="Layout">
+        {opts.map((o) => <button key={o.v} type="button" role="radio" aria-checked={pref === o.v} className={pref === o.v ? 'seg on' : 'seg'} onClick={() => setLayoutPref(o.v)}>{o.label}</button>)}
+      </div>
+      <p className="note">Desktop puts the menu down the left and spreads your cards across the screen. Auto uses desktop on a wide screen, like your PC, and phone everywhere else. Set on this device only.</p>
     </section>
   );
 }

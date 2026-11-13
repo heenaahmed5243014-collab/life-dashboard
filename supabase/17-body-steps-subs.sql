@@ -71,3 +71,15 @@ create policy "progress: own files add" on storage.objects for insert to authent
   with check (bucket_id = 'progress' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "progress: own files delete" on storage.objects for delete to authenticated
   using (bucket_id = 'progress' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- 6. Finance PIN saved to your account (a salted hash, never the PIN), so it stays on on every device
+create table if not exists public.user_settings (
+  user_id     uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  pin_salt    text,
+  pin_hash    text,
+  updated_at  timestamptz not null default now()
+);
+alter table public.user_settings enable row level security;
+drop policy if exists "own rows" on public.user_settings;
+create policy "own rows" on public.user_settings
+  for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));

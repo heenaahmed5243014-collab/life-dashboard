@@ -19,7 +19,7 @@ export default function RoutinesScreen() {
 
   return (
     <>
-      <main className="page">
+      <main className="page routines-page">
         <header className="page-head">
           <h1 className="h1">Routines</h1>
           <p className="muted lead">Streaks only count the days a routine is due. A missed day just starts a new run.</p>
