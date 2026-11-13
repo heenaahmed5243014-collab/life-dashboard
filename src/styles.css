@@ -1894,3 +1894,31 @@ html[data-layout="desktop"] body::before {
     radial-gradient(28vmax 28vmax at 30% 90%, rgba(255, 214, 150, 0.4), transparent 70%),
     linear-gradient(180deg, #E2DFF6 0%, #F0EFF8 100%);
 }
+
+/* Prize pool and "Choose your prize" */
+.prize-pool { gap: 10px; }
+.pool-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.pool-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 4px 4px 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.7); border: 1px solid var(--glass-edge, #fff); font-weight: 600; font-size: 0.9rem; }
+.pool-chip .slot-x { width: 32px; height: 32px; }
+.prize-banner {
+  display: flex; align-items: center; gap: 10px; width: 100%; border: none; border-radius: 18px; padding: 12px 14px; text-align: left; font: inherit; color: var(--ink);
+  background: linear-gradient(120deg, #FFE7A3 0%, #FFC2DD 55%, #CFC6FF 100%); box-shadow: 0 8px 20px rgba(255, 150, 190, 0.35);
+}
+.prize-banner-emoji { font-size: 1.6rem; }
+.prize-banner > span:nth-child(2) { flex: 1; }
+.prize-sheet { align-items: stretch; text-align: center; gap: 10px; }
+.prize-hero { font-size: 3rem; line-height: 1; animation: prize-pop 0.6s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes prize-pop { from { transform: scale(0.3) rotate(-20deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .prize-hero { animation: none; } }
+.prize-title { margin: 0; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; }
+.prize-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 6px; }
+.prize-tile {
+  min-height: 110px; border-radius: 20px; border: 2px solid transparent; background: rgba(255, 255, 255, 0.75); box-shadow: 0 6px 16px rgba(75, 63, 214, 0.1);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; font: inherit; color: var(--ink);
+  transition: transform 0.15s, border-color 0.15s;
+}
+.prize-tile.on { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); }
+.prize-emoji { font-size: 2.2rem; text-shadow: 0 3px 4px rgba(34, 30, 58, 0.2); }
+.prize-name { font-weight: 700; font-size: 0.9rem; }
+.prize-btns { justify-content: center; flex-wrap: wrap; }
+.wr-choose { align-self: flex-start; }

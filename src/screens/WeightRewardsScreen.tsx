@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import Header from '../components/Header';
-import { milestones, recentLb, startLb, goalLb, LB_PER_KG, type Milestone } from '../weightRewards';
+import { milestones, recentLb, startLb, goalLb, LB_PER_KG, nextPoolKg, poolPrizes, type Milestone } from '../weightRewards';
+import ChoosePrize from '../components/ChoosePrize';
 import { shortDate, today } from '../dates';
 import { useToast } from '../toast';
 
@@ -35,7 +36,8 @@ export default function WeightRewardsScreen() {
               <p className="note">Started at {fix(start)} lb · now {current !== null ? `${fix(current)} lb` : '—'}{next ? ` · ${fix(Math.max(0, (current ?? start) - next.lb))} lb to the next milestone` : ''}.</p>
               <p className="note">Milestones count your 7-day average when you’ve weighed in more than once, so one light day doesn’t unlock early.</p>
             </section>
-            <p className="sub">Add a reward to any kilogram. Trips, experiences, treats: whatever keeps you going.</p>
+            <PrizePool disabled={store.rewardsReady === false} />
+            <p className="sub">Each kilogram is a target. Leave it empty and you’ll pick a prize from your pool when you hit it, or set a fixed reward for a special one.</p>
             <ol className="wr-list">
               {list.map((m) => <MilestoneRow key={m.kg} m={m} isNext={m === next} disabled={store.rewardsReady === false} />)}
             </ol>
@@ -50,6 +52,7 @@ function MilestoneRow({ m, isNext, disabled }: { m: Milestone; isNext: boolean; 
   const store = useStore();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const [title, setTitle] = useState(m.reward?.title ?? '');
   const [emoji, setEmoji] = useState(m.reward?.emoji ?? '🎁');
   const r = m.reward;
@@ -96,10 +99,55 @@ function MilestoneRow({ m, isNext, disabled }: { m: Milestone; isNext: boolean; 
               <span className="tag">Locked</span>
             )}
           </div>
+        ) : m.reached && poolPrizes(store.rewards).length > 0 ? (
+          <>
+            <button type="button" className="btn small primary wr-choose" onClick={() => setChoosing(true)}>🎁 Choose your prize</button>
+            {choosing && <ChoosePrize m={m} onClose={() => setChoosing(false)} />}
+          </>
         ) : (
-          <button type="button" className="link-btn wr-add" disabled={disabled} onClick={() => setEditing(true)}>+ Add a reward</button>
+          <button type="button" className="link-btn wr-add" disabled={disabled} onClick={() => setEditing(true)}>{poolPrizes(store.rewards).length ? '🎁 Pick from your pool when you get here · or set a fixed reward' : '+ Add a reward'}</button>
         )}
       </div>
     </li>
+  );
+}
+
+/** Your prize pool: prizes to choose from each time you hit a target. */
+function PrizePool({ disabled }: { disabled: boolean }) {
+  const store = useStore();
+  const toast = useToast();
+  const prizes = poolPrizes(store.rewards);
+  const [title, setTitle] = useState('');
+  const [emoji, setEmoji] = useState('🎁');
+  const add = () => {
+    const t = title.trim();
+    if (!t) return;
+    store.addReward({ kg: nextPoolKg(store.rewards), target_lb: 50, title: t, emoji });
+    setTitle('');
+    toast({ message: `${emoji} ${t} added to your prize pool` });
+  };
+  return (
+    <section className="card stack prize-pool" aria-label="Prize pool">
+      <div className="between"><span className="eyebrow">🎁 Prize pool</span><span className="count">{prizes.length}</span></div>
+      <p className="note">Add prizes you’d love. Every time you hit a target, you choose one of them.</p>
+      {prizes.length > 0 && (
+        <div className="pool-grid">
+          {prizes.map((p) => (
+            <span key={p.id} className="pool-chip">
+              <span aria-hidden="true">{p.emoji ?? '🎁'}</span>{p.title}
+              <button type="button" className="slot-x" aria-label={`Remove ${p.title}`} onClick={() => store.deleteReward(p.id)}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="chips wr-emojis">
+        {EMOJIS.map((e) => <button key={e} type="button" aria-pressed={emoji === e} className={emoji === e ? 'emoji-btn on' : 'emoji-btn'} onClick={() => setEmoji(e)}>{e}</button>)}
+      </div>
+      <form className="add-sub todo-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
+        <label className="visually-hidden" htmlFor="pool-new">New prize</label>
+        <input id="pool-new" className="step-input" value={title} maxLength={120} placeholder="e.g. Spa day, new trainers, weekend away" onChange={(e) => setTitle(e.target.value)} disabled={disabled} />
+        <button type="submit" className="btn primary" disabled={disabled || !title.trim()}>Add</button>
+      </form>
+    </section>
   );
 }

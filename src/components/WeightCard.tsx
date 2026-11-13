@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { daysBetween, shortDate, today } from '../dates';
-import { milestones } from '../weightRewards';
+import { milestones, prizeToChoose } from '../weightRewards';
+import ChoosePrize from './ChoosePrize';
 import { setShowWeight } from '../weightPref';
 import { go } from '../router';
 import ProgressPhotos from './ProgressPhotos';
@@ -16,8 +17,10 @@ export default function WeightCard() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [fat, setFat] = useState('');
+  const [choosing, setChoosing] = useState(false);
   const [muscle, setMuscle] = useState('');
   const now = today();
+  const toChoose = prizeToChoose(store.weights, store.rewards, store.tasks, now);
   const log = store.weights;
   const latest = log[log.length - 1];
   const prev = log[log.length - 2];
@@ -105,6 +108,14 @@ export default function WeightCard() {
           <div className="bar"><i style={{ width: `${latest.lb > goal ? pct : 100}%` }} /></div>
         </div>
       )}
+      {toChoose && (
+        <button type="button" className="prize-banner" onClick={() => setChoosing(true)}>
+          <span className="prize-banner-emoji" aria-hidden="true">🎉</span>
+          <span><b>You hit −{toChoose.kg} kg!</b><span className="note"> Choose your prize</span></span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
+      {choosing && toChoose && <ChoosePrize m={toChoose} onClose={() => setChoosing(false)} />}
       {(() => {
         const ms = milestones(store.weights, store.rewards, store.tasks, now);
         const unclaimed = ms.find((m) => m.reached && m.reward && !m.reward.claimed_on);
@@ -161,9 +172,11 @@ export default function WeightCard() {
 
 /** What Today shows while weight is switched off: one slim line to bring it back. */
 export function WeightHidden() {
+  const store = useStore();
+  const waiting = prizeToChoose(store.weights, store.rewards, store.tasks, today()) !== null;
   return (
     <section className="card weight-hidden" aria-label="My journey (hidden)">
-      <span className="weight-hidden-text"><span aria-hidden="true">🌸</span> My journey · hidden</span>
+      <span className="weight-hidden-text"><span aria-hidden="true">🌸</span> My journey · hidden{waiting ? ' · 🎁 a prize to choose' : ''}</span>
       <button type="button" className="link-btn" onClick={() => setShowWeight(true)}>Show</button>
     </section>
   );
