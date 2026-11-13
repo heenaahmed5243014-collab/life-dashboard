@@ -33,6 +33,7 @@ import { useWorkMode } from '../workmode';
 import { useShowWeight } from '../weightPref';
 import { CustomiseSheet, Folded, Foldable, useLayout, type CardId, type CardPref } from '../todayLayout';
 import { ModeSwitch, setSleep, useSleep } from '../sleepmode';
+import { useLayoutPref } from '../layout';
 import { resetDoneToday } from './ResetScreen';
 
 /** Brain Planner style day pills: Gym morning, Quiet moment, Fun night tonight. */
@@ -335,6 +336,8 @@ function TodayBody() {
   const work = useWorkMode();
   const mask = useMoneyMask();
   const layout = useLayout();
+  const [, screenMode] = useLayoutPref();
+  const desktop = screenMode === 'desktop';
   const [customising, setCustomising] = useState(false);
   const showWeight = useShowWeight();
   const balanceDue = useBalanceCheckDue();
@@ -617,24 +620,52 @@ function TodayBody() {
     if (p.id === 'slip' && balanceDue && layout.find((x) => x.id === 'money')?.show) shown.push({ id: 'money', show: true, fold: false });
   }
 
+  const renderCard = (p: CardPref) => {
+    const el = cards[p.id];
+    if (!el) return null;
+    if (p.fold) return <Folded key={p.id} id={p.id} summary={summaries[p.id]} />;
+    return p.id === 'quick' || p.id === 'money' && balanceDue ? <Fragment key={p.id}>{el}</Fragment> : <Foldable key={p.id} id={p.id}>{el}</Foldable>;
+  };
+  const customise = (
+    <>
+      <button type="button" className="btn small more customise-btn" onClick={() => setCustomising(true)}>⚙️ Customise Today</button>
+      {customising && <CustomiseSheet onClose={() => setCustomising(false)} />}
+    </>
+  );
+  const calm = <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>;
+
+  // Desktop: your day on the left, a side column for what's next, what's slipping, money and progress.
+  if (desktop) {
+    const top = shown.filter((p) => p.id === 'quick');
+    const rail = shown.filter((p) => RAIL.has(p.id));
+    const main = shown.filter((p) => p.id !== 'quick' && !RAIL.has(p.id));
+    return (
+      <>
+        {debriefCard}
+        {resetCard}
+        {top.map(renderCard)}
+        <div className="dash">
+          <div className="dash-main">{main.map(renderCard)}</div>
+          <aside className="dash-rail" aria-label="At a glance">{rail.map(renderCard)}{customise}</aside>
+        </div>
+        {calm}
+      </>
+    );
+  }
+
   return (
     <>
       {debriefCard}
       {resetCard}
-      {shown.map((p) => {
-        const el = cards[p.id];
-        if (!el) return null;
-        if (p.fold) return <Folded key={p.id} id={p.id} summary={summaries[p.id]} />;
-        return p.id === 'quick' || p.id === 'money' && balanceDue ? <Fragment key={p.id}>{el}</Fragment> : <Foldable key={p.id} id={p.id}>{el}</Foldable>;
-      })}
-
-      <button type="button" className="btn small more customise-btn" onClick={() => setCustomising(true)}>⚙️ Customise Today</button>
-      {customising && <CustomiseSheet onClose={() => setCustomising(false)} />}
-
-      <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>
+      {shown.map(renderCard)}
+      {customise}
+      {calm}
     </>
   );
 }
+
+/** Cards that go in the right-hand column on desktop. */
+const RAIL = new Set<CardId>(['next', 'slip', 'subs', 'soon', 'money', 'weight', 'week']);
 
 function ListSection({ title, tasks }: { title: string; tasks: Task[] }) {
   return (

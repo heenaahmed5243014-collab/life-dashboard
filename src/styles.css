@@ -1787,19 +1787,26 @@ html[data-layout="desktop"] .nav-brand { font-weight: 800; font-size: 0.85rem; c
 html[data-layout="desktop"] .nav-layout { border: none; background: #F1F1F6; border-radius: 12px; min-height: 40px; font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--muted); }
 
 /* A screen's own + becomes a round button in the corner */
-html[data-layout="desktop"] .fab:not(.fab-low) { left: auto; right: max(28px, calc(50% - 660px + 28px)); bottom: 28px; transform: none; width: 60px; height: 60px; border-radius: 20px; }
 html[data-layout="desktop"] .toast-wrap { bottom: 28px; }
 
 /* Live pill sits over the content, not the sidebar */
 html[data-layout="desktop"] .island-wrap { padding-left: 248px; }
 
-/* Today: header and date strip across the top, cards in two columns below */
-html[data-layout="desktop"] .today-body { display: block; column-count: 2; column-gap: 24px; }
-html[data-layout="desktop"] .today-body > * { break-inside: avoid; margin-bottom: 22px; display: flex; width: 100%; }
-html[data-layout="desktop"] .today-body > .debrief, html[data-layout="desktop"] .today-body > .reset-prompt,
-html[data-layout="desktop"] .today-body > .quick-tiles, html[data-layout="desktop"] .today-body > .calm { column-span: all; }
-html[data-layout="desktop"] .today-body > .quick-tiles { display: grid; }
-html[data-layout="desktop"] .today-body > .customise-btn { display: inline-flex; width: auto; }
+/* Today: a dashboard. Your day on the left, a side column on the right that stays in view. */
+html[data-layout="desktop"] .today-body { gap: 24px; }
+html[data-layout="desktop"] .dash { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 24px; align-items: start; }
+html[data-layout="desktop"] .dash-main, html[data-layout="desktop"] .dash-rail { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+html[data-layout="desktop"] .dash-rail .customise-btn { align-self: flex-start; }
+html[data-layout="desktop"] .today-body > .calm { text-align: center; }
+
+/* The sidebar has its own Add button, so no floating + on desktop */
+html[data-layout="desktop"] .fab:not(.fab-low) { display: none; }
+
+/* Pages without the menu (Account, an item, a routine): centred, readable width */
+html[data-layout="desktop"] .app:not(:has(.nav)) { padding-left: 0; max-width: 880px; }
+html[data-layout="desktop"] .app:not(:has(.nav)) .island-wrap { padding-left: 0; }
+html[data-layout="desktop"] .page-tasks { max-width: 920px; }
 
 /* Money: wallet column + everything else */
 html[data-layout="desktop"] .income-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; row-gap: 24px; align-items: start; }
@@ -1809,12 +1816,12 @@ html[data-layout="desktop"] .income-page > .budget { grid-column: 1; grid-row: 2
 
 /* Areas, Routines, Tasks: use the width */
 html[data-layout="desktop"] .area-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-html[data-layout="desktop"] .routines-page .routine-list, html[data-layout="desktop"] .routine-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 
 /* Sheets open as centred windows */
 html[data-layout="desktop"] .sheet-backdrop { align-items: center; padding-left: 248px; }
 html[data-layout="desktop"] .sheet { max-width: 620px; border-radius: 28px; }
 .pin-forgot-form { display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: stretch; text-align: center; }
-html[data-layout="desktop"] .routines-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-html[data-layout="desktop"] .routines-page > :not(.routine-card) { grid-column: 1 / -1; }
-html[data-layout="desktop"] .routines-page > .move-card { grid-column: auto; }
+html[data-layout="desktop"] .routines-page { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(0, 1.4fr); column-gap: 24px; row-gap: 16px; align-items: start; }
+html[data-layout="desktop"] .routines-page > * { grid-column: 2; min-width: 0; }
+html[data-layout="desktop"] .routines-page > .page-head { grid-column: 1 / -1; }
+html[data-layout="desktop"] .routines-page > .move-card { grid-column: 1; grid-row: 2 / span 40; position: sticky; top: 24px; }
