@@ -6,7 +6,7 @@ import { back } from '../router';
 import { useToast } from '../toast';
 import Header from '../components/Header';
 import { DaysPicker, DomainPicker, FieldBlock, Segmented } from '../components/Fields';
-import { DEFAULT_SESSIONS, SessionSettings } from '../components/GymSessions';
+import { DEFAULT_SESSIONS, looksLikeExercise, SessionSettings } from '../components/GymSessions';
 import ChunkTicks from '../components/ChunkTicks';
 
 export default function RoutineScreen({ id }: { id: string }) {
@@ -85,11 +85,15 @@ function RoutineDetail({ routine }: { routine: Routine }) {
           {routine.chunks > 1 && <p className="note">Your streak counts a day once all {routine.chunks} are ticked.</p>}
         </FieldBlock>
 
+        {(looksLikeExercise(routine) || Boolean(routine.session_types?.length)) && (
         <FieldBlock label="Session types (e.g. gym)">
           {!store.db12 ? (
             <p className="note">Needs database update 12 first.</p>
           ) : routine.session_types?.length ? (
-            <SessionSettings routine={routine} />
+            <>
+              {looksLikeExercise(routine) ? <SessionSettings routine={routine} /> : <p className="note">Session types are only used for exercise routines, so they’re not shown for this one.</p>}
+              <button type="button" className="btn small more" onClick={() => save({ session_types: [], session_plan: null })}>Turn off session types</button>
+            </>
           ) : (
             <>
               <p className="note">Track what each session was, like Legs, Arms or Cardio.</p>
@@ -97,6 +101,7 @@ function RoutineDetail({ routine }: { routine: Routine }) {
             </>
           )}
         </FieldBlock>
+        )}
 
         <FieldBlock label="Time of day">
           <Segmented<TimeOfDay>

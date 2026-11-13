@@ -8,7 +8,10 @@ import { useToast } from '../toast';
 import { cheer } from '../cheers';
 
 export const DEFAULT_SESSIONS = ['Legs', 'Arms', 'Back', 'Core', 'Cardio', 'Full body'];
-export const hasSessions = (r: Routine) => Boolean(r.session_types?.length);
+/** Exercise routines, judged by name. Only these ever ask what you trained or how long. */
+export const EXERCISE_RE = /gym|work ?out|training|exercise|fitness|pilates|yoga|swim|run\b|running|spin|class|hiit|weights|lift|boxing|dance|tennis|climb/i;
+export const looksLikeExercise = (r: Routine) => EXERCISE_RE.test(r.title);
+export const hasSessions = (r: Routine) => Boolean(r.session_types?.length) && looksLikeExercise(r);
 export const plannedSession = (r: Routine, day: Day) => r.session_plan?.[weekday(day)] || null;
 
 /** Chips under the gym row on Today: what did you train? */
@@ -46,7 +49,7 @@ export function SessionPicker({ routine, day }: { routine: Routine; day: Day }) 
   );
 }
 
-export const isGym = (r: Routine) => hasSessions(r) || /gym|workout|training|pilates|swim|run\b|yoga/i.test(r.title);
+export const isGym = (r: Routine) => looksLikeExercise(r);
 
 /** How long the session lasted. Quick chips, or type your own. */
 export function DurationPicker({ routine, day }: { routine: Routine; day: Day }) {
