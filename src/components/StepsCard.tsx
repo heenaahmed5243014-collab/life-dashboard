@@ -11,9 +11,9 @@ const k = (n: number) => (n >= 1000 ? `${(Math.round(n / 100) / 10).toLocaleStri
 const full = (n: number) => n.toLocaleString('en-GB');
 
 const PARTS: { part: DayPart; label: string; emoji: string; colour: string }[] = [
-  { part: 'morning', label: 'Morning', emoji: '🌅', colour: '#F5A524' },
-  { part: 'afternoon', label: 'Afternoon', emoji: '☀️', colour: '#4B3FD6' },
-  { part: 'night', label: 'Night', emoji: '🌙', colour: '#8E6CFF' },
+  { part: 'morning', label: 'Morning', emoji: '🌅', colour: '#FF8A3D' },
+  { part: 'afternoon', label: 'Afternoon', emoji: '☀️', colour: '#3FA34D' },
+  { part: 'night', label: 'Night', emoji: '🌙', colour: '#FF4F8B' },
 ];
 
 /** How many steps came in each part of the day, from the running totals saved at each check-in. */

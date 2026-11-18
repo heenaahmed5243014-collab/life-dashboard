@@ -471,7 +471,17 @@ function TodayBody() {
   }
 
   const cards: Record<CardId, ReactNode> = {
-    quick: modeSwitch,
+    quick: (
+      <>
+        <div className="glance" aria-label="Today at a glance">
+          <div className="glance-item"><span className="glance-num">{data.top.filter((t) => t.status === 'done').length}<small>/{Math.max(3, data.top.length)}</small></span><span className="glance-label">Top 3 done{data.top.length && data.top.every((t) => t.status === 'done') ? <i className="glance-tag">Done</i> : null}</span></div>
+          <button type="button" className="glance-item" onClick={() => go('/routines')}><span className="glance-num">{(() => { const v = store.steps.find((x) => x.day === now)?.count ?? 0; return v >= 1000 ? `${(Math.round(v / 100) / 10).toLocaleString('en-GB')}k` : v; })()}</span><span className="glance-label">Steps</span></button>
+          <div className="glance-item"><span className="glance-num">{routinesDone}<small>/{data.routines.length}</small></span><span className="glance-label">Routines done{data.routines.length > 0 && routinesDone === data.routines.length ? <i className="glance-tag">All</i> : null}</span></div>
+          <div className="glance-item"><span className="glance-num">{also.filter((t) => t.status !== 'done').length}</span><span className="glance-label">To-dos</span></div>
+        </div>
+        {modeSwitch}
+      </>
+    ),
     top,
     slip: slip.length + follows.length === 0 ? null : (
       <>
