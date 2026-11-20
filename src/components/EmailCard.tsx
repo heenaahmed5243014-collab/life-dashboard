@@ -6,6 +6,51 @@ import { addDays, daysBetween, shortDate, today } from '../dates';
 import { useToast } from '../toast';
 import { callAgent } from '../agent';
 import type { EmailItem } from '../types';
+import { isDemo } from '../backend';
+import { connectOutlook, disconnectOutlook, syncMail, useMailStatus } from '../outlook';
+
+const ago = (iso: string | null | undefined) => {
+  if (!iso) return 'not yet';
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+};
+
+/** Connect Outlook, or show when it last checked, with Sync now. */
+function MailBar() {
+  const store = useStore();
+  const toast = useToast();
+  const mail = useMailStatus();
+  const [busy, setBusy] = useState(false);
+  if (isDemo) return null;
+  if (!mail.connected) {
+    return (
+      <div className="em-mail">
+        <span className="em-mail-text"><b>📬 Connect Outlook</b><small>New emails that need you appear here by themselves, and threads you reply to tick themselves off.</small></span>
+        <button type="button" className="btn small primary" disabled={busy} onClick={async () => { setBusy(true); try { await connectOutlook(); } catch (e) { toast({ message: (e as Error).message }); setBusy(false); } }}>{busy ? 'Opening…' : 'Connect'}</button>
+        {mail.problem && <p className="note em-mail-problem">{mail.problem}</p>}
+      </div>
+    );
+  }
+  return (
+    <div className="em-mail on">
+      <span className="em-mail-text">
+        <b>📬 Outlook{mail.email ? ` · ${mail.email}` : ''}</b>
+        <small>{mail.reconnect ? 'Microsoft needs you to sign in again.' : mail.busy ? 'Checking for new mail…' : `Checked ${ago(mail.last_sync)}`}</small>
+      </span>
+      {mail.reconnect
+        ? <button type="button" className="btn small primary" onClick={() => connectOutlook().catch((e) => toast({ message: (e as Error).message }))}>Sign in</button>
+        : <button type="button" className="btn small" disabled={mail.busy} onClick={async () => {
+            const r = await syncMail(store.reload, true);
+            if (r) toast({ message: r.added || r.updated || r.closed ? [r.added && `${r.added} new`, r.updated && `${r.updated} replied`, r.closed && `${r.closed} ticked off`].filter(Boolean).join(' · ') : 'Nothing new that needs you' });
+          }}>{mail.busy ? '…' : 'Sync'}</button>}
+      <details className="em-mail-more">
+        <summary aria-label="Outlook options">⋯</summary>
+        <button type="button" className="link-btn" onClick={() => { if (confirm('Disconnect Outlook? Emails already on the card stay.')) disconnectOutlook().catch((e) => toast({ message: (e as Error).message })); }}>Disconnect Outlook</button>
+      </details>
+      {mail.problem && <p className="note em-mail-problem">{mail.problem}</p>}
+    </div>
+  );
+}
 
 const age = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 864e5));
 
@@ -71,6 +116,7 @@ export default function EmailCard() {
   return (
     <section className="card em-card" aria-label="Email">
       <div className="between"><span className="eyebrow">✉️ Email</span>{replyN === 0 && waitN === 0 ? <span className="tag tag-today">Inbox zero</span> : <span className="count">{replyN + waitN} open</span>}</div>
+      <MailBar />
       <div className="em-stats">
         <button type="button" className={tab === 'reply' ? 'on' : ''} onClick={() => setTab('reply')}><b>{replyN}</b><span>Reply needed{oldest >= 3 ? ` · oldest ${oldest}d` : ''}</span></button>
         <button type="button" className={tab === 'waiting' ? 'on' : ''} onClick={() => setTab('waiting')}><b>{waitN}</b><span>Waiting on them{chaseN ? ` · ${chaseN} to chase` : ''}</span></button>

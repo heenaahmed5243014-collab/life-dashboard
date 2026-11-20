@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { useRoute } from './router';
 import { ToastProvider } from './toast';
-import { StoreProvider } from './store';
+import { StoreProvider, useStore } from './store';
 import { AuthGate } from './auth';
 import { demoBackend, isConfigured, isDemo, supabase, supabaseBackend } from './backend';
 import TodayScreen from './screens/TodayScreen';
@@ -37,11 +37,31 @@ function SignedInApp({ userId, real }: { userId: string; real: Backend }) {
   return (
     <StoreProvider backend={backend}>
       <SyncBanner />
+      <MailSync />
       <Screens />
     </StoreProvider>
   );
 }
 import { PinGate, syncPin } from './pin';
+import { finishOutlookIfReturning, loadMailStatus, syncMail } from './outlook';
+
+/** Finishes connecting Outlook after the Microsoft sign-in, then checks for new mail on open and every 10 minutes. */
+function MailSync() {
+  const store = useStore();
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      if (await finishOutlookIfReturning(store.reload)) return;
+      await loadMailStatus();
+      if (live) void syncMail(store.reload);
+    })();
+    const tick = () => document.visibilityState === 'visible' && void syncMail(store.reload);
+    const t = setInterval(tick, 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => { live = false; clearInterval(t); document.removeEventListener('visibilitychange', tick); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
 import Nav from './components/Nav';
 import QuickAddHost from './components/QuickAdd';
 

@@ -2308,3 +2308,15 @@ body.cp-dragging, body.cp-dragging * { user-select: none; -webkit-user-select: n
 .cp-tile.planned { cursor: grab; }
 .returns-add { align-self: flex-start; }
 .cp-feed { max-width: 560px; width: 100%; margin-inline: auto; }
+
+/* Outlook connection on the Email card */
+.em-mail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: rgba(255, 255, 255, 0.7); border-radius: 16px; padding: 10px 12px; margin: 8px 0 10px; position: relative; }
+.em-mail.on { background: rgba(228, 243, 90, 0.35); }
+.em-mail-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.em-mail-text b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.em-mail-text small { color: var(--muted); font-size: 0.8rem; }
+.em-mail-problem { flex-basis: 100%; margin: 0; color: #A34A00; }
+.em-mail-more { position: relative; }
+.em-mail-more summary { list-style: none; cursor: pointer; padding: 4px 8px; border-radius: 10px; font-weight: 700; }
+.em-mail-more summary::-webkit-details-marker { display: none; }
+.em-mail-more[open] > .link-btn { position: absolute; right: 0; top: 100%; z-index: 5; background: #fff; border-radius: 12px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); white-space: nowrap; }
