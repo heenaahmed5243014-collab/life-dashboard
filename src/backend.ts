@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type WaterDay, type StepCheckin, type ProgressPhoto, type SmmTask, type EmailItem, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type WaterDay, type StepCheckin, type ProgressPhoto, type SmmTask, type EmailItem, type Client, type ContentPost, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -47,6 +47,8 @@ export interface Snapshot {
   emails?: EmailItem[];
   /** False until database update 18 (social media jobs, email tracker) has been run. */
   smmReady?: boolean;
+  clients?: Client[];
+  posts?: ContentPost[];
 }
 
 export interface Backend {
@@ -106,6 +108,16 @@ export interface Backend {
   insertEmail(e: EmailItem): Promise<void>;
   updateEmail(id: string, changes: Partial<EmailItem>): Promise<void>;
   deleteEmail(id: string): Promise<void>;
+  /** Content tab (update 18): clients you onboard, planned posts, and their pictures. */
+  insertClient(c: Client): Promise<void>;
+  updateClient(id: string, changes: Partial<Client>): Promise<void>;
+  deleteClient(id: string): Promise<void>;
+  insertPost(p: ContentPost): Promise<void>;
+  updatePost(id: string, changes: Partial<ContentPost>): Promise<void>;
+  deletePost(p: ContentPost): Promise<void>;
+  uploadContent(file: Blob): Promise<string>;
+  contentUrl(path: string): Promise<string>;
+  removeContent(path: string): Promise<void>;
   /** Progress photos (update 17): stored privately. */
   uploadProgress(file: Blob): Promise<string>;
   insertPhoto(p: ProgressPhoto): Promise<void>;
@@ -229,17 +241,19 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       cancels: new Map((bx.data as { id: string; cancel_by: Day }[]).map((b) => [b.id, b.cancel_by])),
     };
   };
-  const loadSmm = async (): Promise<{ smm: SmmTask[]; emails: EmailItem[]; smmReady: boolean }> => {
-    const [a, b] = await Promise.all([
+  const loadSmm = async (): Promise<{ smm: SmmTask[]; emails: EmailItem[]; clients: Client[]; posts: ContentPost[]; smmReady: boolean }> => {
+    const [a, b, c, p] = await Promise.all([
       sb.from('smm_tasks').select('id, client, title, platform, brief, due, agent, status, output, created_at').order('created_at'),
       sb.from('email_items').select('id, sender, subject, kind, summary, next_step, due, status, created_at').neq('status', 'done').order('created_at'),
+      sb.from('clients').select('id, name, handle, color, checklist, notes, archived, created_at').order('created_at'),
+      sb.from('content_posts').select('id, client_id, day, time, platform, kind, caption, status, image_path, created_at').order('day'),
     ]);
-    const err = a.error ?? b.error;
+    const err = a.error ?? b.error ?? c.error ?? p.error;
     if (err) {
       if (/fetch|network|load failed/i.test(err.message)) throw new Error(err.message);
-      return { smm: [], emails: [], smmReady: false };
+      return { smm: [], emails: [], clients: [], posts: [], smmReady: false };
     }
-    return { smm: a.data as SmmTask[], emails: b.data as EmailItem[], smmReady: true };
+    return { smm: a.data as SmmTask[], emails: b.data as EmailItem[], clients: c.data as Client[], posts: p.data as ContentPost[], smmReady: true };
   };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
@@ -481,6 +495,32 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     async insertEmail(e) { check(await sb.from('email_items').insert(e)); },
     async updateEmail(id, changes) { check(await sb.from('email_items').update(changes).eq('id', id)); },
     async deleteEmail(id) { check(await sb.from('email_items').delete().eq('id', id)); },
+    async insertClient(c) { const { created_at: _c, ...row } = c; check(await sb.from('clients').insert(row)); },
+    async updateClient(id, changes) { check(await sb.from('clients').update(changes).eq('id', id)); },
+    async deleteClient(id) {
+      const pics = await sb.from('content_posts').select('image_path').eq('client_id', id).not('image_path', 'is', null);
+      check(await sb.from('clients').delete().eq('id', id));
+      const paths = ((pics.data ?? []) as { image_path: string }[]).map((r) => r.image_path);
+      if (paths.length) await sb.storage.from('content').remove(paths);
+    },
+    async insertPost(p) { const { created_at: _c, ...row } = p; check(await sb.from('content_posts').insert(row)); },
+    async updatePost(id, changes) { check(await sb.from('content_posts').update(changes).eq('id', id)); },
+    async deletePost(p) {
+      check(await sb.from('content_posts').delete().eq('id', p.id));
+      if (p.image_path) await sb.storage.from('content').remove([p.image_path]);
+    },
+    async uploadContent(file) {
+      const { data } = await sb.auth.getUser();
+      if (!data.user) throw new Error('Not signed in');
+      const path = `${data.user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      check(await sb.storage.from('content').upload(path, file, { contentType: 'image/jpeg', upsert: false }));
+      return path;
+    },
+    async removeContent(path) { await sb.storage.from('content').remove([path]); },
+    async contentUrl(path) {
+      const res = await sb.storage.from('content').createSignedUrl(path, 3600);
+      return check<{ signedUrl: string }>(res).signedUrl;
+    },
     async setTickMinutes(routineId, day, minutes) {
       check(await sb.from('routine_ticks').update({ minutes }).eq('routine_id', routineId).eq('day', day));
     },
@@ -631,6 +671,15 @@ export function demoBackend(): Backend {
         { id: 'e1', sender: 'Glow Aesthetics', subject: 'Feedback on last week’s reels', kind: 'reply', summary: 'Loved the reels, want one more for Friday.', next_step: 'Confirm Friday reel and send draft', due: addDays(now, 1), status: 'open', created_at: new Date(Date.now() - 3 * 864e5).toISOString() },
         { id: 'e2', sender: 'HMICFRS recruiter', subject: 'Interview date', kind: 'waiting', summary: 'Said they would confirm the interview slot.', next_step: 'Chase if no reply by Monday', due: addDays(now, 2), status: 'open', created_at: new Date(Date.now() - 1 * 864e5).toISOString() },
       ],
+      clients: <Client[]>[
+        { id: 'c1', name: 'Glow Aesthetics', handle: '@glowaesthetics', color: '#FF4F8B', checklist: { call: true, proposal: true, contract: true, deposit: true, questionnaire: true, logins: false }, notes: 'Wants soft, clinical-but-warm look. No harsh filters.', archived: false },
+        { id: 'c2', name: 'Bloom Bridal', handle: '@bloombridal', color: '#3FA34D', checklist: { call: true, proposal: true }, notes: '', archived: false },
+      ],
+      posts: [
+        [-6, 'c1', 'post', 'posted', 'Before and after: natural lip filler'], [-3, 'c1', 'reel', 'posted', 'Day in the clinic'], [-1, 'c1', 'carousel', 'posted', '5 skin myths'],
+        [1, 'c1', 'reel', 'approved', 'Friday reel: treatment walk-through'], [3, 'c1', 'post', 'draft', 'Meet the team'], [6, 'c1', 'story', 'idea', 'Q&A sticker'],
+        [2, 'c2', 'post', 'idea', 'New veil collection'], [5, 'c2', 'reel', 'draft', 'Autumn bride try-on'],
+      ].map(([d, c, kind, status, caption], i) => ({ id: `cp${i}`, client_id: c as string, day: addDays(now, d as number), time: i % 2 ? '18:30' : '12:00', platform: 'Instagram', kind: kind as ContentPost['kind'], caption: caption as string, status: status as ContentPost['status'], image_path: null })),
       photos: [],
       stepCheckins: [{ day: now, part: 'morning', count: 3800 }, { day: now, part: 'afternoon', count: 9100 }],
       goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
@@ -673,6 +722,10 @@ export function demoBackend(): Backend {
     removeQr: async (path) => { qrFiles.delete(path); },
     setTickMinutes: noop,
     insertSmm: noop, updateSmm: noop, deleteSmm: noop, insertEmail: noop, updateEmail: noop, deleteEmail: noop,
+    insertClient: noop, updateClient: noop, deleteClient: noop, insertPost: noop, updatePost: noop, deletePost: noop,
+    uploadContent: async (file) => { const path = `demo/c${Date.now()}${Math.random()}`; qrFiles.set(path, URL.createObjectURL(file)); return path; },
+    contentUrl: async (path) => qrFiles.get(path) ?? '',
+    removeContent: async (path) => { qrFiles.delete(path); },
     uploadProgress: async (file) => { const path = `demo/${Date.now()}`; qrFiles.set(path, URL.createObjectURL(file)); return path; },
     insertPhoto: noop,
     deletePhoto: noop,

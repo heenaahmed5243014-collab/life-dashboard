@@ -2,13 +2,14 @@
 // Remembered on this phone. The debrief and evening reset stay at the top when they're due.
 import { useEffect, useState, type ReactNode } from 'react';
 
-export type CardId = 'quick' | 'top' | 'slip' | 'subs' | 'smm' | 'email' | 'routines' | 'mirror' | 'todos' | 'plan' | 'next' | 'soon' | 'week' | 'money' | 'weight';
+export type CardId = 'quick' | 'top' | 'slip' | 'subs' | 'onboard' | 'smm' | 'email' | 'routines' | 'mirror' | 'todos' | 'plan' | 'next' | 'soon' | 'week' | 'money' | 'weight';
 
 export const CARDS: { id: CardId; emoji: string; label: string }[] = [
   { id: 'quick', emoji: '⚡', label: 'Quick buttons' },
   { id: 'top', emoji: '⭐', label: 'Top 3' },
   { id: 'slip', emoji: '🐢', label: 'Slipping' },
   { id: 'subs', emoji: '✂️', label: 'Subscriptions to cancel' },
+  { id: 'onboard', emoji: '🤝', label: 'Client onboarding' },
   { id: 'email', emoji: '✉️', label: 'Email' },
   { id: 'smm', emoji: '📣', label: 'Social media' },
   { id: 'routines', emoji: '🔁', label: 'Routine' },

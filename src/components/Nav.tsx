@@ -4,7 +4,7 @@ import { useWorkMode } from '../workmode';
 import { openQuickAdd } from './QuickAdd';
 import { setLayoutPref, useLayoutPref } from '../layout';
 
-type Tab = 'today' | 'areas' | 'tasks' | 'routines' | 'income';
+type Tab = 'today' | 'areas' | 'tasks' | 'content' | 'routines' | 'income';
 
 const icon = (children: ReactNode) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
@@ -14,12 +14,14 @@ const ICONS: Record<Tab, ReactNode> = {
   areas: icon(<><rect x="3" y="3" width="7.5" height="7.5" rx="2" /><rect x="13.5" y="3" width="7.5" height="7.5" rx="2" /><rect x="3" y="13.5" width="7.5" height="7.5" rx="2" /><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" /></>),
   tasks: icon(<><path d="M10 6h10M10 12h10M10 18h10" /><path d="M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17" /></>),
   income: icon(<><path d="M16 7.5a3.5 3.5 0 0 0-6.5 1.8V16c0 1-.6 2-1.5 2.5h9" /><path d="M7 12.5h7" /></>),
+  content: icon(<><rect x="3" y="4" width="18" height="17" rx="3" /><path d="M3 9h18M8 2v4M16 2v4" /><circle cx="9" cy="14.5" r="1.6" /><path d="M21 18l-4.5-4.5L10 20" /></>),
   routines: icon(<><path d="M17 2l3 3-3 3" /><path d="M4 11V9a4 4 0 0 1 4-4h12" /><path d="M7 22l-3-3 3-3" /><path d="M20 13v2a4 4 0 0 1-4 4H4" /></>),
 };
 const TABS: { key: Tab; label: string; path: string }[] = [
   { key: 'today', label: 'Today', path: '/' },
   { key: 'areas', label: 'Areas', path: '/areas' },
   { key: 'tasks', label: 'Tasks', path: '/tasks' },
+  { key: 'content', label: 'Content', path: '/content' },
   { key: 'routines', label: 'Routines', path: '/routines' },
   { key: 'income', label: 'Money', path: '/income' },
 ];

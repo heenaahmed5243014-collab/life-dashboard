@@ -11,7 +11,7 @@ const RoutineScreen = lazy(() => import('./screens/RoutineScreen'));
 import RoutinesScreen from './screens/RoutinesScreen';
 import AreasScreen from './screens/AreasScreen';
 const AreaScreen = lazy(() => import('./screens/AreaScreen'));
-const ReturnsScreen = lazy(() => import('./screens/ReturnsScreen'));
+const ContentScreen = lazy(() => import('./screens/ContentScreen'));
 const StepsScreen = lazy(() => import('./screens/StepsScreen'));
 const ResetScreen = lazy(() => import('./screens/ResetScreen'));
 const WeightRewardsScreen = lazy(() => import('./screens/WeightRewardsScreen'));
@@ -43,7 +43,6 @@ function SignedInApp({ userId, real }: { userId: string; real: Backend }) {
 }
 import { PinGate, syncPin } from './pin';
 import Nav from './components/Nav';
-import Header from './components/Header';
 import QuickAddHost from './components/QuickAdd';
 
 function Screens() {
@@ -62,15 +61,15 @@ function Screens() {
 function Page() {
   const route = useRoute();
   const work = useWorkMode();
-  if (work.active && (route.name === 'income' || route.name === 'returns' || route.name === 'steps' || route.name === 'rewards')) return <HiddenScreen />;
+  if (work.active && (route.name === 'income' || route.name === 'steps' || route.name === 'rewards')) return <HiddenScreen />;
   switch (route.name) {
     case 'today': return <TodayScreen />;
     case 'tasks': return <TasksScreen />;
     case 'account': return <AccountScreen />;
     case 'routines': return <RoutinesScreen />;
-    case 'areas': return <AreasScreen />;
+    case 'areas': return <AreasScreen key={route.tab ?? ''} tab={work.active ? undefined : route.tab} />;
+    case 'content': return <ContentScreen tab={route.tab} />;
     case 'area': return <AreaScreen key={route.id + (route.tab ?? '')} id={route.id} tab={route.tab} />;
-    case 'returns': return <PinGate after={<Header title="" />}><ReturnsScreen /></PinGate>;
     case 'income': return <PinGate after={<Nav current="income" />}><IncomeScreen /></PinGate>;
     case 'steps': return <StepsScreen />;
     case 'reset': return <ResetScreen />;

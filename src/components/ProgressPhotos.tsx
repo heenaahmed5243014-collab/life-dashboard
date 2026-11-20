@@ -6,17 +6,9 @@ import { useStore } from '../store';
 import { shortDate, today } from '../dates';
 import { useToast } from '../toast';
 import type { ProgressPhoto } from '../types';
+import { shrink as shrinkTo } from '../onboarding';
 
-/** Shrink a photo to at most 1400px on the long side, as a JPEG. */
-async function shrink(file: File): Promise<Blob> {
-  const img = await createImageBitmap(file);
-  const scale = Math.min(1, 1400 / Math.max(img.width, img.height));
-  const c = document.createElement('canvas');
-  c.width = Math.round(img.width * scale);
-  c.height = Math.round(img.height * scale);
-  c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
-  return new Promise((ok, fail) => c.toBlob((b) => (b ? ok(b) : fail(new Error('Could not read that photo'))), 'image/jpeg', 0.85));
-}
+const shrink = (f: File) => shrinkTo(f, 1400);
 
 function useUrl(path: string | undefined): string | null {
   const store = useStore();

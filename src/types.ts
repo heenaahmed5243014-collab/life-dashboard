@@ -132,6 +132,10 @@ export interface Weight {
 
 export type SmmStatus = 'todo' | 'review' | 'ready' | 'posted';
 export interface SmmTask { id: string; client: string; title: string; platform: string; brief: string; due: Day | null; agent: string | null; status: SmmStatus; output: string; created_at?: string }
+export interface Client { id: string; name: string; handle: string; color: string; checklist: Record<string, boolean>; notes: string; archived: boolean; created_at?: string }
+export type PostKind = 'post' | 'reel' | 'story' | 'carousel';
+export type PostStatus = 'idea' | 'draft' | 'approved' | 'scheduled' | 'posted';
+export interface ContentPost { id: string; client_id: string | null; day: Day; time: string | null; platform: string; kind: PostKind; caption: string; status: PostStatus; image_path: string | null; created_at?: string }
 export interface EmailItem { id: string; sender: string; subject: string; kind: 'reply' | 'waiting'; summary: string; next_step: string; due: Day | null; status: 'open' | 'done'; created_at: string }
 
 export type DayPart = 'morning' | 'afternoon' | 'night';

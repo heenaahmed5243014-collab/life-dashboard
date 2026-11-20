@@ -8,9 +8,16 @@ import { openQuickAdd } from '../components/QuickAdd';
 import { Chevron, Plus } from '../icons';
 import { byDue } from '../today';
 import { today } from '../dates';
+import { lazy, Suspense } from 'react';
+import { PinGate } from '../pin';
+import { useWorkMode } from '../workmode';
 
-export default function AreasScreen() {
+const ReturnsScreen = lazy(() => import('./ReturnsScreen'));
+
+export default function AreasScreen({ tab }: { tab?: 'returns' }) {
   const store = useStore();
+  const work = useWorkMode();
+  const returnsCount = store.tasks.filter((t) => t.status === 'open' && isReturn(t)).length;
   const now = today();
   const open = store.tasks.filter((t) => t.status === 'open' && (t.kind === 'task' || t.kind === 'project'));
 
@@ -19,9 +26,19 @@ export default function AreasScreen() {
       <main className="page">
         <header className="page-head">
           <h1 className="h1">Areas</h1>
-          <p className="muted lead">Tap an area to see what’s in it.</p>
+          <p className="muted lead">{tab === 'returns' ? 'Everything going back, in one place.' : 'Tap an area to see what’s in it.'}</p>
         </header>
 
+        {!work.active && (
+          <div className="segmented area-tabs" role="tablist" aria-label="View">
+            <button type="button" role="tab" aria-selected={!tab} className={!tab ? 'seg on' : 'seg'} onClick={() => go('/areas', true)}>Areas</button>
+            <button type="button" role="tab" aria-selected={tab === 'returns'} className={tab === 'returns' ? 'seg on' : 'seg'} onClick={() => go('/areas/returns', true)}>📦 Returns{returnsCount ? ` · ${returnsCount}` : ''}</button>
+          </div>
+        )}
+
+        {tab === 'returns' ? (
+          <PinGate compact label="Returns"><Suspense fallback={null}><ReturnsScreen /></Suspense></PinGate>
+        ) : (
         <div className="area-list">
           {store.domains.map((d) => {
             const mine = open.filter((t) => t.domain_id === d.id && !t.project_id);
@@ -47,8 +64,9 @@ export default function AreasScreen() {
             );
           })}
         </div>
+        )}
       </main>
-      <button type="button" className="fab" aria-label="Add something" onClick={() => openQuickAdd()}><Plus /></button>
+      {tab !== 'returns' && <button type="button" className="fab" aria-label="Add something" onClick={() => openQuickAdd()}><Plus /></button>}
       <Nav current="areas" />
     </>
   );

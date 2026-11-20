@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, WaterDay, StepCheckin, ProgressPhoto, DayPart, SmmTask, EmailItem, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, WaterDay, StepCheckin, ProgressPhoto, DayPart, SmmTask, EmailItem, Client, ContentPost, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { nextDue, REPEAT_LABEL } from './repeat';
 import { milestones } from './weightRewards';
@@ -70,6 +70,18 @@ interface Store extends Snapshot {
   addEmail(e: Omit<EmailItem, 'id' | 'status' | 'created_at'>): EmailItem;
   updateEmail(id: string, changes: Partial<EmailItem>): void;
   deleteEmail(id: string): void;
+  clients: Client[];
+  posts: ContentPost[];
+  addClient(c: Pick<Client, 'name' | 'handle' | 'color'>): Client;
+  updateClient(id: string, changes: Partial<Client>): void;
+  deleteClient(id: string): void;
+  /** Uploads the picture first (if any), then saves the post. */
+  addPost(p: Omit<ContentPost, 'id' | 'image_path'>, image?: Blob): Promise<ContentPost>;
+  updatePost(id: string, changes: Partial<ContentPost>): void;
+  /** Swap in a new picture for a post (the old one is deleted). */
+  setPostImage(p: ContentPost, image: Blob): Promise<void>;
+  deletePost(p: ContentPost): void;
+  contentUrl(path: string): Promise<string>;
   photos: ProgressPhoto[];
   /** Gym: minutes for a ticked session (update 17). */
   setTickMinutes(routineId: string, day: Day, minutes: number | null): void;
@@ -212,6 +224,8 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       stepCheckins: data.stepCheckins ?? [],
       smm: data.smm ?? [],
       emails: data.emails ?? [],
+      clients: data.clients ?? [],
+      posts: data.posts ?? [],
       photos: data.photos ?? [],
       water: data.water ?? [],
       goals: data.goals ?? [],
@@ -317,6 +331,44 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       updateEmail(id, changes) {
         setData((d) => d && { ...d, emails: (d.emails ?? []).map((e) => (e.id === id ? { ...e, ...changes } : e)).filter((e) => e.status !== 'done') });
         save(backend.updateEmail(id, changes));
+      },
+      addClient(fields) {
+        const c: Client = { id: crypto.randomUUID(), checklist: {}, notes: '', archived: false, ...fields };
+        setData((d) => d && { ...d, clients: [...(d.clients ?? []), c] });
+        save(backend.insertClient(c));
+        return c;
+      },
+      updateClient(id, changes) {
+        setData((d) => d && { ...d, clients: (d.clients ?? []).map((c) => (c.id === id ? { ...c, ...changes } : c)) });
+        save(backend.updateClient(id, changes));
+      },
+      deleteClient(id) {
+        setData((d) => d && { ...d, clients: (d.clients ?? []).filter((c) => c.id !== id), posts: (d.posts ?? []).filter((p) => p.client_id !== id) });
+        save(backend.deleteClient(id));
+      },
+      async addPost(fields, image) {
+        const image_path = image ? await backend.uploadContent(image) : null;
+        const p: ContentPost = { id: crypto.randomUUID(), image_path, ...fields };
+        setData((d) => d && { ...d, posts: [...(d.posts ?? []), p] });
+        save(backend.insertPost(p));
+        return p;
+      },
+      updatePost(id, changes) {
+        setData((d) => d && { ...d, posts: (d.posts ?? []).map((p) => (p.id === id ? { ...p, ...changes } : p)) });
+        save(backend.updatePost(id, changes));
+      },
+      async setPostImage(p, image) {
+        const image_path = await backend.uploadContent(image);
+        setData((d) => d && { ...d, posts: (d.posts ?? []).map((x) => (x.id === p.id ? { ...x, image_path } : x)) });
+        await backend.updatePost(p.id, { image_path });
+        if (p.image_path) void backend.removeContent(p.image_path).catch(() => {});
+      },
+      deletePost(p) {
+        setData((d) => d && { ...d, posts: (d.posts ?? []).filter((x) => x.id !== p.id) });
+        save(backend.deletePost(p));
+      },
+      contentUrl(path) {
+        return backend.contentUrl(path);
       },
       deleteEmail(id) {
         setData((d) => d && { ...d, emails: (d.emails ?? []).filter((e) => e.id !== id) });

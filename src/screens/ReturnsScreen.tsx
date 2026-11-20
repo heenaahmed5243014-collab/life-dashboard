@@ -6,15 +6,15 @@ import { allReturns } from '../areas';
 import { daysBetween, shortDate, today } from '../dates';
 import { go } from '../router';
 import type { Task } from '../types';
-import Header from '../components/Header';
 import { openQuickAdd } from '../components/QuickAdd';
 import { QrThumb, QrUpload, QrViewer } from '../components/Qr';
 import { useToast } from '../toast';
 import { cheer } from '../cheers';
-import { Check, Plus } from '../icons';
+import { Check } from '../icons';
 
 const money = (n: number) => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** Shown as the Returns tab on the Areas page. */
 export default function ReturnsScreen() {
   const store = useStore();
   const toast = useToast();
@@ -73,11 +73,10 @@ export default function ReturnsScreen() {
 
   return (
     <>
-      <Header title="" />
-      <main className="page page-form returns-page">
-        <header className="page-head">
-          {home && <button type="button" className="link-btn crumb" onClick={() => go(`/area/${home.id}`)}>‹ {home.name}</button>}
-          <h1 className="h1 area-h1"><img src="/img/shoebox.png" alt="" className="returns-pic" />Returns</h1>
+      <section className="returns-page returns-tab">
+        <header className="returns-head">
+          <h2 className="h2 area-h1"><img src="/img/shoebox.png" alt="" className="returns-pic" />Returns</h2>
+          <button type="button" className="btn small returns-add" onClick={() => openQuickAdd({ domainId: home?.id ?? null, subcategoryId: returnsSub?.id ?? null })}>+ Add a return</button>
           <p className="sub">Do first. Screenshot every QR code, then one post office trip.</p>
           <div className="progress">
             <div className="bar"><i style={{ width: `${total ? (recent.length / total) * 100 : 0}%` }} /></div>
@@ -179,16 +178,8 @@ export default function ReturnsScreen() {
             <button type="button" className="link-btn quiet clear-link" onClick={() => setClearing(true)}>Remove all returns</button>
           )
         )}
-      </main>
+      </section>
 
-      <button
-        type="button"
-        className="fab fab-low"
-        aria-label="Add a return"
-        onClick={() => openQuickAdd({ domainId: home?.id ?? null, subcategoryId: returnsSub?.id ?? null })}
-      >
-        <Plus />
-      </button>
 
       {current && (
         <QrViewer

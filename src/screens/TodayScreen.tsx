@@ -23,6 +23,8 @@ import MoneyCard from '../components/MoneyCard';
 import CancelReminders from '../components/CancelReminders';
 import SmmCard from '../components/SmmCard';
 import EmailCard from '../components/EmailCard';
+import OnboardCard from '../components/OnboardCard';
+import { onboardingProgress } from '../onboarding';
 import { PinGate, useMoneyMask } from '../pin';
 import WeightCard, { WeightHidden } from '../components/WeightCard';
 import QuickWin from '../components/QuickWin';
@@ -575,6 +577,7 @@ function TodayBody() {
     ),
     smm: <SmmCard />,
     email: <EmailCard />,
+    onboard: <OnboardCard />,
     subs: !work.active && (store.bills ?? []).some((b) => b.active && b.cancel_by && daysBetween(now, b.cancel_by) <= 7) ? <CancelReminders /> : null,
     mirror: mirror && !work.active ? <MirrorCard day={now} /> : null,
     todos: (
@@ -621,6 +624,7 @@ function TodayBody() {
   };
   const summaries: Partial<Record<CardId, string>> = {
     smm: store.smm.filter((t) => t.status !== 'posted').length ? `${store.smm.filter((t) => t.status !== 'posted').length} on` : undefined,
+    onboard: (() => { const n = store.clients.filter((c) => !c.archived && onboardingProgress(c).next).length; return n ? `${n} onboarding` : undefined; })(),
     email: store.emails.filter((e) => e.kind === 'reply').length ? `${store.emails.filter((e) => e.kind === 'reply').length} to reply` : undefined,
     top: `${data.top.length}/3`,
     slip: slip.length + follows.length ? String(slip.length + follows.length) : undefined,

@@ -6,8 +6,8 @@ export type Route =
   | { name: 'today' }
   | { name: 'tasks' }
   | { name: 'routines' }
-  | { name: 'areas' }
-  | { name: 'returns' }
+  | { name: 'areas'; tab?: 'returns' }
+  | { name: 'content'; tab?: string }
   | { name: 'income' }
   | { name: 'steps' }
   | { name: 'reset' }
@@ -22,8 +22,9 @@ function parse(hash: string): Route {
   if (page === 'tasks') return { name: 'tasks' };
   if (page === 'account') return { name: 'account' };
   if (page === 'routines') return { name: 'routines' };
-  if (page === 'areas') return { name: 'areas' };
-  if (page === 'returns') return { name: 'returns' };
+  if (page === 'areas') return arg === 'returns' ? { name: 'areas', tab: 'returns' } : { name: 'areas' };
+  if (page === 'returns') return { name: 'areas', tab: 'returns' };
+  if (page === 'content') return { name: 'content', tab: arg };
   if (page === 'steps') return { name: 'steps' };
   if (page === 'reset') return { name: 'reset' };
   if (page === 'rewards') return { name: 'rewards' };
