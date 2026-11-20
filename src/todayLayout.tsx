@@ -2,13 +2,15 @@
 // Remembered on this phone. The debrief and evening reset stay at the top when they're due.
 import { useEffect, useState, type ReactNode } from 'react';
 
-export type CardId = 'quick' | 'top' | 'slip' | 'subs' | 'routines' | 'mirror' | 'todos' | 'plan' | 'next' | 'soon' | 'week' | 'money' | 'weight';
+export type CardId = 'quick' | 'top' | 'slip' | 'subs' | 'smm' | 'email' | 'routines' | 'mirror' | 'todos' | 'plan' | 'next' | 'soon' | 'week' | 'money' | 'weight';
 
 export const CARDS: { id: CardId; emoji: string; label: string }[] = [
   { id: 'quick', emoji: '⚡', label: 'Quick buttons' },
   { id: 'top', emoji: '⭐', label: 'Top 3' },
   { id: 'slip', emoji: '🐢', label: 'Slipping' },
   { id: 'subs', emoji: '✂️', label: 'Subscriptions to cancel' },
+  { id: 'email', emoji: '✉️', label: 'Email' },
+  { id: 'smm', emoji: '📣', label: 'Social media' },
   { id: 'routines', emoji: '🔁', label: 'Routine' },
   { id: 'mirror', emoji: '🕊️', label: 'Quiet moment' },
   { id: 'todos', emoji: '✅', label: 'Today’s to-dos' },
@@ -24,7 +26,7 @@ export const CARDS: { id: CardId; emoji: string; label: string }[] = [
 export interface CardPref { id: CardId; show: boolean; fold: boolean; col?: 'main' | 'rail' }
 
 /** Cards that sit in the right-hand column on desktop unless you move them. */
-export const RAIL_DEFAULT = new Set<CardId>(['next', 'slip', 'subs', 'soon', 'money', 'weight', 'week']);
+export const RAIL_DEFAULT = new Set<CardId>(['next', 'slip', 'subs', 'email', 'soon', 'money', 'weight', 'week']);
 export const colOf = (p: CardPref): 'main' | 'rail' => p.col ?? (RAIL_DEFAULT.has(p.id) ? 'rail' : 'main');
 
 const KEY = 'ld:today-layout';

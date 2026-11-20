@@ -3,7 +3,7 @@
 // and the app reloads what's really in the database.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Backend, Snapshot } from './backend';
-import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, WaterDay, StepCheckin, ProgressPhoto, DayPart, Subcategory, Task, Weight } from './types';
+import type { Account, Affirmation, Lead, WeightReward, Budget, Spend, Balance, Bill, Domain, IncomeSettings, Payslip, Routine, SavingsGoal, StepDay, WaterDay, StepCheckin, ProgressPhoto, DayPart, SmmTask, EmailItem, Subcategory, Task, Weight } from './types';
 import { stepSize } from './steps';
 import { nextDue, REPEAT_LABEL } from './repeat';
 import { milestones } from './weightRewards';
@@ -62,6 +62,14 @@ interface Store extends Snapshot {
   /** Saves the day's steps and ticks the steps routine's chunks to match. */
   setSteps(day: Day, count: number): void;
   stepCheckins: StepCheckin[];
+  smm: SmmTask[];
+  emails: EmailItem[];
+  addSmm(t: Omit<SmmTask, 'id' | 'status' | 'output'>): SmmTask;
+  updateSmm(id: string, changes: Partial<SmmTask>): void;
+  deleteSmm(id: string): void;
+  addEmail(e: Omit<EmailItem, 'id' | 'status' | 'created_at'>): EmailItem;
+  updateEmail(id: string, changes: Partial<EmailItem>): void;
+  deleteEmail(id: string): void;
   photos: ProgressPhoto[];
   /** Gym: minutes for a ticked session (update 17). */
   setTickMinutes(routineId: string, day: Day, minutes: number | null): void;
@@ -202,6 +210,8 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       ...view,
       steps: data.steps ?? [],
       stepCheckins: data.stepCheckins ?? [],
+      smm: data.smm ?? [],
+      emails: data.emails ?? [],
       photos: data.photos ?? [],
       water: data.water ?? [],
       goals: data.goals ?? [],
@@ -283,6 +293,34 @@ export function StoreProvider({ backend, children }: { backend: Backend; childre
       setSession(routineId, day, session) {
         const r = data.routines.find((x) => x.id === routineId);
         api.setTickCount(routineId, day, r?.chunks ?? 1, session);
+      },
+      addSmm(fields) {
+        const t: SmmTask = { id: crypto.randomUUID(), status: 'todo', output: '', ...fields };
+        setData((d) => d && { ...d, smm: [...(d.smm ?? []), t] });
+        save(backend.insertSmm(t));
+        return t;
+      },
+      updateSmm(id, changes) {
+        setData((d) => d && { ...d, smm: (d.smm ?? []).map((t) => (t.id === id ? { ...t, ...changes } : t)) });
+        save(backend.updateSmm(id, changes));
+      },
+      deleteSmm(id) {
+        setData((d) => d && { ...d, smm: (d.smm ?? []).filter((t) => t.id !== id) });
+        save(backend.deleteSmm(id));
+      },
+      addEmail(fields) {
+        const e: EmailItem = { id: crypto.randomUUID(), status: 'open', created_at: new Date().toISOString(), ...fields };
+        setData((d) => d && { ...d, emails: [...(d.emails ?? []), e] });
+        save(backend.insertEmail(e));
+        return e;
+      },
+      updateEmail(id, changes) {
+        setData((d) => d && { ...d, emails: (d.emails ?? []).map((e) => (e.id === id ? { ...e, ...changes } : e)).filter((e) => e.status !== 'done') });
+        save(backend.updateEmail(id, changes));
+      },
+      deleteEmail(id) {
+        setData((d) => d && { ...d, emails: (d.emails ?? []).filter((e) => e.id !== id) });
+        save(backend.deleteEmail(id));
       },
       setTickMinutes(routineId, day, minutes) {
         setData((d) => d && { ...d, ticks: d.ticks.map((t) => (t.routine_id === routineId && t.day === day ? { ...t, minutes } : t)) });

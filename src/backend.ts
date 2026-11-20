@@ -2,7 +2,7 @@
 // "Demo mode" (add ?demo to the address) keeps everything in memory so the
 // screens can be tried before Supabase is connected. Nothing is saved in demo mode.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type WaterDay, type StepCheckin, type ProgressPhoto, type Subcategory, type Task, type Tick, type Weight } from './types';
+import { DEFAULT_DOMAINS, REMOVED_DOMAINS, type Account, type Affirmation, type Lead, type WeightReward, type Budget, type Spend, type Balance, type Bill, type Domain, type Routine, type IncomeSettings, type Payslip, type SavingsGoal, type StepDay, type WaterDay, type StepCheckin, type ProgressPhoto, type SmmTask, type EmailItem, type Subcategory, type Task, type Tick, type Weight } from './types';
 import { addDays, today, type Day } from './dates';
 import { TICK_HISTORY_DAYS } from './routines';
 
@@ -43,6 +43,10 @@ export interface Snapshot {
   photos?: ProgressPhoto[];
   /** True once database update 17 (my journey, gym minutes, step check-ins, cancel dates) has been run. */
   db17?: boolean;
+  smm?: SmmTask[];
+  emails?: EmailItem[];
+  /** False until database update 18 (social media jobs, email tracker) has been run. */
+  smmReady?: boolean;
 }
 
 export interface Backend {
@@ -96,6 +100,12 @@ export interface Backend {
   removeQr(path: string): Promise<void>;
   /** Gym: how long the session lasted (update 17). */
   setTickMinutes(routineId: string, day: Day, minutes: number | null): Promise<void>;
+  insertSmm(t: SmmTask): Promise<void>;
+  updateSmm(id: string, changes: Partial<SmmTask>): Promise<void>;
+  deleteSmm(id: string): Promise<void>;
+  insertEmail(e: EmailItem): Promise<void>;
+  updateEmail(id: string, changes: Partial<EmailItem>): Promise<void>;
+  deleteEmail(id: string): Promise<void>;
   /** Progress photos (update 17): stored privately. */
   uploadProgress(file: Blob): Promise<string>;
   insertPhoto(p: ProgressPhoto): Promise<void>;
@@ -219,6 +229,18 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
       cancels: new Map((bx.data as { id: string; cancel_by: Day }[]).map((b) => [b.id, b.cancel_by])),
     };
   };
+  const loadSmm = async (): Promise<{ smm: SmmTask[]; emails: EmailItem[]; smmReady: boolean }> => {
+    const [a, b] = await Promise.all([
+      sb.from('smm_tasks').select('id, client, title, platform, brief, due, agent, status, output, created_at').order('created_at'),
+      sb.from('email_items').select('id, sender, subject, kind, summary, next_step, due, status, created_at').neq('status', 'done').order('created_at'),
+    ]);
+    const err = a.error ?? b.error;
+    if (err) {
+      if (/fetch|network|load failed/i.test(err.message)) throw new Error(err.message);
+      return { smm: [], emails: [], smmReady: false };
+    }
+    return { smm: a.data as SmmTask[], emails: b.data as EmailItem[], smmReady: true };
+  };
   const loadIncome = async (): Promise<{ income: IncomeSettings | null; payslips: Payslip[] }> => {
     const [inc, slips] = await Promise.all([
       sb.from('income_settings').select('*').maybeSingle(),
@@ -299,6 +321,7 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
         ...(await loadRewards()),
         ...(await loadBudget(now)),
         ...(await loadWater(now)),
+        ...(await loadSmm()),
       };
       const x = await loadDb17(now);
       if (!x) return { ...snap, db17: false };
@@ -452,6 +475,12 @@ export function supabaseBackend(sb: SupabaseClient): Backend {
     async removeQr(path) {
       check(await sb.storage.from('qr').remove([path]));
     },
+    async insertSmm(t) { const { created_at: _c, ...row } = t; check(await sb.from('smm_tasks').insert(row)); },
+    async updateSmm(id, changes) { check(await sb.from('smm_tasks').update(changes).eq('id', id)); },
+    async deleteSmm(id) { check(await sb.from('smm_tasks').delete().eq('id', id)); },
+    async insertEmail(e) { check(await sb.from('email_items').insert(e)); },
+    async updateEmail(id, changes) { check(await sb.from('email_items').update(changes).eq('id', id)); },
+    async deleteEmail(id) { check(await sb.from('email_items').delete().eq('id', id)); },
     async setTickMinutes(routineId, day, minutes) {
       check(await sb.from('routine_ticks').update({ minutes }).eq('routine_id', routineId).eq('day', day));
     },
@@ -593,6 +622,15 @@ export function demoBackend(): Backend {
       water: [1750, 2250, 1500, 2000, 2500, 1250].map((ml, i) => ({ day: addDays(now, i - 6), ml })).concat([{ day: now, ml: 750 }]),
       waterReady: true,
       db17: true,
+      smmReady: true,
+      smm: [
+        { id: 's1', client: 'Glow Aesthetics', title: 'Lip filler before/after carousel', platform: 'Instagram', brief: 'Soft, natural results. Book via link in bio.', due: addDays(now, 1), agent: 'captions', status: 'todo', output: '' },
+        { id: 's2', client: 'Bloom Bridal', title: 'Plan next week of posts', platform: 'Instagram', brief: 'Autumn brides, new veil collection', due: addDays(now, 3), agent: 'planner', status: 'todo', output: '' },
+      ],
+      emails: [
+        { id: 'e1', sender: 'Glow Aesthetics', subject: 'Feedback on last week’s reels', kind: 'reply', summary: 'Loved the reels, want one more for Friday.', next_step: 'Confirm Friday reel and send draft', due: addDays(now, 1), status: 'open', created_at: new Date(Date.now() - 3 * 864e5).toISOString() },
+        { id: 'e2', sender: 'HMICFRS recruiter', subject: 'Interview date', kind: 'waiting', summary: 'Said they would confirm the interview slot.', next_step: 'Chase if no reply by Monday', due: addDays(now, 2), status: 'open', created_at: new Date(Date.now() - 1 * 864e5).toISOString() },
+      ],
       photos: [],
       stepCheckins: [{ day: now, part: 'morning', count: 3800 }, { day: now, part: 'afternoon', count: 9100 }],
       goals: [{ id: 'g1', name: 'Emergency fund', target: null, months: 3, account_id: 'a2', sort: 1 }],
@@ -634,6 +672,7 @@ export function demoBackend(): Backend {
     qrUrl: async (path) => qrFiles.get(path) ?? '',
     removeQr: async (path) => { qrFiles.delete(path); },
     setTickMinutes: noop,
+    insertSmm: noop, updateSmm: noop, deleteSmm: noop, insertEmail: noop, updateEmail: noop, deleteEmail: noop,
     uploadProgress: async (file) => { const path = `demo/${Date.now()}`; qrFiles.set(path, URL.createObjectURL(file)); return path; },
     insertPhoto: noop,
     deletePhoto: noop,

@@ -21,6 +21,8 @@ import { routineStats } from '../routines';
 import ChunkTicks from '../components/ChunkTicks';
 import MoneyCard from '../components/MoneyCard';
 import CancelReminders from '../components/CancelReminders';
+import SmmCard from '../components/SmmCard';
+import EmailCard from '../components/EmailCard';
 import { PinGate, useMoneyMask } from '../pin';
 import WeightCard, { WeightHidden } from '../components/WeightCard';
 import QuickWin from '../components/QuickWin';
@@ -571,6 +573,8 @@ function TodayBody() {
       )}
       </>
     ),
+    smm: <SmmCard />,
+    email: <EmailCard />,
     subs: !work.active && (store.bills ?? []).some((b) => b.active && b.cancel_by && daysBetween(now, b.cancel_by) <= 7) ? <CancelReminders /> : null,
     mirror: mirror && !work.active ? <MirrorCard day={now} /> : null,
     todos: (
@@ -616,6 +620,8 @@ function TodayBody() {
     weight: !work.active ? (showWeight ? <WeightCard /> : <WeightHidden />) : null,
   };
   const summaries: Partial<Record<CardId, string>> = {
+    smm: store.smm.filter((t) => t.status !== 'posted').length ? `${store.smm.filter((t) => t.status !== 'posted').length} on` : undefined,
+    email: store.emails.filter((e) => e.kind === 'reply').length ? `${store.emails.filter((e) => e.kind === 'reply').length} to reply` : undefined,
     top: `${data.top.length}/3`,
     slip: slip.length + follows.length ? String(slip.length + follows.length) : undefined,
     routines: data.routines.length ? `${routinesDone}/${data.routines.length}` : undefined,

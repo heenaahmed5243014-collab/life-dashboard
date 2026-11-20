@@ -2154,3 +2154,35 @@ body.deck-dragging .deck-col-over .deck-end, body.deck-dragging .deck-end.deck-c
 .custom-col { display: inline-flex; background: #ECECEC; border-radius: 99px; padding: 2px; }
 .custom-col button { border: none; background: none; font: inherit; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 99px; color: var(--muted); min-height: 28px; }
 .custom-col button.on { background: #1C1C1C; color: #fff; }
+
+/* Social media jobs */
+.smm-card, .em-card { gap: 10px; }
+.smm-card .chip-scroll, .em-card .chip-scroll, .smm-add .chip-scroll { padding: 0 0 2px; }
+.smm-list, .em-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.smm-job { background: rgba(255, 255, 255, 0.7); border-radius: 18px; border: 1px solid #fff; overflow: hidden; }
+.smm-job.st-posted { opacity: 0.6; }
+.smm-head { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: none; padding: 10px 12px; font: inherit; color: var(--ink); text-align: left; min-height: 56px; }
+.smm-agent-badge { width: 38px; height: 38px; flex: none; border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 19px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+.smm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.smm-main b { font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smm-body { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; }
+.smm-brief, .em-paste textarea { width: 100%; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 0.9rem; background: #fff; resize: vertical; }
+.smm-output { background: #fff; border-radius: 14px; padding: 10px 12px; border: 1px solid var(--line); }
+.smm-output pre { margin: 0 0 8px; white-space: pre-wrap; font: inherit; font-size: 0.88rem; line-height: 1.5; max-height: 320px; overflow-y: auto; }
+.smm-stages .seg { font-size: 0.74rem; padding: 0 4px; }
+.smm-add { display: flex; flex-direction: column; gap: 8px; }
+.smm-due { display: flex; align-items: center; gap: 8px; }
+/* Email */
+.em-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.em-stats button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border-radius: 16px; border: 1px solid #fff; background: rgba(255, 255, 255, 0.6); font: inherit; color: var(--ink); text-align: left; }
+.em-stats button.on { background: #1C1C1C; color: #fff; }
+.em-stats b { font-family: var(--display); font-weight: 300; font-size: 1.8rem; line-height: 1; }
+.em-stats span { font-size: 0.74rem; font-weight: 600; opacity: 0.75; }
+.em-row { display: flex; flex-direction: column; gap: 8px; background: rgba(255, 255, 255, 0.7); border: 1px solid #fff; border-radius: 16px; padding: 10px 12px; }
+.em-row.late { border-color: var(--accent-edge); }
+.em-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.em-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.em-subject { font-size: 0.92rem; }
+.em-actions { display: flex; gap: 6px; }
+.em-actions .btn { min-height: 38px; }
+.em-paste, .em-manual { display: flex; flex-direction: column; gap: 6px; }

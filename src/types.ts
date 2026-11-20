@@ -130,6 +130,10 @@ export interface Weight {
   muscle?: number | null; // lb
 }
 
+export type SmmStatus = 'todo' | 'review' | 'ready' | 'posted';
+export interface SmmTask { id: string; client: string; title: string; platform: string; brief: string; due: Day | null; agent: string | null; status: SmmStatus; output: string; created_at?: string }
+export interface EmailItem { id: string; sender: string; subject: string; kind: 'reply' | 'waiting'; summary: string; next_step: string; due: Day | null; status: 'open' | 'done'; created_at: string }
+
 export type DayPart = 'morning' | 'afternoon' | 'night';
 export interface StepCheckin { day: Day; part: DayPart; count: number }
 export interface ProgressPhoto { id: string; day: Day; path: string }
