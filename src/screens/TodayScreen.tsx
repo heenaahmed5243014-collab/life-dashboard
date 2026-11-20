@@ -31,7 +31,8 @@ import { useBalanceCheckDue } from '../components/BalancePrompt';
 import { dueFollowUps } from '../components/OutreachTab';
 import { useWorkMode } from '../workmode';
 import { useShowWeight } from '../weightPref';
-import { CustomiseSheet, Folded, Foldable, useLayout, type CardId, type CardPref } from '../todayLayout';
+import { CARDS, colOf, CustomiseSheet, Folded, Foldable, useLayout, type CardId, type CardPref } from '../todayLayout';
+import { DeckItem } from '../components/DeckDrag';
 import { ModeSwitch, setSleep, useSleep } from '../sleepmode';
 import { useLayoutPref } from '../layout';
 import { resetDoneToday } from './ResetScreen';
@@ -633,13 +634,14 @@ function TodayBody() {
   const renderCard = (p: CardPref) => {
     const el = cards[p.id];
     if (!el) return null;
-    if (p.fold) return <Folded key={p.id} id={p.id} summary={summaries[p.id]} />;
-    return p.id === 'quick' || p.id === 'money' && balanceDue ? <Fragment key={p.id}>{el}</Fragment> : <Foldable key={p.id} id={p.id}>{el}</Foldable>;
+    const inner = p.fold ? <Folded id={p.id} summary={summaries[p.id]} /> : p.id === 'quick' || p.id === 'money' && balanceDue ? <Fragment>{el}</Fragment> : <Foldable id={p.id}>{el}</Foldable>;
+    if (p.id === 'quick') return <Fragment key={p.id}>{inner}</Fragment>;
+    return <DeckItem key={p.id} id={p.id} label={CARDS.find((c) => c.id === p.id)?.label ?? 'card'}>{inner}</DeckItem>;
   };
   const customise = (
     <>
       <button type="button" className="btn small more customise-btn" onClick={() => setCustomising(true)}>⚙️ Customise Today</button>
-      {customising && <CustomiseSheet onClose={() => setCustomising(false)} />}
+      {customising && <CustomiseSheet desktop={desktop} onClose={() => setCustomising(false)} />}
     </>
   );
   const calm = <div className="calm">{funNight ? 'It’s fun night. Close the laptop and go enjoy it. 💗' : evening ? 'Close the laptop and go enjoy your evening. 💗' : 'After this: enjoy life and stop stressing. 💗'}</div>;
@@ -647,16 +649,16 @@ function TodayBody() {
   // Desktop: your day on the left, a side column for what's next, what's slipping, money and progress.
   if (desktop) {
     const top = shown.filter((p) => p.id === 'quick');
-    const rail = shown.filter((p) => RAIL.has(p.id));
-    const main = shown.filter((p) => p.id !== 'quick' && !RAIL.has(p.id));
+    const rail = shown.filter((p) => p.id !== 'quick' && colOf(p) === 'rail');
+    const main = shown.filter((p) => p.id !== 'quick' && colOf(p) === 'main');
     return (
       <>
         {debriefCard}
         {resetCard}
         {top.map(renderCard)}
         <div className="dash">
-          <div className="dash-main">{main.map(renderCard)}</div>
-          <aside className="dash-rail" aria-label="At a glance">{rail.map(renderCard)}{customise}</aside>
+          <div className="dash-main" data-col="main">{main.map(renderCard)}<div className="deck-end" aria-hidden="true" /></div>
+          <aside className="dash-rail" data-col="rail" aria-label="At a glance">{rail.map(renderCard)}<div className="deck-end" aria-hidden="true" />{customise}</aside>
         </div>
         {calm}
       </>
@@ -674,8 +676,7 @@ function TodayBody() {
   );
 }
 
-/** Cards that go in the right-hand column on desktop. */
-const RAIL = new Set<CardId>(['next', 'slip', 'subs', 'soon', 'money', 'weight', 'week']);
+
 
 function ListSection({ title, tasks }: { title: string; tasks: Task[] }) {
   return (

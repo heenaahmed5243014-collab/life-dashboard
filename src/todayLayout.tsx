@@ -20,7 +20,12 @@ export const CARDS: { id: CardId; emoji: string; label: string }[] = [
   { id: 'weight', emoji: '🌸', label: 'My journey' },
 ];
 
-export interface CardPref { id: CardId; show: boolean; fold: boolean }
+/** col: which column on desktop ('main' left, 'rail' right). Unset = the card's usual column. */
+export interface CardPref { id: CardId; show: boolean; fold: boolean; col?: 'main' | 'rail' }
+
+/** Cards that sit in the right-hand column on desktop unless you move them. */
+export const RAIL_DEFAULT = new Set<CardId>(['next', 'slip', 'subs', 'soon', 'money', 'weight', 'week']);
+export const colOf = (p: CardPref): 'main' | 'rail' => p.col ?? (RAIL_DEFAULT.has(p.id) ? 'rail' : 'main');
 
 const KEY = 'ld:today-layout';
 const EVENT = 'ld:today-layout';
@@ -53,6 +58,24 @@ export function moveCard(id: CardId, dir: -1 | 1) {
   if (i < 0 || j < 0 || j >= l.length) return;
   [l[i], l[j]] = [l[j], l[i]];
   saveLayout(l);
+}
+
+/** Drag and drop: put a card before another card (or at the end of a column), switching column if needed. */
+export function moveCardTo(id: CardId, beforeId: CardId | null, col?: 'main' | 'rail') {
+  const l = readLayout();
+  const me = l.find((p) => p.id === id);
+  if (!me || id === beforeId) return;
+  const rest = l.filter((p) => p.id !== id);
+  const moved = { ...me, ...(col ? { col } : {}) };
+  let i = beforeId ? rest.findIndex((p) => p.id === beforeId) : -1;
+  if (i < 0) {
+    // End of the column: after the last card that's in that column
+    const target = col ?? colOf(me);
+    const last = rest.map((p, k) => (colOf(p) === target ? k : -1)).filter((k) => k >= 0).pop();
+    i = last === undefined ? rest.length : last + 1;
+  }
+  rest.splice(i, 0, moved);
+  saveLayout(rest);
 }
 
 export function useLayout(): CardPref[] {
@@ -89,13 +112,13 @@ export function Foldable({ id, children }: { id: CardId; children: ReactNode }) 
   );
 }
 
-export function CustomiseSheet({ onClose }: { onClose: () => void }) {
+export function CustomiseSheet({ onClose, desktop = false }: { onClose: () => void; desktop?: boolean }) {
   const layout = useLayout();
   return (
     <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet custom-sheet" role="dialog" aria-modal="true" aria-label="Customise Today">
         <div className="sheet-head"><h2 className="sheet-title">Customise Today</h2><button type="button" className="link-btn" onClick={onClose}>Done</button></div>
-        <p className="note">Switch cards off, fold the ones you only need now and then, and move them up or down. Your morning debrief and evening reset always come first when they’re due.</p>
+        <p className="note">Switch cards off, fold the ones you only need now and then, and move them up or down{desktop ? ', or between the left and right columns' : ''}. You can also drag any card on Today by its ⠿ handle. Your morning debrief and evening reset always come first when they’re due.</p>
         <ul className="custom-list">
           {layout.map((p, i) => {
             const c = CARDS.find((x) => x.id === p.id)!;
@@ -105,9 +128,17 @@ export function CustomiseSheet({ onClose }: { onClose: () => void }) {
                 <span className="custom-name">
                   <b>{c.label}</b>
                   {p.show && (
-                    <label className="custom-fold">
-                      <input type="checkbox" checked={p.fold} onChange={(e) => setCard(p.id, { fold: e.target.checked })} /> Folded
-                    </label>
+                    <span className="custom-opts">
+                      <label className="custom-fold">
+                        <input type="checkbox" checked={p.fold} onChange={(e) => setCard(p.id, { fold: e.target.checked })} /> Folded
+                      </label>
+                      {desktop && p.id !== 'quick' && (
+                        <span className="custom-col" role="radiogroup" aria-label={`${c.label} column`}>
+                          <button type="button" role="radio" aria-checked={colOf(p) === 'main'} className={colOf(p) === 'main' ? 'on' : ''} onClick={() => setCard(p.id, { col: 'main' })}>Left</button>
+                          <button type="button" role="radio" aria-checked={colOf(p) === 'rail'} className={colOf(p) === 'rail' ? 'on' : ''} onClick={() => setCard(p.id, { col: 'rail' })}>Right</button>
+                        </span>
+                      )}
+                    </span>
                   )}
                 </span>
                 <span className="custom-move">
